@@ -1,4 +1,4 @@
-package com.identityhub;
+package br.dev.andrestamatto.identityhub;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

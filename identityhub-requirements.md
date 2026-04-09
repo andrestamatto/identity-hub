@@ -298,7 +298,7 @@ sequenceDiagram
 # 📁 Suggested Project Structure
 
 ```
-identityhub/
+identity-hub/
  ├── domain/
  ├── application/
  ├── infrastructure/

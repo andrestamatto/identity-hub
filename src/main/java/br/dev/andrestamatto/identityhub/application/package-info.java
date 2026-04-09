@@ -1,4 +1,4 @@
 @NonNullApi
-package com.identityhub.domain;
+package br.dev.andrestamatto.identityhub.application;
 
 import org.springframework.lang.NonNullApi;
