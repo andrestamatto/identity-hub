@@ -17,10 +17,11 @@ public class Login implements Authenticatable {
 
 
     @Override
-    public LoginResponse execute(String email, String password) {
-        var user = authProvider.authenticate(email, password);
+    public LoginResponse execute(String requestEmail, String requestPassword) {
+        var user = authProvider.authenticate(requestEmail, requestPassword);
         var token = jwtIssuer.issue(user);
-        return new LoginResponse(token, 86400);
+        System.out.println("TOKEN GERADO: " + token);
+        return new LoginResponse(token, 86400000);
     }
 
 }

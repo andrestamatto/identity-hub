@@ -1,13 +1,16 @@
 package br.dev.andrestamatto.identityhub.domain.model;
 
+import lombok.Getter;
+
 import java.util.Set;
 import java.util.UUID;
 
+@Getter
 public class User {
-    public UUID id;
-    public String email;
-    public String password;
-    public Set<String> roles;
+    private UUID id;
+    private String email;
+    private String password;
+    private Set<String> roles;
 
     public User(String email, String password) {
         this.id = UUID.randomUUID();
@@ -16,7 +19,9 @@ public class User {
         this.roles = Set.of("LIST", "UPDATE", "CREATE");
     }
 
-    public static User getAndre(){
-        return new User("andre@test.com", "Password123");
+    public User(UUID id, Set<String> roles) {
+        this.id = id;
+        this.roles = roles;
     }
+
 }

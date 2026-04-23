@@ -7,7 +7,7 @@ public record LoginResponse(
 ) implements AuthenticatableResponse {
 
     public LoginResponse(String accessToken, long expiresIn) {
-        this(accessToken, "Bearer",expiresIn);
+        this(accessToken, "Bearer", expiresIn);
     }
 
 }
