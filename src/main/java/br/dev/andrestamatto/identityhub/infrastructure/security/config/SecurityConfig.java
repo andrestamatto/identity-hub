@@ -1,10 +1,11 @@
 package br.dev.andrestamatto.identityhub.infrastructure.security.config;
 
-import br.dev.andrestamatto.identityhub.infrastructure.security.TokenIssuer;
 import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtAuthenticationFilter;
-import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtIssuer;
+import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtProperties;
+import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configurers.FormLoginConfigurer;
@@ -14,12 +15,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
-    private final TokenIssuer jwtIssuer;
+    private final JwtService jwtService;
 
-    public SecurityConfig(TokenIssuer jwtIssuer) {
-        this.jwtIssuer = jwtIssuer;
+    public SecurityConfig(JwtService jwtService) {
+        this.jwtService = jwtService;
     }
 
     @Bean
@@ -39,7 +41,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
-                    new JwtAuthenticationFilter((JwtIssuer) jwtIssuer),
+                    new JwtAuthenticationFilter(jwtService),
                     UsernamePasswordAuthenticationFilter.class
                 );
 

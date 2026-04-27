@@ -1,11 +1,15 @@
 package br.dev.andrestamatto.identityhub.infrastructure.config;
 
+import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
 import br.dev.andrestamatto.identityhub.application.usecase.Authenticatable;
 import br.dev.andrestamatto.identityhub.application.usecase.Login;
 import br.dev.andrestamatto.identityhub.domain.service.AuthProvider;
 import br.dev.andrestamatto.identityhub.domain.service.LoginProvider;
-import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtIssuer;
-import br.dev.andrestamatto.identityhub.infrastructure.security.TokenIssuer;
+import br.dev.andrestamatto.identityhub.domain.service.PasswordEncoder;
+import br.dev.andrestamatto.identityhub.infrastructure.mappers.UserMapper;
+import br.dev.andrestamatto.identityhub.infrastructure.security.TokenService;
+import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtService;
+import br.dev.andrestamatto.identityhub.infrastructure.security.password.BCryptPasswordEncoderAdapter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,18 +17,22 @@ import org.springframework.context.annotation.Configuration;
 public class AuthenticatableConfig {
 
     @Bean
-    public AuthProvider loginProvider(){
-        return new LoginProvider();
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoderAdapter();
     }
 
     @Bean
-    public TokenIssuer jwtIssuer() {
-        return new JwtIssuer();
+    public AuthProvider loginProvider(PasswordEncoder passwordEncoder, LoadExternalIdentity loadExternalIdentity, UserMapper userMapper) {
+        return new LoginProvider(passwordEncoder, loadExternalIdentity, userMapper);
     }
 
     @Bean
-    public Authenticatable login(AuthProvider authProvider, TokenIssuer jwtIssuer) {
-        return new Login(authProvider, jwtIssuer);
+    public TokenService tokenService(JwtService jwtService) {
+        return jwtService;
     }
 
+    @Bean
+    public Authenticatable login(AuthProvider authProvider, TokenService tokenService) {
+        return new Login(authProvider, tokenService);
+    }
 }

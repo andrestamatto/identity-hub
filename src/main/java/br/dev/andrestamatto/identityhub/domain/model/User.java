@@ -9,19 +9,25 @@ import java.util.UUID;
 public class User {
     private UUID id;
     private String email;
-    private String password;
+    private Password password;
     private Set<String> roles;
+    private Set<String> permissions ;
 
-    public User(String email, String password) {
+    public User(UUID id, String email, Password password, Set<String> roles, Set<String> permissions) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.roles = roles;
+        this.permissions = permissions;
+    }
+
+    public User(String email, Password password) {
         this.id = UUID.randomUUID();
         this.email = email;
         this.password = password;
-        this.roles = Set.of("LIST", "UPDATE", "CREATE");
+        this.roles = Set.of("USER");
+        this.permissions = Set.of();
     }
 
-    public User(UUID id, Set<String> roles) {
-        this.id = id;
-        this.roles = roles;
-    }
 
 }

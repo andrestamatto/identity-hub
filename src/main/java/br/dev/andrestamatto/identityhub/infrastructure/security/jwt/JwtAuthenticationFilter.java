@@ -19,10 +19,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
-    private final JwtIssuer jwtIssuer;
+    private final JwtService jwtService;
 
-    public JwtAuthenticationFilter(JwtIssuer jwtIssuer) {
-        this.jwtIssuer = jwtIssuer;
+    public JwtAuthenticationFilter(JwtService jwtService) {
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Optional.ofNullable(request.getHeader(HttpHeaders.AUTHORIZATION))
                 .filter(header -> header.startsWith(BEARER_PREFIX))
                 .map(header -> header.substring(BEARER_PREFIX.length()))
-                .filter(jwtIssuer::isValid)
+                .filter(jwtService::isValid)
                 .ifPresent(token -> {
                     var authentication = createAuthentication(token);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -41,11 +41,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private UsernamePasswordAuthenticationToken createAuthentication(String token) {
-        
-        var claims = jwtIssuer.extractClaims(token);
+        var claims = jwtService.extractClaims(token);
         var userId = claims.getSubject();
 
-        // Uso de Collection<?> para segurança de tipos antes do stream
         var rolesClaim = claims.get("roles", List.class);
 
         List<SimpleGrantedAuthority> authorities = (rolesClaim == null) ? List.of() :
@@ -53,7 +51,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 .map(role -> new SimpleGrantedAuthority(String.valueOf(role)))
                 .toList();
 
-        // Principal: userId (UUID), Credentials: null, Authorities
         return new UsernamePasswordAuthenticationToken(userId, null, authorities);
     }
 }

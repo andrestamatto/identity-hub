@@ -1,27 +1,30 @@
 package br.dev.andrestamatto.identityhub.application.usecase;
 
+import br.dev.andrestamatto.identityhub.application.exception.AuthenticationFailedException;
+import br.dev.andrestamatto.identityhub.domain.model.Password;
 import br.dev.andrestamatto.identityhub.domain.service.AuthProvider;
-import br.dev.andrestamatto.identityhub.infrastructure.security.TokenIssuer;
+import br.dev.andrestamatto.identityhub.infrastructure.security.TokenService;
 import br.dev.andrestamatto.identityhub.interfaces.rest.dto.LoginResponse;
 
+import java.util.Optional;
 
 public class Login implements Authenticatable {
 
-    private final AuthProvider authProvider;
-    private final TokenIssuer jwtIssuer;
+    private final AuthProvider loginProvider;
+    private final TokenService tokenService;
 
-    public Login(AuthProvider authProvider, TokenIssuer jwtIssuer) {
-        this.authProvider = authProvider;
-        this.jwtIssuer = jwtIssuer;
+    public Login(AuthProvider authProvider, TokenService tokenService) {
+        this.loginProvider = authProvider;
+        this.tokenService = tokenService;
     }
-
 
     @Override
-    public LoginResponse execute(String requestEmail, String requestPassword) {
-        var user = authProvider.authenticate(requestEmail, requestPassword);
-        var token = jwtIssuer.issue(user);
-        System.out.println("TOKEN GERADO: " + token);
-        return new LoginResponse(token, 86400000);
+    public LoginResponse execute(String requestEmail, Password requestPassword) {
+        return Optional.ofNullable(loginProvider.authenticate(requestEmail, requestPassword))
+                .map(user -> {
+                    var token = tokenService.issue(user);
+                    return new LoginResponse(token, tokenService.accessTokenExpiresInSeconds());
+                })
+                .orElseThrow(AuthenticationFailedException::new);
     }
-
 }
