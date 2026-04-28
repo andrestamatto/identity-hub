@@ -8,26 +8,16 @@ import java.util.UUID;
 @Getter
 public class User {
     private UUID id;
-    private String email;
-    private Password password;
-    private Set<String> roles;
-    private Set<String> permissions ;
+    private String identity;
+    private EncodedPassword encodedPassword;
+    private Set<RoleName> roles;
+    private Set<PermissionName> permissions;
 
-    public User(UUID id, String email, Password password, Set<String> roles, Set<String> permissions) {
+    public User(UUID id, String identity, EncodedPassword password, Set<RoleName> roles, Set<PermissionName> permissions) {
         this.id = id;
-        this.email = email;
-        this.password = password;
+        this.identity = identity;
+        this.encodedPassword = password;
         this.roles = roles;
         this.permissions = permissions;
     }
-
-    public User(String email, Password password) {
-        this.id = UUID.randomUUID();
-        this.email = email;
-        this.password = password;
-        this.roles = Set.of("USER");
-        this.permissions = Set.of();
-    }
-
-
 }

@@ -1,0 +1,15 @@
+identity-hub:
+  security:
+    rules:
+      - pattern: /auth/**
+        access: PERMIT_ALL
+      - pattern: /**
+        access: AUTHENTICATED
+  jwt:
+    default-identity-type: ${IDENTITY_HUB_DEFAULT_IDENTITY_TYPE:email}
+    supported-identity-types:
+      - email
+      - cpf
+      - ssn
+      - username
+      - external_id
