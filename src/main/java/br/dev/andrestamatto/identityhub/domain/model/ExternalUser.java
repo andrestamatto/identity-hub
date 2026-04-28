@@ -5,9 +5,9 @@ import java.util.UUID;
 
 public record ExternalUser(
         UUID userId,
-        String email,
-        String encodedPassword,
-        Set<String> roles,
-        Set<String> permissions
+        String identity,
+        EncodedPassword encodedPassword,
+        Set<RoleName> roles,
+        Set<PermissionName> permissions
 ) {
 }

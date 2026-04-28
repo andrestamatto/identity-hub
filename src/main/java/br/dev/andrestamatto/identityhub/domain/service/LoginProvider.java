@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.domain.service;
 
 import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
-import br.dev.andrestamatto.identityhub.domain.model.Password;
+import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 import br.dev.andrestamatto.identityhub.domain.model.User;
 import br.dev.andrestamatto.identityhub.infrastructure.mappers.UserMapper;
 
@@ -18,11 +18,11 @@ public class LoginProvider implements AuthProvider {
     }
 
     @Override
-    public User authenticate(String email, Password password) {
-        return externalIdentity.findByEmail(email)
+    public User authenticate(String identity, RawPassword rawPassword) {
+        return externalIdentity.findByIdentity(identity)
                 .filter(externalUser -> externalUser.userId() != null)
                 .filter(externalUser -> passwordEncoder.matches(
-                        password.getValue(), externalUser.encodedPassword()
+                        rawPassword, externalUser.encodedPassword()
                 ))
                 .map(userMapper::toUser)
                 .orElse(null);
