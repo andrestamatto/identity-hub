@@ -6,6 +6,7 @@ import br.dev.andrestamatto.identityhub.domain.model.PermissionName;
 import br.dev.andrestamatto.identityhub.domain.model.RoleName;
 import br.dev.andrestamatto.identityhub.domain.model.User;
 import br.dev.andrestamatto.identityhub.infrastructure.persistence.repository.ExternalUserRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -13,6 +14,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
+@ConditionalOnProperty(
+        prefix = "identity-hub.fake-persistence",
+        name = "enabled",
+        havingValue = "true",
+        matchIfMissing = false
+)
 public class LocalExternalIdentityAdapter implements LoadExternalIdentity {
 
     private final ExternalUserRepository externalUserRepository;
