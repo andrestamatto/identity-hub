@@ -223,6 +223,47 @@ Your consumer app should:
 ### Step 4: Validate final authorities
 Use `GET /users/me` to verify the final authorities generated from roles and permissions.
 
+## Disabling Default Fake Persistence (Consumer Guide)
+By default, fake persistence is enabled:
+- `identity-hub.fake-persistence.enabled: true`
+
+If your consumer project provides its own identity source, disable fake persistence explicitly.
+
+### Step-by-step
+1. In your consumer configuration, set:
+```yml
+identity-hub:
+  fake-persistence:
+    enabled: false
+```
+
+2. Provide your own implementation of `LoadExternalIdentity`:
+```java
+@Component
+public class MyExternalIdentityAdapter implements LoadExternalIdentity {
+    @Override
+    public Optional<User> findByIdentity(String identityValue) {
+        // Load from your real data source (DB/API/LDAP/etc.)
+        return Optional.empty();
+    }
+}
+```
+
+3. Keep your security rules in `identityhub-conf.yml` aligned with your business:
+```yml
+identity-hub:
+  security:
+    rules:
+      - pattern: /auth/**
+        access: PERMIT_ALL
+      - pattern: /**
+        access: AUTHENTICATED
+```
+
+What happens when `enabled=false`:
+- identity-hub does not bootstrap fake persistence infrastructure (H2/JPA fake setup);
+- your project becomes responsible for supplying `LoadExternalIdentity`.
+
 ## Roadmap (Next Versions)
 - OAuth providers (Google, Microsoft, GitHub, Facebook).
 - Module-first packaging for easier embedding into Java applications.
