@@ -3,28 +3,24 @@ package br.dev.andrestamatto.identityhub.domain.service;
 import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 import br.dev.andrestamatto.identityhub.domain.model.User;
-import br.dev.andrestamatto.identityhub.infrastructure.mappers.UserMapper;
 
 public class LoginProvider implements AuthProvider {
 
     private final PasswordEncoder passwordEncoder;
     private final LoadExternalIdentity externalIdentity;
-    private final UserMapper userMapper;
 
-    public LoginProvider(PasswordEncoder passwordEncoder, LoadExternalIdentity externalIdentity, UserMapper userMapper) {
+    public LoginProvider(PasswordEncoder passwordEncoder, LoadExternalIdentity externalIdentity) {
         this.passwordEncoder = passwordEncoder;
         this.externalIdentity = externalIdentity;
-        this.userMapper = userMapper;
     }
 
     @Override
     public User authenticate(String identity, RawPassword rawPassword) {
         return externalIdentity.findByIdentity(identity)
-                .filter(externalUser -> externalUser.userId() != null)
-                .filter(externalUser -> passwordEncoder.matches(
-                        rawPassword, externalUser.encodedPassword()
+                .filter(user -> user.getId() != null)
+                .filter(user -> passwordEncoder.matches(
+                        rawPassword, user.getEncodedPassword()
                 ))
-                .map(userMapper::toUser)
                 .orElse(null);
     }
 

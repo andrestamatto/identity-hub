@@ -2,9 +2,9 @@ package br.dev.andrestamatto.identityhub.infrastructure.persistence;
 
 import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
 import br.dev.andrestamatto.identityhub.domain.model.EncodedPassword;
-import br.dev.andrestamatto.identityhub.domain.model.ExternalUser;
 import br.dev.andrestamatto.identityhub.domain.model.PermissionName;
 import br.dev.andrestamatto.identityhub.domain.model.RoleName;
+import br.dev.andrestamatto.identityhub.domain.model.User;
 import br.dev.andrestamatto.identityhub.infrastructure.persistence.repository.ExternalUserRepository;
 import org.springframework.stereotype.Component;
 
@@ -22,9 +22,9 @@ public class LocalExternalIdentityAdapter implements LoadExternalIdentity {
     }
 
     @Override
-    public java.util.Optional<ExternalUser> findByIdentity(String identityValue) {
+    public java.util.Optional<User> findByIdentity(String identityValue) {
         return externalUserRepository.findByEmail(identityValue)
-                .map(entity -> new ExternalUser(
+                .map(entity -> new User(
                         entity.getId(),
                         entity.getEmail(),
                         EncodedPassword.from(entity.getEncodedPassword()),
