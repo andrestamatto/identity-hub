@@ -13,3 +13,5 @@ identity-hub:
       - ssn
       - username
       - external_id
+  fake-persistence:
+    enabled: true
