@@ -1,9 +1,9 @@
 package br.dev.andrestamatto.identityhub.application.ports;
 
-import br.dev.andrestamatto.identityhub.domain.model.ExternalUser;
+import br.dev.andrestamatto.identityhub.domain.model.User;
 
 import java.util.Optional;
 
 public interface LoadExternalIdentity {
-    Optional<ExternalUser> findByEmail(String emailValue);
+    Optional<User> findByIdentity(String identityValue);
 }

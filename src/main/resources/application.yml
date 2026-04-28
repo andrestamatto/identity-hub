@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:classpath:identityhub-conf.yml
   application:
     name: identity-hub
   datasource:

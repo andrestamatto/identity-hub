@@ -1,3 +1,6 @@
+/**
+ * Domain model and domain services, independent of transport and persistence.
+ */
 @NonNullApi
 package br.dev.andrestamatto.identityhub.domain;
 

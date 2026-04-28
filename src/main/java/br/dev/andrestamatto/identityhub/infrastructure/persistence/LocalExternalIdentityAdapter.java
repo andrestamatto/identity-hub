@@ -1,7 +1,10 @@
 package br.dev.andrestamatto.identityhub.infrastructure.persistence;
 
 import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
-import br.dev.andrestamatto.identityhub.domain.model.ExternalUser;
+import br.dev.andrestamatto.identityhub.domain.model.EncodedPassword;
+import br.dev.andrestamatto.identityhub.domain.model.PermissionName;
+import br.dev.andrestamatto.identityhub.domain.model.RoleName;
+import br.dev.andrestamatto.identityhub.domain.model.User;
 import br.dev.andrestamatto.identityhub.infrastructure.persistence.repository.ExternalUserRepository;
 import org.springframework.stereotype.Component;
 
@@ -19,21 +22,22 @@ public class LocalExternalIdentityAdapter implements LoadExternalIdentity {
     }
 
     @Override
-    public java.util.Optional<ExternalUser> findByEmail(String emailValue) {
-        return externalUserRepository.findByEmail(emailValue)
-                .map(entity -> new ExternalUser(
+    public java.util.Optional<User> findByIdentity(String identityValue) {
+        return externalUserRepository.findByEmail(identityValue)
+                .map(entity -> new User(
                         entity.getId(),
                         entity.getEmail(),
-                        entity.getEncodedPassword(),
-                        splitCsv(entity.getRoles()),
-                        splitCsv(entity.getPermissions())
+                        EncodedPassword.from(entity.getEncodedPassword()),
+                        splitCsv(entity.getRoles(), RoleName::from),
+                        splitCsv(entity.getPermissions(), PermissionName::from)
                 ));
     }
 
-    private Set<String> splitCsv(String value) {
+    private <T> Set<T> splitCsv(String value, java.util.function.Function<String, T> converter) {
         return Arrays.stream(value.split(","))
                 .map(String::trim)
                 .filter(token -> !token.isEmpty())
+                .map(converter)
                 .collect(Collectors.toUnmodifiableSet());
     }
 }
