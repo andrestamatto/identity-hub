@@ -1,2 +1,2 @@
-org.springframework.boot.env.EnvironmentPostProcessor=\
-br.dev.andrestamatto.identityhub.infrastructure.config.FakePersistenceEnvironmentPostProcessor
+org.springframework.boot.autoconfigure.AutoConfigurationImportFilter=\
+br.dev.andrestamatto.identityhub.infrastructure.config.BuiltInLocalIdentityStoreAutoConfigurationImportFilter

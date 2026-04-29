@@ -1,8 +1,8 @@
 # identity-hub
 `identity-hub` is an authentication and authorization core built with Java + Spring Boot.
 
-The main goal is to avoid duplicating security flow implementation across many projects.  
-Instead of each system creating its own login/token/roles-permissions logic, `identity-hub` centralizes this behavior with a configurable model.
+The main goal is to allow your project to focus on the business without worrying about implementing these mechanisms or duplicating security flow implementations across multiple projects.
+Instead of each system creating its own login, token, and role-permission logic, `identity-hub` centralizes this behavior with a configurable model.
 
 Current vision:
 - generic identity (`identity`) instead of hardcoding only `email`;
@@ -12,7 +12,7 @@ Current vision:
 Fictional use case:
 - Imagine a company with 5 products (`CRM`, `Support`, `Billing`, `Analytics`, `Admin Portal`).
 - Each product has different routes and authorization vocabulary.
-- `identity-hub` provides one shared auth core, and each product configures only what is business-specific.
+- `identity-hub` provides one shared auth core, and each product configures only what is business-specific through identityhub-conf.yml (route patterns, access rules such as ANY_ROLE/ALL_PERM, and supported identity_type values).
 
 Long-term, this project is intended to evolve into:
 - a reusable module/starter for Java applications; and
@@ -60,8 +60,8 @@ Default access rules are intentionally generic:
 - `/auth/**` -> `PERMIT_ALL`
 - `/**` -> `AUTHENTICATED`
 
-## Local Fake Persistence (Purpose)
-The project currently uses H2 + SQL seeds (`schema.sql`, `data.sql`) as a **fake persistence layer**.
+## Local Built-in Identity Store (Purpose)
+The project currently uses H2 + SQL seeds (`schema.sql`, `data.sql`) as a **built-in local identity store**.
 
 Why this exists:
 - to make clone-and-run testing possible with no external dependencies;
@@ -223,17 +223,17 @@ Your consumer app should:
 ### Step 4: Validate final authorities
 Use `GET /users/me` to verify the final authorities generated from roles and permissions.
 
-## Disabling Default Fake Persistence (Consumer Guide)
-By default, fake persistence is enabled:
-- `identity-hub.fake-persistence.enabled: true`
+## Disabling the Built-in Local Identity Store (Consumer Guide)
+By default, the built-in local identity store is enabled:
+- `identity-hub.local-identity-store.enabled: true`
 
-If your consumer project provides its own identity source, disable fake persistence explicitly.
+If your consumer project provides its own identity source, disable the built-in local identity store explicitly.
 
 ### Step-by-step
 1. In your consumer configuration, set:
 ```yml
 identity-hub:
-  fake-persistence:
+  local-identity-store:
     enabled: false
 ```
 
@@ -261,7 +261,7 @@ identity-hub:
 ```
 
 What happens when `enabled=false`:
-- identity-hub does not bootstrap fake persistence infrastructure (H2/JPA fake setup);
+- identity-hub does not bootstrap built-in local persistence infrastructure (H2/JPA setup);
 - your project becomes responsible for supplying `LoadExternalIdentity`.
 
 ## Roadmap (Next Versions)
