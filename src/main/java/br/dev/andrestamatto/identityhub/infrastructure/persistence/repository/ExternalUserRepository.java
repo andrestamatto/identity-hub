@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @ConditionalOnProperty(
-        prefix = "identity-hub.fake-persistence",
+        prefix = "identity-hub.local-identity-store",
         name = "enabled",
         havingValue = "true",
         matchIfMissing = false

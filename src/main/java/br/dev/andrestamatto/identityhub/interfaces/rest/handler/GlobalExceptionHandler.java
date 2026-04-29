@@ -1,6 +1,7 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest.handler;
 
 import br.dev.andrestamatto.identityhub.application.exception.AuthenticationFailedException;
+import br.dev.andrestamatto.identityhub.application.exception.IdentitySourceUnavailableException;
 import br.dev.andrestamatto.identityhub.interfaces.rest.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
@@ -21,6 +22,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return this.buildResponse(HttpStatus.UNAUTHORIZED, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(IdentitySourceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleIdentitySourceUnavailable(
+            IdentitySourceUnavailableException exception,
+            HttpServletRequest request
+    ) {
+        return this.buildResponse(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
