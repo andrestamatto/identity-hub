@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 @Component
 @ConditionalOnProperty(
-        prefix = "identity-hub.fake-persistence",
+        prefix = "identity-hub.local-identity-store",
         name = "enabled",
         havingValue = "true",
         matchIfMissing = false
