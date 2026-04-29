@@ -1,8 +1,8 @@
 # identity-hub
 `identity-hub` is an authentication and authorization core built with Java + Spring Boot.
 
-The main goal is to avoid duplicating security flow implementation across many projects.  
-Instead of each system creating its own login/token/roles-permissions logic, `identity-hub` centralizes this behavior with a configurable model.
+The main goal is to allow your project to focus on the business without worrying about implementing these mechanisms or duplicating security flow implementations across multiple projects.
+Instead of each system creating its own login, token, and role-permission logic, `identity-hub` centralizes this behavior with a configurable model.
 
 Current vision:
 - generic identity (`identity`) instead of hardcoding only `email`;
