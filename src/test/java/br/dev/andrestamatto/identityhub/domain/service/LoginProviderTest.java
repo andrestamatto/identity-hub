@@ -21,7 +21,7 @@ class LoginProviderTest {
     void shouldReturnUserWhenIdentityExistsAndPasswordMatches() {
         var encoder = mock(PasswordEncoder.class);
         var externalIdentity = mock(LoadExternalIdentity.class);
-        var provider = new LoginProvider(encoder, externalIdentity);
+        var provider = new PasswordLoginAuthenticatorService(encoder, externalIdentity);
 
         var raw = RawPassword.from("Password@123");
         var user = new User(
@@ -32,7 +32,7 @@ class LoginProviderTest {
                 Set.of(PermissionName.from("PROFILE_READ"))
         );
 
-        when(externalIdentity.findByIdentity("user@dev.local")).thenReturn(Optional.of(user));
+        when(externalIdentity.load("user@dev.local")).thenReturn(Optional.of(user));
         when(encoder.matches(raw, user.getEncodedPassword())).thenReturn(true);
 
         var authenticated = provider.authenticate("user@dev.local", raw);
@@ -44,7 +44,7 @@ class LoginProviderTest {
     void shouldReturnNullWhenPasswordDoesNotMatch() {
         var encoder = mock(PasswordEncoder.class);
         var externalIdentity = mock(LoadExternalIdentity.class);
-        var provider = new LoginProvider(encoder, externalIdentity);
+        var provider = new PasswordLoginAuthenticatorService(encoder, externalIdentity);
 
         var raw = RawPassword.from("WrongPassword");
         var user = new User(
@@ -55,7 +55,7 @@ class LoginProviderTest {
                 Set.of()
         );
 
-        when(externalIdentity.findByIdentity("user@dev.local")).thenReturn(Optional.of(user));
+        when(externalIdentity.load("user@dev.local")).thenReturn(Optional.of(user));
         when(encoder.matches(raw, user.getEncodedPassword())).thenReturn(false);
 
         assertNull(provider.authenticate("user@dev.local", raw));
@@ -65,9 +65,9 @@ class LoginProviderTest {
     void shouldReturnNullWhenUserDoesNotExist() {
         var encoder = mock(PasswordEncoder.class);
         var externalIdentity = mock(LoadExternalIdentity.class);
-        var provider = new LoginProvider(encoder, externalIdentity);
+        var provider = new PasswordLoginAuthenticatorService(encoder, externalIdentity);
 
-        when(externalIdentity.findByIdentity("missing@dev.local")).thenReturn(Optional.empty());
+        when(externalIdentity.load("missing@dev.local")).thenReturn(Optional.empty());
 
         assertNull(provider.authenticate("missing@dev.local", RawPassword.from("Password@123")));
         verifyNoInteractions(encoder);

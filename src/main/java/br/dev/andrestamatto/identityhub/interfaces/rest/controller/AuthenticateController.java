@@ -1,9 +1,10 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest.controller;
 
-import br.dev.andrestamatto.identityhub.application.usecase.Authenticatable;
+import br.dev.andrestamatto.identityhub.application.usecase.PasswordLogin;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
-import br.dev.andrestamatto.identityhub.interfaces.rest.dto.AuthenticatableResponse;
-import br.dev.andrestamatto.identityhub.interfaces.rest.dto.LoginRequest;
+import br.dev.andrestamatto.identityhub.interfaces.rest.dto.LoginResponse;
+import br.dev.andrestamatto.identityhub.interfaces.rest.dto.PasswordLoginRequest;
+import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.AuthResponseMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,16 +16,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthenticateController {
 
-    private final Authenticatable login;
+    private final PasswordLogin passwordLoginUseCase;
+    private final AuthResponseMapper authResponseMapper;
 
-    public AuthenticateController(Authenticatable login) {
-        this.login = login;
+    public AuthenticateController(PasswordLogin login, AuthResponseMapper authResponseMapper) {
+        this.passwordLoginUseCase = login;
+        this.authResponseMapper = authResponseMapper;
     }
 
     @PostMapping(value="/login", consumes = "application/json")
-    public ResponseEntity<AuthenticatableResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody PasswordLoginRequest loginRequest) {
+        var loginResult = passwordLoginUseCase.execute(loginRequest.identity(), RawPassword.from(loginRequest.password()));
         return ResponseEntity.ok().body(
-                    login.execute(loginRequest.identity(), RawPassword.from(loginRequest.password()))
+                authResponseMapper.toLoginResponse(loginResult)
                 );
 
     }

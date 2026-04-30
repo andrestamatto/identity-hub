@@ -1,8 +1,10 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest.controller;
 
-import br.dev.andrestamatto.identityhub.application.usecase.Authenticatable;
+import br.dev.andrestamatto.identityhub.application.result.AuthenticationResult;
+import br.dev.andrestamatto.identityhub.application.usecase.PasswordLogin;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 import br.dev.andrestamatto.identityhub.interfaces.rest.dto.LoginResponse;
+import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.AuthResponseMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -26,12 +28,17 @@ class AuthenticateControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private Authenticatable login;
+    private PasswordLogin login;
+
+    @MockBean
+    private AuthResponseMapper authResponseMapper;
 
     @Test
     void shouldAuthenticateWithIdentityField() throws Exception {
         when(login.execute(eq("user@identityhub.dev"), eq(RawPassword.from("Password@123"))))
-                .thenReturn(new LoginResponse("token-abc", 3600));
+                .thenReturn(new AuthenticationResult("token-abc", "Bearer", 3600));
+        when(authResponseMapper.toLoginResponse(eq(new AuthenticationResult("token-abc", "Bearer", 3600))))
+                .thenReturn(new LoginResponse("token-abc", "Bearer", 3600));
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -49,7 +56,9 @@ class AuthenticateControllerTest {
     @Test
     void shouldAuthenticateWithEmailAliasField() throws Exception {
         when(login.execute(eq("user@identityhub.dev"), eq(RawPassword.from("Password@123"))))
-                .thenReturn(new LoginResponse("token-xyz", 3600));
+                .thenReturn(new AuthenticationResult("token-xyz", "Bearer", 3600));
+        when(authResponseMapper.toLoginResponse(eq(new AuthenticationResult("token-xyz", "Bearer", 3600))))
+                .thenReturn(new LoginResponse("token-xyz", "Bearer", 3600));
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
