@@ -13,5 +13,24 @@ identity-hub:
       - ssn
       - username
       - external_id
+  social-login:
+    enabled: true
+    providers:
+      google:
+        enabled: true
+        default-redirect-url:
+        allowed-redirect-urls: []
+      github:
+        enabled: true
+        default-redirect-url:
+        allowed-redirect-urls: []
+      facebook:
+        enabled: true
+        default-redirect-url:
+        allowed-redirect-urls: []
+      linkedin:
+        enabled: true
+        default-redirect-url:
+        allowed-redirect-urls: []
   local-identity-store:
     enabled: true
