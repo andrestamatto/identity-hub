@@ -29,7 +29,7 @@ public class LocalExternalIdentityAdapter implements LoadExternalIdentity {
     }
 
     @Override
-    public java.util.Optional<User> findByIdentity(String identityValue) {
+    public java.util.Optional<User> load(String identityValue) {
         return externalUserRepository.findByEmail(identityValue)
                 .map(entity -> new User(
                         entity.getId(),

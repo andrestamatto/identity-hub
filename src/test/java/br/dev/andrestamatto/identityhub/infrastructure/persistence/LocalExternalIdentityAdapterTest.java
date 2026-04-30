@@ -27,7 +27,7 @@ class LocalExternalIdentityAdapterTest {
 
         when(repository.findByEmail("user@identityhub.dev")).thenReturn(Optional.of(entity));
 
-        var userOpt = adapter.findByIdentity("user@identityhub.dev");
+        var userOpt = adapter.load("user@identityhub.dev");
         assertTrue(userOpt.isPresent());
         var user = userOpt.get();
 
@@ -45,7 +45,7 @@ class LocalExternalIdentityAdapterTest {
         var adapter = new LocalExternalIdentityAdapter(repository);
         when(repository.findByEmail("missing@identityhub.dev")).thenReturn(Optional.empty());
 
-        assertTrue(adapter.findByIdentity("missing@identityhub.dev").isEmpty());
+        assertTrue(adapter.load("missing@identityhub.dev").isEmpty());
     }
 
     @Test
@@ -62,7 +62,7 @@ class LocalExternalIdentityAdapterTest {
 
         when(repository.findByEmail("user@identityhub.dev")).thenReturn(Optional.of(entity));
 
-        assertThrows(IllegalArgumentException.class, () -> adapter.findByIdentity("user@identityhub.dev"));
+        assertThrows(IllegalArgumentException.class, () -> adapter.load("user@identityhub.dev"));
     }
 
     private static void setField(Object target, String fieldName, Object value) throws Exception {
