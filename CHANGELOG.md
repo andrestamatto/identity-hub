@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Added
+- _None yet._
+
+### Changed
+- _None yet._
+
+### Fixed
+- _None yet._
+
+### Removed
+- _None yet._
+
 ## [0.1.0] - 2026-04-29
 ### Added
 - JWT authentication flow with claims: `sub`, `identity`, `identity_type`, `roles`, `permissions`.
