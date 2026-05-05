@@ -9,4 +9,8 @@ public class IdentitySourceUnavailableException extends RuntimeException {
     public IdentitySourceUnavailableException(String message) {
         super(message);
     }
+
+    public IdentitySourceUnavailableException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

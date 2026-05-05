@@ -18,18 +18,45 @@ identity-hub:
     providers:
       google:
         enabled: true
-        default-redirect-url:
+        credentials:
+          client-id: YOUR_GOOGLE_CLIENT_ID
+          client-secret: YOUR_GOOGLE_CLIENT_SECRET
+          token-url: https://oauth2.googleapis.com
+          user-info-url: https://openidconnect.googleapis.com
+          scopes:
+            - openid
+            - profile
+            - email
+        default-redirect-url: http://localhost:8080/oauth2/callback/google
         allowed-redirect-urls: []
       github:
         enabled: true
+        credentials:
+          client-id: YOUR_GITHUB_CLIENT_ID
+          client-secret: YOUR_GITHUB_CLIENT_SECRET
+          token-url: https://github.com
+          user-info-url: https://api.github.com
+          scopes: []
         default-redirect-url:
         allowed-redirect-urls: []
       facebook:
         enabled: true
+        credentials:
+          client-id: YOUR_FACEBOOK_CLIENT_ID
+          client-secret: YOUR_FACEBOOK_CLIENT_SECRET
+          token-url: https://graph.facebook.com
+          user-info-url: https://graph.facebook.com
+          scopes: []
         default-redirect-url:
         allowed-redirect-urls: []
       linkedin:
         enabled: true
+        credentials:
+          client-id: YOUR_LINKEDIN_CLIENT_ID
+          client-secret: YOUR_LINKEDIN_CLIENT_SECRET
+          token-url: https://www.linkedin.com
+          user-info-url: https://api.linkedin.com
+          scopes: []
         default-redirect-url:
         allowed-redirect-urls: []
   local-identity-store:

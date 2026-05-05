@@ -3,17 +3,17 @@ package br.dev.andrestamatto.identityhub.application.usecase;
 import br.dev.andrestamatto.identityhub.application.exception.IdentitySourceUnavailableException;
 import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentity;
 import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUser;
+import br.dev.andrestamatto.identityhub.application.ports.SocialProviderPolicyPort;
+import br.dev.andrestamatto.identityhub.application.ports.dto.SocialProviderPolicy;
 import br.dev.andrestamatto.identityhub.domain.model.EncodedPassword;
 import br.dev.andrestamatto.identityhub.domain.model.PermissionName;
 import br.dev.andrestamatto.identityhub.domain.model.RoleName;
 import br.dev.andrestamatto.identityhub.domain.model.SocialIdentity;
 import br.dev.andrestamatto.identityhub.domain.model.SocialProvider;
 import br.dev.andrestamatto.identityhub.domain.model.User;
-import br.dev.andrestamatto.identityhub.infrastructure.config.IdentityHubSocialLoginProperties;
-import br.dev.andrestamatto.identityhub.infrastructure.security.TokenService;
+import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -30,15 +30,15 @@ class SocialLoginUseCaseTest {
     void shouldAuthenticateWhenProviderAndRedirectAreValid() {
         var loadSocialIdentity = mock(LoadSocialIdentity.class);
         var resolveSocialUser = mock(ResolveSocialUser.class);
-        var tokenService = mock(TokenService.class);
+        var tokenService = mock(TokenServicePort.class);
+        var socialProviderPolicyPort = mock(SocialProviderPolicyPort.class);
 
-        var providerProperties = new IdentityHubSocialLoginProperties.ProviderProperties(
-                true,
-                "http://localhost:8081/callback",
-                List.of("http://localhost:8081/callback")
+        when(socialProviderPolicyPort.enabled()).thenReturn(true);
+        when(socialProviderPolicyPort.getProviderPolicy("google")).thenReturn(
+                new SocialProviderPolicy(true, "http://localhost:8081/callback", Set.of("http://localhost:8081/callback"))
         );
-        var properties = new IdentityHubSocialLoginProperties(true, Map.of("google", providerProperties));
-        var useCase = new SocialLoginUseCase(loadSocialIdentity, resolveSocialUser, tokenService, properties);
+
+        var useCase = new SocialLoginUseCase(loadSocialIdentity, resolveSocialUser, tokenService, socialProviderPolicyPort);
 
         var socialIdentity = new SocialIdentity.Builder()
                 .provider(SocialProvider.GOOGLE)
@@ -68,14 +68,17 @@ class SocialLoginUseCaseTest {
 
     @Test
     void shouldRejectBlankAuthorizationCode() {
+        var socialProviderPolicyPort = mock(SocialProviderPolicyPort.class);
+        when(socialProviderPolicyPort.enabled()).thenReturn(true);
+        when(socialProviderPolicyPort.getProviderPolicy("google")).thenReturn(
+                new SocialProviderPolicy(true, "x", Set.of())
+        );
+
         var useCase = new SocialLoginUseCase(
                 mock(LoadSocialIdentity.class),
                 mock(ResolveSocialUser.class),
-                mock(TokenService.class),
-                new IdentityHubSocialLoginProperties(
-                        true,
-                        Map.of("google", new IdentityHubSocialLoginProperties.ProviderProperties(true, "x", List.of()))
-                )
+                mock(TokenServicePort.class),
+                socialProviderPolicyPort
         );
 
         assertThrows(IllegalArgumentException.class, () -> useCase.execute("google", "   ", null));
@@ -83,18 +86,17 @@ class SocialLoginUseCaseTest {
 
     @Test
     void shouldRejectRedirectUriOutsideAllowedList() {
+        var socialProviderPolicyPort = mock(SocialProviderPolicyPort.class);
+        when(socialProviderPolicyPort.enabled()).thenReturn(true);
+        when(socialProviderPolicyPort.getProviderPolicy("google")).thenReturn(
+                new SocialProviderPolicy(true, "http://localhost:8081/callback", Set.of("http://localhost:8081/callback"))
+        );
+
         var useCase = new SocialLoginUseCase(
                 mock(LoadSocialIdentity.class),
                 mock(ResolveSocialUser.class),
-                mock(TokenService.class),
-                new IdentityHubSocialLoginProperties(
-                        true,
-                        Map.of("google", new IdentityHubSocialLoginProperties.ProviderProperties(
-                                true,
-                                "http://localhost:8081/callback",
-                                List.of("http://localhost:8081/callback")
-                        ))
-                )
+                mock(TokenServicePort.class),
+                socialProviderPolicyPort
         );
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -103,11 +105,14 @@ class SocialLoginUseCaseTest {
 
     @Test
     void shouldRejectWhenSocialLoginDisabled() {
+        var socialProviderPolicyPort = mock(SocialProviderPolicyPort.class);
+        when(socialProviderPolicyPort.enabled()).thenReturn(false);
+
         var useCase = new SocialLoginUseCase(
                 mock(LoadSocialIdentity.class),
                 mock(ResolveSocialUser.class),
-                mock(TokenService.class),
-                new IdentityHubSocialLoginProperties(false, Map.of())
+                mock(TokenServicePort.class),
+                socialProviderPolicyPort
         );
 
         assertThrows(IdentitySourceUnavailableException.class, () ->

@@ -3,7 +3,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.security.jwt;
 import br.dev.andrestamatto.identityhub.domain.model.PermissionName;
 import br.dev.andrestamatto.identityhub.domain.model.RoleName;
 import br.dev.andrestamatto.identityhub.domain.model.User;
-import br.dev.andrestamatto.identityhub.infrastructure.security.TokenService;
+import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
-public class JwtService implements TokenService {
+public class JwtService implements TokenServicePort {
 
     private final JwtProperties properties;
     private final SecretKey key;

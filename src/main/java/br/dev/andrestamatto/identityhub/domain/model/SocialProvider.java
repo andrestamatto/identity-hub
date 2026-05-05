@@ -12,10 +12,10 @@ public enum SocialProvider {
     GOOGLE("google"),
     LINKEDIN("linkedin");
 
-    private final String provider;
+    private final String providerName;
 
-    SocialProvider(String provider) {
-        this.provider = provider;
+    SocialProvider(String providerName) {
+        this.providerName = providerName;
     }
 
     public static SocialProvider fromString(String provider) {
@@ -24,7 +24,7 @@ public enum SocialProvider {
         }
         String normalized = provider.trim().toLowerCase(Locale.ROOT);
         return Arrays.stream(values())
-                .filter(value -> value.provider.equals(normalized))
+                .filter(value -> value.providerName.equals(normalized))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Invalid social provider: " + provider));
     }

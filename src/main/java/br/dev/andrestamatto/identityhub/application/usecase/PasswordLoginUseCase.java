@@ -4,7 +4,7 @@ import br.dev.andrestamatto.identityhub.application.exception.AuthenticationFail
 import br.dev.andrestamatto.identityhub.application.result.AuthenticationResult;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 import br.dev.andrestamatto.identityhub.domain.service.PasswordLoginAuthenticator;
-import br.dev.andrestamatto.identityhub.infrastructure.security.TokenService;
+import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 
 import java.util.Optional;
 
@@ -13,9 +13,9 @@ public class PasswordLoginUseCase implements PasswordLogin {
     private final String TOKEN_TYPE_BEARER = "Bearer";
 
     private final PasswordLoginAuthenticator passwordLoginAuthenticator;
-    private final TokenService tokenService;
+    private final TokenServicePort tokenService;
 
-    public PasswordLoginUseCase(PasswordLoginAuthenticator passwordLoginAuthenticator, TokenService tokenService) {
+    public PasswordLoginUseCase(PasswordLoginAuthenticator passwordLoginAuthenticator, TokenServicePort tokenService) {
         this.passwordLoginAuthenticator = passwordLoginAuthenticator;
         this.tokenService = tokenService;
     }
