@@ -1,8 +1,8 @@
 package br.dev.andrestamatto.identityhub.infrastructure.security.config;
 
+import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtAuthenticationFilter;
 import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtProperties;
-import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtService;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,12 +22,12 @@ import java.util.Optional;
 @EnableConfigurationProperties({JwtProperties.class, IdentityHubSecurityProperties.class})
 public class SecurityConfig {
 
-    private final JwtService jwtService;
+    private final TokenServicePort tokenServicePort;
     private final SecurityRules securityRules;
     private final IdentityHubSecurityProperties securityProperties;
 
-    public SecurityConfig(JwtService jwtService, SecurityRules securityRules, IdentityHubSecurityProperties securityProperties) {
-        this.jwtService = jwtService;
+    public SecurityConfig(TokenServicePort tokenServicePort, SecurityRules securityRules, IdentityHubSecurityProperties securityProperties) {
+        this.tokenServicePort = tokenServicePort;
         this.securityRules = securityRules;
         this.securityProperties = securityProperties;
     }
@@ -44,7 +44,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(this::configureAuthorizationRules)
                 .addFilterBefore(
-                    new JwtAuthenticationFilter(jwtService),
+                    new JwtAuthenticationFilter(tokenServicePort),
                     UsernamePasswordAuthenticationFilter.class
                 );
 

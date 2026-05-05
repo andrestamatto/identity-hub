@@ -18,13 +18,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
-public class JwtService implements TokenServicePort {
+public class JwtTokenServiceAdapter implements TokenServicePort {
 
     private final JwtProperties properties;
     private final SecretKey key;
     private final String defaultIdentityType;
 
-    public JwtService(JwtProperties properties) {
+    public JwtTokenServiceAdapter(JwtProperties properties) {
         this.properties = properties;
         this.key = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
         this.defaultIdentityType = normalize(properties.defaultIdentityType());

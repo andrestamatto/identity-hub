@@ -1,5 +1,6 @@
 package br.dev.andrestamatto.identityhub.infrastructure.security.jwt;
 
+import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -22,12 +23,12 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void shouldSetAuthenticationWithRoleAndPermissionAuthorities() throws Exception {
-        var jwtService = mock(JwtService.class);
+        var tokenServicePort = mock(TokenServicePort.class);
         var claims = mock(Claims.class);
-        var filter = new JwtAuthenticationFilter(jwtService);
+        var filter = new JwtAuthenticationFilter(tokenServicePort);
 
-        when(jwtService.isValid("valid-token")).thenReturn(true);
-        when(jwtService.extractClaims("valid-token")).thenReturn(claims);
+        when(tokenServicePort.isValid("valid-token")).thenReturn(true);
+        when(tokenServicePort.extractClaims("valid-token")).thenReturn(claims);
         when(claims.getSubject()).thenReturn("user-subject");
         when(claims.get("roles", List.class)).thenReturn(List.of("ADMIN"));
         when(claims.get("permissions", List.class)).thenReturn(List.of("REPORT_READ"));
@@ -48,10 +49,10 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void shouldNotSetAuthenticationWhenTokenIsInvalid() throws Exception {
-        var jwtService = mock(JwtService.class);
-        var filter = new JwtAuthenticationFilter(jwtService);
+        var tokenServicePort = mock(TokenServicePort.class);
+        var filter = new JwtAuthenticationFilter(tokenServicePort);
 
-        when(jwtService.isValid("invalid-token")).thenReturn(false);
+        when(tokenServicePort.isValid("invalid-token")).thenReturn(false);
 
         var request = new MockHttpServletRequest();
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer invalid-token");
@@ -64,8 +65,8 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void shouldNotSetAuthenticationWhenAuthorizationHeaderIsMissing() throws Exception {
-        var jwtService = mock(JwtService.class);
-        var filter = new JwtAuthenticationFilter(jwtService);
+        var tokenServicePort = mock(TokenServicePort.class);
+        var filter = new JwtAuthenticationFilter(tokenServicePort);
 
         var request = new MockHttpServletRequest();
         var response = new MockHttpServletResponse();
@@ -73,6 +74,6 @@ class JwtAuthenticationFilterTest {
         filter.doFilter(request, response, (req, res) -> {});
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
-        verifyNoInteractions(jwtService);
+        verifyNoInteractions(tokenServicePort);
     }
 }

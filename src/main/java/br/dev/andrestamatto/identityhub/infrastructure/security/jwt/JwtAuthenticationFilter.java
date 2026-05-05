@@ -1,5 +1,6 @@
 package br.dev.andrestamatto.identityhub.infrastructure.security.jwt;
 
+import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,10 +25,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String ROLE_PREFIX = "ROLE_";
     private static final String PERMISSION_PREFIX = "PERM_";
 
-    private final JwtService jwtService;
+    private final TokenServicePort tokenServicePort;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
-        this.jwtService = jwtService;
+    public JwtAuthenticationFilter(TokenServicePort tokenServicePort) {
+        this.tokenServicePort = tokenServicePort;
     }
 
     @Override
@@ -36,7 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Optional.ofNullable(request.getHeader(HttpHeaders.AUTHORIZATION))
                 .filter(header -> header.startsWith(BEARER_PREFIX))
                 .map(header -> header.substring(BEARER_PREFIX.length()))
-                .filter(jwtService::isValid)
+                .filter(tokenServicePort::isValid)
                 .ifPresent(token -> {
                     var authentication = retrieveAuthenticationFromToken(token);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -46,7 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private UsernamePasswordAuthenticationToken retrieveAuthenticationFromToken(String token) {
-        var claims = jwtService.extractClaims(token);
+        var claims = tokenServicePort.extractClaims(token);
         var userId = claims.getSubject();
 
         var rolesClaim = claims.get("roles", List.class);

@@ -14,7 +14,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class JwtServiceTest {
+class JwtTokenServiceAdapterTest {
 
     @Test
     void shouldIssueAndParseTokenWithExpectedClaims() {
@@ -24,7 +24,7 @@ class JwtServiceTest {
                 "email",
                 List.of("email", "username")
         );
-        var service = new JwtService(properties);
+        var service = new JwtTokenServiceAdapter(properties);
 
         var user = new User(
                 UUID.randomUUID(),
@@ -54,7 +54,7 @@ class JwtServiceTest {
                 "email",
                 List.of("email")
         );
-        var service = new JwtService(properties);
+        var service = new JwtTokenServiceAdapter(properties);
         var user = new User(
                 UUID.randomUUID(),
                 "user@identityhub.dev",
@@ -88,7 +88,7 @@ class JwtServiceTest {
                 "username",
                 List.of("email", "username")
         );
-        var service = new JwtService(properties);
+        var service = new JwtTokenServiceAdapter(properties);
         var user = new User(
                 UUID.randomUUID(),
                 "ops-admin",
@@ -118,7 +118,7 @@ class JwtServiceTest {
                 "email",
                 List.of("email")
         );
-        var service = new JwtService(properties);
+        var service = new JwtTokenServiceAdapter(properties);
 
         assertNull(service.extractClaims("not-a-jwt"));
         assertFalse(service.isValid("not-a-jwt"));
@@ -133,7 +133,7 @@ class JwtServiceTest {
                 List.of("email", "username")
         );
 
-        var ex = assertThrows(IllegalStateException.class, () -> new JwtService(properties));
+        var ex = assertThrows(IllegalStateException.class, () -> new JwtTokenServiceAdapter(properties));
         assertTrue(ex.getMessage().contains("default-identity-type"));
     }
 }

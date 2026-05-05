@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.security.config;
 
 import br.dev.andrestamatto.identityhub.IdentityHubApplication;
-import br.dev.andrestamatto.identityhub.infrastructure.security.jwt.JwtService;
+import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -45,7 +45,7 @@ class SecurityConfigIntegrationTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private JwtService jwtService;
+    private TokenServicePort tokenServicePort;
 
     @Test
     void shouldAllowPermitAllWithoutAuthentication() throws Exception {
@@ -113,8 +113,8 @@ class SecurityConfigIntegrationTest {
 
     private void mockJwt(String token, List<String> roles, List<String> permissions) {
         Claims claims = mock(Claims.class);
-        when(jwtService.isValid(token)).thenReturn(true);
-        when(jwtService.extractClaims(token)).thenReturn(claims);
+        when(tokenServicePort.isValid(token)).thenReturn(true);
+        when(tokenServicePort.extractClaims(token)).thenReturn(claims);
         when(claims.getSubject()).thenReturn("user-subject");
         when(claims.get("roles", List.class)).thenReturn(roles);
         when(claims.get("permissions", List.class)).thenReturn(permissions);
