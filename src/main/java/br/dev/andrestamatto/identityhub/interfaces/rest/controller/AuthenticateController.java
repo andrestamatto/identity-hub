@@ -1,6 +1,6 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest.controller;
 
-import br.dev.andrestamatto.identityhub.application.usecase.PasswordLogin;
+import br.dev.andrestamatto.identityhub.application.usecase.port.in.PasswordLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 import br.dev.andrestamatto.identityhub.interfaces.rest.dto.LoginResponse;
 import br.dev.andrestamatto.identityhub.interfaces.rest.dto.PasswordLoginRequest;
@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthenticateController {
 
-    private final PasswordLogin passwordLoginUseCase;
+    private final PasswordLoginUseCasePort passwordLoginUseCase;
     private final AuthResponseMapper authResponseMapper;
 
-    public AuthenticateController(PasswordLogin login, AuthResponseMapper authResponseMapper) {
+    public AuthenticateController(PasswordLoginUseCasePort login, AuthResponseMapper authResponseMapper) {
         this.passwordLoginUseCase = login;
         this.authResponseMapper = authResponseMapper;
     }

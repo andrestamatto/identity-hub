@@ -1,12 +1,12 @@
 package br.dev.andrestamatto.identityhub.infrastructure.config;
 
 import br.dev.andrestamatto.identityhub.application.exception.IdentitySourceUnavailableException;
-import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentity;
-import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUser;
+import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentityPort;
+import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUserPort;
 import br.dev.andrestamatto.identityhub.application.ports.SocialProviderPolicyPort;
 import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
-import br.dev.andrestamatto.identityhub.application.usecase.SocialLogin;
 import br.dev.andrestamatto.identityhub.application.usecase.SocialLoginUseCase;
+import br.dev.andrestamatto.identityhub.application.usecase.port.in.SocialLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.infrastructure.social.PropertiesSocialProviderPolicyAdapter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -25,20 +25,20 @@ public class SocialAuthConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({LoadSocialIdentity.class, ResolveSocialUser.class})
+    @ConditionalOnBean({LoadSocialIdentityPort.class, ResolveSocialUserPort.class})
     @ConditionalOnProperty(prefix = "identity-hub.social-login", name = "enabled", havingValue = "true")
-    public SocialLogin socialLoginUseCase(
-            LoadSocialIdentity loadSocialIdentity,
-            ResolveSocialUser resolveSocialUser,
+    public SocialLoginUseCasePort socialLoginUseCase(
+            LoadSocialIdentityPort loadSocialIdentityPort,
+            ResolveSocialUserPort resolveSocialUserPort,
             TokenServicePort tokenServicePort,
             SocialProviderPolicyPort socialProviderPolicyPort
     ) {
-        return new SocialLoginUseCase(loadSocialIdentity, resolveSocialUser, tokenServicePort, socialProviderPolicyPort);
+        return new SocialLoginUseCase(loadSocialIdentityPort, resolveSocialUserPort, tokenServicePort, socialProviderPolicyPort);
     }
 
     @Bean
-    @ConditionalOnMissingBean(SocialLogin.class)
-    public SocialLogin unavailableSocialLoginUseCase(
+    @ConditionalOnMissingBean(SocialLoginUseCasePort.class)
+    public SocialLoginUseCasePort unavailableSocialLoginUseCase(
             IdentityHubSocialLoginProperties socialLoginProperties
     ) {
         return (provider, authorizationCode, redirectUri) -> {
@@ -46,7 +46,7 @@ public class SocialAuthConfiguration {
                 throw new IdentitySourceUnavailableException("Social login is disabled in configuration.");
             }
             throw new IdentitySourceUnavailableException(
-                    "Social login is enabled, but LoadSocialIdentity and/or ResolveSocialUser is not configured."
+                    "Social login is enabled, but LoadSocialIdentityPort and/or ResolveSocialUserPort is not configured."
             );
         };
     }

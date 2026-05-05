@@ -1,8 +1,8 @@
 package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.exception.IdentitySourceUnavailableException;
-import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentity;
-import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUser;
+import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentityPort;
+import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUserPort;
 import br.dev.andrestamatto.identityhub.application.ports.SocialProviderPolicyPort;
 import br.dev.andrestamatto.identityhub.application.ports.dto.SocialProviderPolicy;
 import br.dev.andrestamatto.identityhub.domain.model.EncodedPassword;
@@ -28,8 +28,8 @@ class SocialLoginUseCaseTest {
 
     @Test
     void shouldAuthenticateWhenProviderAndRedirectAreValid() {
-        var loadSocialIdentity = mock(LoadSocialIdentity.class);
-        var resolveSocialUser = mock(ResolveSocialUser.class);
+        var loadSocialIdentity = mock(LoadSocialIdentityPort.class);
+        var resolveSocialUser = mock(ResolveSocialUserPort.class);
         var tokenService = mock(TokenServicePort.class);
         var socialProviderPolicyPort = mock(SocialProviderPolicyPort.class);
 
@@ -75,8 +75,8 @@ class SocialLoginUseCaseTest {
         );
 
         var useCase = new SocialLoginUseCase(
-                mock(LoadSocialIdentity.class),
-                mock(ResolveSocialUser.class),
+                mock(LoadSocialIdentityPort.class),
+                mock(ResolveSocialUserPort.class),
                 mock(TokenServicePort.class),
                 socialProviderPolicyPort
         );
@@ -93,8 +93,8 @@ class SocialLoginUseCaseTest {
         );
 
         var useCase = new SocialLoginUseCase(
-                mock(LoadSocialIdentity.class),
-                mock(ResolveSocialUser.class),
+                mock(LoadSocialIdentityPort.class),
+                mock(ResolveSocialUserPort.class),
                 mock(TokenServicePort.class),
                 socialProviderPolicyPort
         );
@@ -109,8 +109,8 @@ class SocialLoginUseCaseTest {
         when(socialProviderPolicyPort.enabled()).thenReturn(false);
 
         var useCase = new SocialLoginUseCase(
-                mock(LoadSocialIdentity.class),
-                mock(ResolveSocialUser.class),
+                mock(LoadSocialIdentityPort.class),
+                mock(ResolveSocialUserPort.class),
                 mock(TokenServicePort.class),
                 socialProviderPolicyPort
         );

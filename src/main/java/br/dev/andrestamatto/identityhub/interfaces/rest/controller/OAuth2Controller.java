@@ -1,6 +1,6 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest.controller;
 
-import br.dev.andrestamatto.identityhub.application.usecase.SocialLogin;
+import br.dev.andrestamatto.identityhub.application.usecase.port.in.SocialLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.interfaces.rest.dto.LoginResponse;
 import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.AuthResponseMapper;
 import org.springframework.http.HttpStatus;
@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(value="/oauth2")
 public class OAuth2Controller {
 
-    private final SocialLogin socialLoginUseCase;
+    private final SocialLoginUseCasePort socialLoginUseCase;
     private final AuthResponseMapper authResponseMapper;
 
-    public OAuth2Controller(SocialLogin socialLogin, AuthResponseMapper authResponseMapper) {
+    public OAuth2Controller(SocialLoginUseCasePort socialLogin, AuthResponseMapper authResponseMapper) {
         this.socialLoginUseCase = socialLogin;
         this.authResponseMapper = authResponseMapper;
     }

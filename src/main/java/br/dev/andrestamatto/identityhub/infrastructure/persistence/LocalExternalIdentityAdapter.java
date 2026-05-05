@@ -1,6 +1,6 @@
 package br.dev.andrestamatto.identityhub.infrastructure.persistence;
 
-import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
+import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentityPort;
 import br.dev.andrestamatto.identityhub.domain.model.EncodedPassword;
 import br.dev.andrestamatto.identityhub.domain.model.PermissionName;
 import br.dev.andrestamatto.identityhub.domain.model.RoleName;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
         havingValue = "true",
         matchIfMissing = false
 )
-public class LocalExternalIdentityAdapter implements LoadExternalIdentity {
+public class LocalExternalIdentityAdapter implements LoadExternalIdentityPort {
 
     private final ExternalUserRepository externalUserRepository;
 

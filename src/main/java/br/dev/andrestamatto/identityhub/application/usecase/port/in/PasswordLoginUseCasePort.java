@@ -1,8 +1,8 @@
-package br.dev.andrestamatto.identityhub.application.usecase;
+package br.dev.andrestamatto.identityhub.application.usecase.port.in;
 
 import br.dev.andrestamatto.identityhub.application.result.AuthenticationResult;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 
-public interface PasswordLogin {
+public interface PasswordLoginUseCasePort {
     AuthenticationResult execute(String requestIdentity, RawPassword requestPassword);
 }

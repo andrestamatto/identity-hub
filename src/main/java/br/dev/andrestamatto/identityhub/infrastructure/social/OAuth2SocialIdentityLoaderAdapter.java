@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.social;
 
-import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentity;
-import br.dev.andrestamatto.identityhub.application.usecase.SocialLoginInput;
+import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentityPort;
+import br.dev.andrestamatto.identityhub.application.usecase.dto.SocialLoginCommand;
 import br.dev.andrestamatto.identityhub.domain.model.SocialIdentity;
 import br.dev.andrestamatto.identityhub.domain.model.SocialProvider;
 import br.dev.andrestamatto.identityhub.infrastructure.social.oauth2.OAuth2ProviderClient;
@@ -14,7 +14,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
-public class OAuth2SocialIdentityLoaderAdapter implements LoadSocialIdentity {
+public class OAuth2SocialIdentityLoaderAdapter implements LoadSocialIdentityPort {
 
     private final Map<SocialProvider, OAuth2ProviderClient> clients;
 
@@ -24,11 +24,11 @@ public class OAuth2SocialIdentityLoaderAdapter implements LoadSocialIdentity {
     }
 
     @Override
-    public SocialIdentity load(SocialLoginInput socialLoginInput) {
-        var provider = SocialProvider.fromString(socialLoginInput.provider());
+    public SocialIdentity load(SocialLoginCommand socialLoginCommand) {
+        var provider = SocialProvider.fromString(socialLoginCommand.provider());
         var client = Optional.ofNullable(clients.get(provider))
                 .orElseThrow(() -> new IllegalArgumentException("Provider not supported: " + provider.getProviderName()));
 
-        return client.fetchIdentity(socialLoginInput);
+        return client.fetchIdentity(socialLoginCommand);
     }
 }

@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.social.oauth2.google;
 
 import br.dev.andrestamatto.identityhub.application.exception.IdentitySourceUnavailableException;
-import br.dev.andrestamatto.identityhub.application.usecase.SocialLoginInput;
+import br.dev.andrestamatto.identityhub.application.usecase.dto.SocialLoginCommand;
 import br.dev.andrestamatto.identityhub.domain.model.SocialIdentity;
 import br.dev.andrestamatto.identityhub.domain.model.SocialProvider;
 import br.dev.andrestamatto.identityhub.infrastructure.config.IdentityHubSocialLoginProperties;
@@ -39,7 +39,7 @@ public class GoogleOAuth2ProviderClientAdapter implements OAuth2ProviderClient {
     }
 
     @Override
-    public SocialIdentity fetchIdentity(SocialLoginInput input) {
+    public SocialIdentity fetchIdentity(SocialLoginCommand input) {
         validateInput(input);
         try {
             GoogleTokenResponse tokenResponse = Optional.ofNullable(
@@ -69,7 +69,7 @@ public class GoogleOAuth2ProviderClientAdapter implements OAuth2ProviderClient {
         }
     }
 
-    private void validateInput(SocialLoginInput input) {
+    private void validateInput(SocialLoginCommand input) {
         if (input == null) {
             throw new IllegalArgumentException("Social login input is required.");
         }
@@ -81,7 +81,7 @@ public class GoogleOAuth2ProviderClientAdapter implements OAuth2ProviderClient {
         }
     }
 
-    private MultiValueMap<String, String> buildTokenRequestForm(SocialLoginInput input) {
+    private MultiValueMap<String, String> buildTokenRequestForm(SocialLoginCommand input) {
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         var providerProperties = socialLoginProperties.getProviderProperties(provider().getProviderName());
         var redirectUri = Optional.ofNullable(input.redirectUri())

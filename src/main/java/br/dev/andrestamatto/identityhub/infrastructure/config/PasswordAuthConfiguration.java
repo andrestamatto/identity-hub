@@ -1,10 +1,10 @@
 package br.dev.andrestamatto.identityhub.infrastructure.config;
 
 import br.dev.andrestamatto.identityhub.application.exception.IdentitySourceUnavailableException;
-import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
+import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentityPort;
 import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
-import br.dev.andrestamatto.identityhub.application.usecase.PasswordLogin;
 import br.dev.andrestamatto.identityhub.application.usecase.PasswordLoginUseCase;
+import br.dev.andrestamatto.identityhub.application.usecase.port.in.PasswordLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.domain.service.PasswordEncoder;
 import br.dev.andrestamatto.identityhub.domain.service.PasswordLoginAuthenticator;
 import br.dev.andrestamatto.identityhub.domain.service.PasswordLoginAuthenticatorService;
@@ -23,9 +23,9 @@ public class PasswordAuthConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean(LoadExternalIdentity.class)
-    public PasswordLoginAuthenticator passwordLoginAuthenticator(PasswordEncoder passwordEncoder, LoadExternalIdentity loadExternalIdentity) {
-        return new PasswordLoginAuthenticatorService(passwordEncoder, loadExternalIdentity);
+    @ConditionalOnBean(LoadExternalIdentityPort.class)
+    public PasswordLoginAuthenticator passwordLoginAuthenticator(PasswordEncoder passwordEncoder, LoadExternalIdentityPort loadExternalIdentityPort) {
+        return new PasswordLoginAuthenticatorService(passwordEncoder, loadExternalIdentityPort);
     }
 
     @Bean
@@ -35,8 +35,8 @@ public class PasswordAuthConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(PasswordLogin.class)
-    public PasswordLogin unavailablePasswordLoginUseCase() {
+    @ConditionalOnMissingBean(PasswordLoginUseCasePort.class)
+    public PasswordLoginUseCasePort unavailablePasswordLoginUseCase() {
         return (requestIdentity, requestPassword) -> {
             throw new IdentitySourceUnavailableException();
         };

@@ -2,13 +2,14 @@ package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.exception.AuthenticationFailedException;
 import br.dev.andrestamatto.identityhub.application.result.AuthenticationResult;
+import br.dev.andrestamatto.identityhub.application.usecase.port.in.PasswordLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 import br.dev.andrestamatto.identityhub.domain.service.PasswordLoginAuthenticator;
 import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 
 import java.util.Optional;
 
-public class PasswordLoginUseCase implements PasswordLogin {
+public class PasswordLoginUseCase implements PasswordLoginUseCasePort {
 
     private final String TOKEN_TYPE_BEARER = "Bearer";
 

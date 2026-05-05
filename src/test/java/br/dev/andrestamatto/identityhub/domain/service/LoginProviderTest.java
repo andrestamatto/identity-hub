@@ -1,6 +1,6 @@
 package br.dev.andrestamatto.identityhub.domain.service;
 
-import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
+import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentityPort;
 import br.dev.andrestamatto.identityhub.domain.model.EncodedPassword;
 import br.dev.andrestamatto.identityhub.domain.model.PermissionName;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
@@ -20,7 +20,7 @@ class LoginProviderTest {
     @Test
     void shouldReturnUserWhenIdentityExistsAndPasswordMatches() {
         var encoder = mock(PasswordEncoder.class);
-        var externalIdentity = mock(LoadExternalIdentity.class);
+        var externalIdentity = mock(LoadExternalIdentityPort.class);
         var provider = new PasswordLoginAuthenticatorService(encoder, externalIdentity);
 
         var raw = RawPassword.from("Password@123");
@@ -43,7 +43,7 @@ class LoginProviderTest {
     @Test
     void shouldReturnNullWhenPasswordDoesNotMatch() {
         var encoder = mock(PasswordEncoder.class);
-        var externalIdentity = mock(LoadExternalIdentity.class);
+        var externalIdentity = mock(LoadExternalIdentityPort.class);
         var provider = new PasswordLoginAuthenticatorService(encoder, externalIdentity);
 
         var raw = RawPassword.from("WrongPassword");
@@ -64,7 +64,7 @@ class LoginProviderTest {
     @Test
     void shouldReturnNullWhenUserDoesNotExist() {
         var encoder = mock(PasswordEncoder.class);
-        var externalIdentity = mock(LoadExternalIdentity.class);
+        var externalIdentity = mock(LoadExternalIdentityPort.class);
         var provider = new PasswordLoginAuthenticatorService(encoder, externalIdentity);
 
         when(externalIdentity.load("missing@dev.local")).thenReturn(Optional.empty());

@@ -1,15 +1,15 @@
 package br.dev.andrestamatto.identityhub.domain.service;
 
-import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
+import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentityPort;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 import br.dev.andrestamatto.identityhub.domain.model.User;
 
 public class PasswordLoginAuthenticatorService implements PasswordLoginAuthenticator {
 
     private final PasswordEncoder passwordEncoder;
-    private final LoadExternalIdentity externalIdentity;
+    private final LoadExternalIdentityPort externalIdentity;
 
-    public PasswordLoginAuthenticatorService(PasswordEncoder passwordEncoder, LoadExternalIdentity externalIdentity) {
+    public PasswordLoginAuthenticatorService(PasswordEncoder passwordEncoder, LoadExternalIdentityPort externalIdentity) {
         this.passwordEncoder = passwordEncoder;
         this.externalIdentity = externalIdentity;
     }

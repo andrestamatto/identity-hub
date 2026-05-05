@@ -4,6 +4,6 @@ import br.dev.andrestamatto.identityhub.domain.model.User;
 
 import java.util.Optional;
 
-public interface LoadExternalIdentity {
+public interface LoadExternalIdentityPort {
     Optional<User> load(String identityValue);
 }

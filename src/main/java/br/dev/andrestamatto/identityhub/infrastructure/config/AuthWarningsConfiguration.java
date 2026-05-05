@@ -1,8 +1,8 @@
 package br.dev.andrestamatto.identityhub.infrastructure.config;
 
-import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentity;
-import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentity;
-import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUser;
+import br.dev.andrestamatto.identityhub.application.ports.LoadExternalIdentityPort;
+import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentityPort;
+import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUserPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;
@@ -19,10 +19,10 @@ public class AuthWarningsConfiguration {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthWarningsConfiguration.class);
 
     @Bean
-    @ConditionalOnMissingBean(LoadExternalIdentity.class)
+    @ConditionalOnMissingBean(LoadExternalIdentityPort.class)
     public ApplicationRunner missingIdentitySourceWarning() {
         return args -> LOGGER.warn(
-                "No LoadExternalIdentity bean found. Endpoint /auth/login will return 503 until an identity source is configured."
+                "No LoadExternalIdentityPort bean found. Endpoint /auth/login will return 503 until an identity source is configured."
         );
     }
 
@@ -36,10 +36,10 @@ public class AuthWarningsConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "identity-hub.social-login", name = "enabled", havingValue = "true")
-    @ConditionalOnMissingBean({LoadSocialIdentity.class, ResolveSocialUser.class})
+    @ConditionalOnMissingBean({LoadSocialIdentityPort.class, ResolveSocialUserPort.class})
     public ApplicationRunner missingSocialIdentitySourceWarning() {
         return args -> LOGGER.warn(
-                "Social login is enabled, but LoadSocialIdentity and/or ResolveSocialUser beans are missing. OAuth callback endpoints will return 503."
+                "Social login is enabled, but LoadSocialIdentityPort and/or ResolveSocialUserPort beans are missing. OAuth callback endpoints will return 503."
         );
     }
 }

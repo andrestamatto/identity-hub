@@ -2,34 +2,36 @@ package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.exception.AuthenticationFailedException;
 import br.dev.andrestamatto.identityhub.application.exception.IdentitySourceUnavailableException;
-import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentity;
-import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUser;
+import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentityPort;
+import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUserPort;
 import br.dev.andrestamatto.identityhub.application.ports.SocialProviderPolicyPort;
 import br.dev.andrestamatto.identityhub.application.ports.dto.SocialProviderPolicy;
 import br.dev.andrestamatto.identityhub.application.result.AuthenticationResult;
+import br.dev.andrestamatto.identityhub.application.usecase.dto.SocialLoginCommand;
+import br.dev.andrestamatto.identityhub.application.usecase.port.in.SocialLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.domain.model.SocialProvider;
 import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 
 import java.util.Optional;
 import java.util.Set;
 
-public class SocialLoginUseCase implements SocialLogin {
+public class SocialLoginUseCase implements SocialLoginUseCasePort {
 
     private static final String TOKEN_TYPE_BEARER = "Bearer";
 
-    private final LoadSocialIdentity loadSocialIdentity;
-    private final ResolveSocialUser resolveSocialUser;
+    private final LoadSocialIdentityPort loadSocialIdentityPort;
+    private final ResolveSocialUserPort resolveSocialUserPort;
     private final TokenServicePort tokenService;
     private final SocialProviderPolicyPort socialProviderPolicyPort;
 
     public SocialLoginUseCase(
-            LoadSocialIdentity loadSocialIdentity,
-            ResolveSocialUser resolveSocialUser,
+            LoadSocialIdentityPort loadSocialIdentityPort,
+            ResolveSocialUserPort resolveSocialUserPort,
             TokenServicePort tokenService,
             SocialProviderPolicyPort socialProviderPolicyPort
     ) {
-        this.loadSocialIdentity = loadSocialIdentity;
-        this.resolveSocialUser = resolveSocialUser;
+        this.loadSocialIdentityPort = loadSocialIdentityPort;
+        this.resolveSocialUserPort = resolveSocialUserPort;
         this.tokenService = tokenService;
         this.socialProviderPolicyPort = socialProviderPolicyPort;
     }
@@ -44,14 +46,14 @@ public class SocialLoginUseCase implements SocialLogin {
         validateProviderEnabled(socialProvider, providerPolicy);
 
         String effectiveRedirectUri = resolveRedirectUri(providerPolicy, redirectUri);
-        var socialLoginInput = new SocialLoginInput(
+        var socialLoginInput = new SocialLoginCommand(
                 socialProvider.getProviderName(),
                 authorizationCode,
                 effectiveRedirectUri
         );
 
-        return Optional.ofNullable(loadSocialIdentity.load(socialLoginInput))
-                .map(resolveSocialUser::resolve)
+        return Optional.ofNullable(loadSocialIdentityPort.load(socialLoginInput))
+                .map(resolveSocialUserPort::resolve)
                 .map(user -> {
                     var token = tokenService.issue(user);
                     return new AuthenticationResult(

@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest.controller;
 
 import br.dev.andrestamatto.identityhub.application.result.AuthenticationResult;
-import br.dev.andrestamatto.identityhub.application.usecase.PasswordLogin;
+import br.dev.andrestamatto.identityhub.application.usecase.port.in.PasswordLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.domain.model.RawPassword;
 import br.dev.andrestamatto.identityhub.interfaces.rest.dto.LoginResponse;
 import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.AuthResponseMapper;
@@ -28,7 +28,7 @@ class AuthenticateControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private PasswordLogin login;
+    private PasswordLoginUseCasePort login;
 
     @MockBean
     private AuthResponseMapper authResponseMapper;
