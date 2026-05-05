@@ -4,16 +4,49 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
-- _None yet._
+- Social OAuth2 integration pipeline with provider abstraction:
+  - `OAuth2ProviderClient` contract
+  - `OAuth2SocialIdentityLoaderAdapter`
+  - Google adapter/client implementation (`GoogleOAuth2ProviderClientAdapter`, token and userinfo clients)
+  - Provider DTOs (`GoogleTokenResponse`, `GoogleUserInfoResponse`)
+- Application policy boundary for social provider settings:
+  - `SocialProviderPolicyPort`
+  - `SocialProviderPolicy` DTO
+  - `PropertiesSocialProviderPolicyAdapter`
+- Dedicated configuration modules:
+  - `PasswordAuthConfiguration`
+  - `SocialAuthConfiguration`
+  - `AuthWarningsConfiguration`
 
 ### Changed
-- _None yet._
+- Refactored token contract to application boundary:
+  - moved `TokenService` to `TokenServicePort`
+  - security components now depend on port abstractions
+- Renamed JWT implementation to explicit adapter role:
+  - `JwtService` -> `JwtTokenServiceAdapter`
+- Reorganized use case input boundaries for clarity:
+  - `PasswordLogin` -> `PasswordLoginUseCasePort`
+  - `SocialLogin` -> `SocialLoginUseCasePort`
+  - `SocialLoginInput` -> `SocialLoginCommand`
+- Standardized port naming in application layer:
+  - `LoadExternalIdentityPort`
+  - `LoadSocialIdentityPort`
+  - `ResolveSocialUserPort`
+- Updated social login properties API:
+  - `filterProviderProperties(...)` -> `getProviderProperties(...)`
+- Build/dependency cleanup:
+  - removed duplicated Lombok declarations
+  - removed unnecessary `spring-boot-starter-oauth2-client`
+  - added `jsr305` for annotation metadata compatibility warnings
 
 ### Fixed
-- _None yet._
+- Social login disabled flow now fails fast with consistent `503` behavior instead of falling through provider-resolution errors.
+- Spring test context ambiguity for token service bean resolved after security-port refactor.
+- OAuth2 provider test naming aligned with implementation (`GoogleOAuth2ProviderClientAdapterTest`).
 
 ### Removed
-- _None yet._
+- Deprecated aggregate auth configuration class (`AuthenticatableConfig`) in favor of focused module configurations.
+- Redundant `TokenConfiguration` bean factory after direct adapter-to-port wiring.
 
 ## [0.1.0] - 2026-04-29
 ### Added
