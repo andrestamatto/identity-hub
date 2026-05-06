@@ -17,6 +17,12 @@ All notable changes to this project will be documented in this file.
   - `PasswordAuthConfiguration`
   - `SocialAuthConfiguration`
   - `AuthWarningsConfiguration`
+- Social authorization request flow:
+  - `SocialLoginUseCasePort.requestAuthorization(...)`
+  - `AuthorizationResult` response contract
+  - OAuth2 `authorize` endpoint support in `OAuth2Controller`
+- Mapper for social provider policy translation:
+  - `PropertiesSocialProviderPolicyMapper`
 
 ### Changed
 - Refactored token contract to application boundary:
@@ -34,6 +40,10 @@ All notable changes to this project will be documented in this file.
   - `ResolveSocialUserPort`
 - Updated social login properties API:
   - `filterProviderProperties(...)` -> `getProviderProperties(...)`
+- Social provider policy contract enriched with OAuth authorization metadata:
+  - `socialProvider`, `baseUri`, and `credentials`
+- Social provider policy port API renamed for clarity:
+  - `getProviderPolicy(...)` -> `getSocialProviderPolicy(...)`
 - Build/dependency cleanup:
   - removed duplicated Lombok declarations
   - removed unnecessary `spring-boot-starter-oauth2-client`
@@ -43,6 +53,8 @@ All notable changes to this project will be documented in this file.
 - Social login disabled flow now fails fast with consistent `503` behavior instead of falling through provider-resolution errors.
 - Spring test context ambiguity for token service bean resolved after security-port refactor.
 - OAuth2 provider test naming aligned with implementation (`GoogleOAuth2ProviderClientAdapterTest`).
+- Social login provider resolution now normalizes provider input before policy lookup (`GOOGLE` vs `google` consistency).
+- Fallback social login bean now implements both port methods (`requestAuthorization` and `execute`) after interface expansion.
 
 ### Removed
 - Deprecated aggregate auth configuration class (`AuthenticatableConfig`) in favor of focused module configurations.
