@@ -5,15 +5,19 @@ import br.dev.andrestamatto.identityhub.application.exception.IdentitySourceUnav
 import br.dev.andrestamatto.identityhub.application.ports.LoadSocialIdentityPort;
 import br.dev.andrestamatto.identityhub.application.ports.ResolveSocialUserPort;
 import br.dev.andrestamatto.identityhub.application.ports.SocialProviderPolicyPort;
+import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
 import br.dev.andrestamatto.identityhub.application.ports.dto.SocialProviderPolicy;
 import br.dev.andrestamatto.identityhub.application.result.AuthenticationResult;
+import br.dev.andrestamatto.identityhub.application.result.AuthorizationResult;
 import br.dev.andrestamatto.identityhub.application.usecase.dto.SocialLoginCommand;
 import br.dev.andrestamatto.identityhub.application.usecase.port.in.SocialLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.domain.model.SocialProvider;
-import br.dev.andrestamatto.identityhub.application.ports.TokenServicePort;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 public class SocialLoginUseCase implements SocialLoginUseCasePort {
 
@@ -36,18 +40,38 @@ public class SocialLoginUseCase implements SocialLoginUseCasePort {
         this.socialProviderPolicyPort = socialProviderPolicyPort;
     }
 
+
+    @Override
+    public AuthorizationResult requestAuthorization(String provider) {
+        var validatedSocialProviderPolicy = retrieveValidatedSocialProviderPolicy(provider);
+
+        String effectiveRedirectUri = resolveRedirectUri(validatedSocialProviderPolicy, null);
+
+        String state = UUID.randomUUID().toString(); /* TODO: store on session (assignment + expiration) */
+        String scope = String.join(" ", validatedSocialProviderPolicy.credentials().scopes());
+
+        String authUrl = UriComponentsBuilder
+                .fromUriString(validatedSocialProviderPolicy.baseUri())
+                .queryParam("response_type", "code")
+                .queryParam("client_id", validatedSocialProviderPolicy.credentials().clientId())
+                .queryParam("redirect_uri", effectiveRedirectUri)
+                .queryParam("scope", scope)
+                .queryParam("state", state)
+                .build(true)
+                .toUriString();
+
+        return new AuthorizationResult(URI.create(authUrl), state);
+    }
+
+    @Override
     public AuthenticationResult execute(String provider, String authorizationCode, String redirectUri) {
-        validateSocialLoginEnabled();
 
-        SocialProvider socialProvider = SocialProvider.fromString(provider);
-        SocialProviderPolicy providerPolicy = socialProviderPolicyPort.getProviderPolicy(socialProvider.getProviderName());
-
+        var validatedSocialProviderPolicy = retrieveValidatedSocialProviderPolicy(provider);
         validateAuthorizationCode(authorizationCode);
-        validateProviderEnabled(socialProvider, providerPolicy);
 
-        String effectiveRedirectUri = resolveRedirectUri(providerPolicy, redirectUri);
+        String effectiveRedirectUri = resolveRedirectUri(validatedSocialProviderPolicy, redirectUri);
         var socialLoginInput = new SocialLoginCommand(
-                socialProvider.getProviderName(),
+                validatedSocialProviderPolicy.socialProvider().getProviderName(),
                 authorizationCode,
                 effectiveRedirectUri
         );
@@ -65,15 +89,26 @@ public class SocialLoginUseCase implements SocialLoginUseCasePort {
                 .orElseThrow(AuthenticationFailedException::new);
     }
 
+    private SocialProviderPolicy retrieveValidatedSocialProviderPolicy(String socialProviderStr) {
+        validateSocialLoginEnabled();
+
+        var socialProvider = SocialProvider.fromString(socialProviderStr);
+        var socialProviderPolicy = socialProviderPolicyPort.getSocialProviderPolicy(socialProvider.getProviderName());
+
+        validateProviderEnabled(socialProviderPolicy);
+
+        return socialProviderPolicy;
+    }
+
     private void validateSocialLoginEnabled() {
         if (!socialProviderPolicyPort.enabled()) {
             throw new IdentitySourceUnavailableException("Social login is disabled in configuration.");
         }
     }
 
-    private void validateProviderEnabled(SocialProvider provider, SocialProviderPolicy providerPolicy) {
+    private void validateProviderEnabled(SocialProviderPolicy providerPolicy) {
         if (!providerPolicy.enabled()) {
-            throw new IllegalArgumentException("Provider is disabled: " + provider.getProviderName());
+            throw new IllegalArgumentException("Provider is disabled: " + providerPolicy.socialProvider().getProviderName());
         }
     }
 

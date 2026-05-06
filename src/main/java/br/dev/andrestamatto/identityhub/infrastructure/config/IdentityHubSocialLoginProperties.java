@@ -13,6 +13,7 @@ public record IdentityHubSocialLoginProperties(
 ) {
     public record ProviderProperties(
             boolean enabled,
+            String baseUri,
             Credentials credentials,
             String defaultRedirectUrl,
             Set<String> allowedRedirectUrls

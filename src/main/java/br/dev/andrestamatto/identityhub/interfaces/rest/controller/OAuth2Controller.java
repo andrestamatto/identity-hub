@@ -3,9 +3,12 @@ package br.dev.andrestamatto.identityhub.interfaces.rest.controller;
 import br.dev.andrestamatto.identityhub.application.usecase.port.in.SocialLoginUseCasePort;
 import br.dev.andrestamatto.identityhub.interfaces.rest.dto.LoginResponse;
 import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.AuthResponseMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
 
 @RestController
 @RequestMapping(value="/oauth2")
@@ -20,8 +23,16 @@ public class OAuth2Controller {
     }
 
     @GetMapping(value="/authorize/{provider}")
-    public ResponseEntity<Void> authorize(@PathVariable String provider) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    public ResponseEntity<URI> authorize(
+            @PathVariable String provider,
+            HttpServletRequest request
+    ) {
+        var authorizationResult = socialLoginUseCase.requestAuthorization(provider);
+        request.getSession(true).setAttribute("oauth2_state_" + provider, authorizationResult.sessionState());
+
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(authorizationResult.authorizationURI())
+                .build();
     }
 
     @GetMapping(value="/callback/{provider}")

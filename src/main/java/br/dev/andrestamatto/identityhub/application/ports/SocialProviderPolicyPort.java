@@ -4,5 +4,5 @@ import br.dev.andrestamatto.identityhub.application.ports.dto.SocialProviderPoli
 
 public interface SocialProviderPolicyPort {
     boolean enabled();
-    SocialProviderPolicy getProviderPolicy(String provider);
+    SocialProviderPolicy getSocialProviderPolicy(String provider);
 }

@@ -1,7 +1,9 @@
 package br.dev.andrestamatto.identityhub.application.usecase.port.in;
 
 import br.dev.andrestamatto.identityhub.application.result.AuthenticationResult;
+import br.dev.andrestamatto.identityhub.application.result.AuthorizationResult;
 
 public interface SocialLoginUseCasePort {
-    AuthenticationResult execute(String provider, String authorizationCode, String redirectUri);
+    AuthorizationResult requestAuthorization(String socialProvider);
+    AuthenticationResult execute(String socialProvider, String authorizationCode, String redirectUri);
 }

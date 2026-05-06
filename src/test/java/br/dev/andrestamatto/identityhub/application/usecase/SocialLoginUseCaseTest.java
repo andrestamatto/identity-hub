@@ -34,8 +34,8 @@ class SocialLoginUseCaseTest {
         var socialProviderPolicyPort = mock(SocialProviderPolicyPort.class);
 
         when(socialProviderPolicyPort.enabled()).thenReturn(true);
-        when(socialProviderPolicyPort.getProviderPolicy("google")).thenReturn(
-                new SocialProviderPolicy(true, "http://localhost:8081/callback", Set.of("http://localhost:8081/callback"))
+        when(socialProviderPolicyPort.getSocialProviderPolicy("google")).thenReturn(
+                socialProviderPolicy("http://localhost:8081/callback", Set.of("http://localhost:8081/callback"))
         );
 
         var useCase = new SocialLoginUseCase(loadSocialIdentity, resolveSocialUser, tokenService, socialProviderPolicyPort);
@@ -70,8 +70,8 @@ class SocialLoginUseCaseTest {
     void shouldRejectBlankAuthorizationCode() {
         var socialProviderPolicyPort = mock(SocialProviderPolicyPort.class);
         when(socialProviderPolicyPort.enabled()).thenReturn(true);
-        when(socialProviderPolicyPort.getProviderPolicy("google")).thenReturn(
-                new SocialProviderPolicy(true, "x", Set.of())
+        when(socialProviderPolicyPort.getSocialProviderPolicy("google")).thenReturn(
+                socialProviderPolicy("x", Set.of())
         );
 
         var useCase = new SocialLoginUseCase(
@@ -88,8 +88,8 @@ class SocialLoginUseCaseTest {
     void shouldRejectRedirectUriOutsideAllowedList() {
         var socialProviderPolicyPort = mock(SocialProviderPolicyPort.class);
         when(socialProviderPolicyPort.enabled()).thenReturn(true);
-        when(socialProviderPolicyPort.getProviderPolicy("google")).thenReturn(
-                new SocialProviderPolicy(true, "http://localhost:8081/callback", Set.of("http://localhost:8081/callback"))
+        when(socialProviderPolicyPort.getSocialProviderPolicy("google")).thenReturn(
+                socialProviderPolicy("http://localhost:8081/callback", Set.of("http://localhost:8081/callback"))
         );
 
         var useCase = new SocialLoginUseCase(
@@ -117,5 +117,22 @@ class SocialLoginUseCaseTest {
 
         assertThrows(IdentitySourceUnavailableException.class, () ->
                 useCase.execute("google", "code-123", null));
+    }
+
+    private SocialProviderPolicy socialProviderPolicy(String defaultRedirectUrl, Set<String> allowedRedirectUrls) {
+        return new SocialProviderPolicy(
+                true,
+                SocialProvider.GOOGLE,
+                "https://accounts.google.com/o/oauth2/v2/auth",
+                defaultRedirectUrl,
+                allowedRedirectUrls,
+                new SocialProviderPolicy.Credentials(
+                        "client-id",
+                        "client-secret",
+                        "https://oauth2.googleapis.com",
+                        "https://openidconnect.googleapis.com",
+                        Set.of("openid", "profile", "email")
+                )
+        );
     }
 }

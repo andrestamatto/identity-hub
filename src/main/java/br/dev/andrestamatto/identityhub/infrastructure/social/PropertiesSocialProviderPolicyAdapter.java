@@ -3,12 +3,15 @@ package br.dev.andrestamatto.identityhub.infrastructure.social;
 import br.dev.andrestamatto.identityhub.application.ports.SocialProviderPolicyPort;
 import br.dev.andrestamatto.identityhub.application.ports.dto.SocialProviderPolicy;
 import br.dev.andrestamatto.identityhub.infrastructure.config.IdentityHubSocialLoginProperties;
+import br.dev.andrestamatto.identityhub.infrastructure.mapper.PropertiesSocialProviderPolicyMapper;
 
 public class PropertiesSocialProviderPolicyAdapter implements SocialProviderPolicyPort {
 
+    private final PropertiesSocialProviderPolicyMapper propertiesSocialProviderPolicyMapper;
     private final IdentityHubSocialLoginProperties socialLoginProperties;
 
-    public PropertiesSocialProviderPolicyAdapter(IdentityHubSocialLoginProperties socialLoginProperties) {
+    public PropertiesSocialProviderPolicyAdapter(PropertiesSocialProviderPolicyMapper propertiesSocialProviderPolicyMapper, IdentityHubSocialLoginProperties socialLoginProperties) {
+        this.propertiesSocialProviderPolicyMapper = propertiesSocialProviderPolicyMapper;
         this.socialLoginProperties = socialLoginProperties;
     }
 
@@ -18,12 +21,8 @@ public class PropertiesSocialProviderPolicyAdapter implements SocialProviderPoli
     }
 
     @Override
-    public SocialProviderPolicy getProviderPolicy(String provider) {
-        IdentityHubSocialLoginProperties.ProviderProperties providerProperties = this.socialLoginProperties.getProviderProperties(provider);
-        return new SocialProviderPolicy(
-                providerProperties.enabled(),
-                providerProperties.defaultRedirectUrl(),
-                providerProperties.allowedRedirectUrls()
-        );
+    public SocialProviderPolicy getSocialProviderPolicy(String provider) {
+        return propertiesSocialProviderPolicyMapper.toSocialProviderPolicy(socialLoginProperties, provider);
     }
+
 }

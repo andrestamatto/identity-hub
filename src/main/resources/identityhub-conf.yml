@@ -18,6 +18,7 @@ identity-hub:
     providers:
       google:
         enabled: true
+        base-uri: https://accounts.google.com/o/oauth2/v2/auth
         credentials:
           client-id: YOUR_GOOGLE_CLIENT_ID
           client-secret: YOUR_GOOGLE_CLIENT_SECRET
@@ -30,7 +31,8 @@ identity-hub:
         default-redirect-url: http://localhost:8080/oauth2/callback/google
         allowed-redirect-urls: []
       github:
-        enabled: true
+        enabled: false
+        base-uri:
         credentials:
           client-id: YOUR_GITHUB_CLIENT_ID
           client-secret: YOUR_GITHUB_CLIENT_SECRET
@@ -40,7 +42,8 @@ identity-hub:
         default-redirect-url:
         allowed-redirect-urls: []
       facebook:
-        enabled: true
+        enabled: false
+        base-uri:
         credentials:
           client-id: YOUR_FACEBOOK_CLIENT_ID
           client-secret: YOUR_FACEBOOK_CLIENT_SECRET
@@ -50,7 +53,8 @@ identity-hub:
         default-redirect-url:
         allowed-redirect-urls: []
       linkedin:
-        enabled: true
+        enabled: false
+        base-uri:
         credentials:
           client-id: YOUR_LINKEDIN_CLIENT_ID
           client-secret: YOUR_LINKEDIN_CLIENT_SECRET
