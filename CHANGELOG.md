@@ -23,6 +23,8 @@ All notable changes to this project will be documented in this file.
   - OAuth2 `authorize` endpoint support in `OAuth2Controller`
 - Mapper for social provider policy translation:
   - `PropertiesSocialProviderPolicyMapper`
+- Temporary social user resolver stub for end-to-end OAuth2 flow validation:
+  - `StubResolveSocialUserAdapter`
 
 ### Changed
 - Refactored token contract to application boundary:
@@ -44,6 +46,8 @@ All notable changes to this project will be documented in this file.
   - `socialProvider`, `baseUri`, and `credentials`
 - Social provider policy port API renamed for clarity:
   - `getProviderPolicy(...)` -> `getSocialProviderPolicy(...)`
+- Google token exchange client now sends token parameters explicitly as request parameters in form-encoded POST.
+- Default local config placeholders restored for Google OAuth credentials (`YOUR_GOOGLE_CLIENT_ID` / `YOUR_GOOGLE_CLIENT_SECRET`).
 - Build/dependency cleanup:
   - removed duplicated Lombok declarations
   - removed unnecessary `spring-boot-starter-oauth2-client`
@@ -55,6 +59,7 @@ All notable changes to this project will be documented in this file.
 - OAuth2 provider test naming aligned with implementation (`GoogleOAuth2ProviderClientAdapterTest`).
 - Social login provider resolution now normalizes provider input before policy lookup (`GOOGLE` vs `google` consistency).
 - Fallback social login bean now implements both port methods (`requestAuthorization` and `execute`) after interface expansion.
+- OAuth2 Google token request now includes `grant_type=authorization_code` reliably, fixing `unsupported_grant_type` at provider token endpoint.
 
 ### Removed
 - Deprecated aggregate auth configuration class (`AuthenticatableConfig`) in favor of focused module configurations.
