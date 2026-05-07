@@ -3,6 +3,10 @@ identity-hub:
     rules:
       - pattern: /auth/**
         access: PERMIT_ALL
+      - pattern: /oauth2/authorize/**
+        access: PERMIT_ALL
+      - pattern: /oauth2/callback/**
+        access: PERMIT_ALL
       - pattern: /**
         access: AUTHENTICATED
   jwt:

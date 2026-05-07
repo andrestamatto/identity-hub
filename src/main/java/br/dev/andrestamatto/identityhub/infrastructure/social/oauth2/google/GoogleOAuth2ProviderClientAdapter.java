@@ -42,8 +42,19 @@ public class GoogleOAuth2ProviderClientAdapter implements OAuth2ProviderClient {
     public SocialIdentity fetchIdentity(SocialLoginCommand input) {
         validateInput(input);
         try {
+            var providerProperties = socialLoginProperties.getProviderProperties(provider().getProviderName());
+            var redirectUri = Optional.ofNullable(input.redirectUri())
+                    .filter(value -> !value.isBlank())
+                    .orElse(providerProperties.defaultRedirectUrl());
+
             GoogleTokenResponse tokenResponse = Optional.ofNullable(
-                    googleOAuth2TokenClient.exchangeCode(buildTokenRequestForm(input))
+                    googleOAuth2TokenClient.exchangeCode(
+                            input.authorizationCode(),
+                            providerProperties.credentials().clientId(),
+                            providerProperties.credentials().clientSecret(),
+                            redirectUri,
+                            AUTHORIZATION_CODE_GRANT_TYPE
+                    )
             ).orElseThrow(() -> new IllegalArgumentException("Google token response is empty."));
 
             if (isBlank(tokenResponse.accessToken())) {
@@ -79,21 +90,6 @@ public class GoogleOAuth2ProviderClientAdapter implements OAuth2ProviderClient {
         if (isBlank(input.redirectUri())) {
             throw new IllegalArgumentException("Redirect URI is required.");
         }
-    }
-
-    private MultiValueMap<String, String> buildTokenRequestForm(SocialLoginCommand input) {
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        var providerProperties = socialLoginProperties.getProviderProperties(provider().getProviderName());
-        var redirectUri = Optional.ofNullable(input.redirectUri())
-                .filter(value -> !value.isBlank())
-                .orElse(providerProperties.defaultRedirectUrl());
-
-        params.add("code", input.authorizationCode());
-        params.add("client_id", providerProperties.credentials().clientId());
-        params.add("client_secret", providerProperties.credentials().clientSecret());
-        params.add("redirect_uri", redirectUri);
-        params.add("grant_type", AUTHORIZATION_CODE_GRANT_TYPE);
-        return params;
     }
 
     private Map<String, Object> buildIdentityAttributes(GoogleTokenResponse tokenResponse, GoogleUserInfoResponse userInfo) {

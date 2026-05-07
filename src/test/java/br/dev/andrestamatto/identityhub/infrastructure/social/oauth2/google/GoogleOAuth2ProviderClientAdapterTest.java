@@ -27,7 +27,7 @@ class GoogleOAuth2ProviderClientAdapterTest {
         var userInfoClient = mock(GoogleOAuth2UserInfoClient.class);
         var provider = new GoogleOAuth2ProviderClientAdapter(tokenClient, userInfoClient, properties());
 
-        when(tokenClient.exchangeCode(any())).thenReturn(
+        when(tokenClient.exchangeCode( any(), any(), any(), any(), any() )).thenReturn(
                 new GoogleTokenResponse("token-123", "3600", "refresh-123", "openid email", "Bearer", "id-token")
         );
         when(userInfoClient.userInfo(anyString())).thenReturn(
@@ -47,7 +47,7 @@ class GoogleOAuth2ProviderClientAdapterTest {
         var userInfoClient = mock(GoogleOAuth2UserInfoClient.class);
         var provider = new GoogleOAuth2ProviderClientAdapter(tokenClient, userInfoClient, properties());
 
-        when(tokenClient.exchangeCode(any())).thenThrow(feign(400));
+        when(tokenClient.exchangeCode(any(), any(), any(), any(), any())).thenThrow(feign(400));
 
         assertThrows(IllegalArgumentException.class,
                 () -> provider.fetchIdentity(new SocialLoginCommand("google", "bad-code", "http://localhost:8080/oauth2/callback/google")));
@@ -59,7 +59,7 @@ class GoogleOAuth2ProviderClientAdapterTest {
         var userInfoClient = mock(GoogleOAuth2UserInfoClient.class);
         var provider = new GoogleOAuth2ProviderClientAdapter(tokenClient, userInfoClient, properties());
 
-        when(tokenClient.exchangeCode(any())).thenReturn(
+        when(tokenClient.exchangeCode(any(), any(), any(), any(), any())).thenReturn(
                 new GoogleTokenResponse("token-123", "3600", "refresh-123", "openid email", "Bearer", "id-token")
         );
         when(userInfoClient.userInfo(anyString())).thenReturn(
@@ -76,7 +76,7 @@ class GoogleOAuth2ProviderClientAdapterTest {
         var userInfoClient = mock(GoogleOAuth2UserInfoClient.class);
         var provider = new GoogleOAuth2ProviderClientAdapter(tokenClient, userInfoClient, properties());
 
-        when(tokenClient.exchangeCode(any())).thenThrow(feign(503));
+        when(tokenClient.exchangeCode(any(), any(), any(), any(), any())).thenThrow(feign(503));
 
         assertThrows(IdentitySourceUnavailableException.class,
                 () -> provider.fetchIdentity(new SocialLoginCommand("google", "code-123", "http://localhost:8080/oauth2/callback/google")));
@@ -92,6 +92,7 @@ class GoogleOAuth2ProviderClientAdapterTest {
         );
         var provider = new IdentityHubSocialLoginProperties.ProviderProperties(
                 true,
+                "https://accounts.google.com/o/oauth2/v2/auth",
                 credentials,
                 "http://localhost:8080/oauth2/callback/google",
                 Set.of("http://localhost:8080/oauth2/callback/google")
