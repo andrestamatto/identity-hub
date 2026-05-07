@@ -20,5 +20,9 @@ out/
 .env.*
 !.env.example
 
+# local developer secrets
+scripts/dev-env.ps1
+scripts/dev-env.sh
+
 Thumbs.db
 Desktop.ini

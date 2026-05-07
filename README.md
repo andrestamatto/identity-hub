@@ -125,6 +125,25 @@ On Windows PowerShell:
 .\gradlew.bat bootRun
 ```
 
+### Local OAuth2 credentials setup (recommended)
+Do not commit real OAuth credentials. Use local scripts:
+
+PowerShell:
+```powershell
+Copy-Item .\scripts\dev-env.ps1.example .\scripts\dev-env.ps1
+# edit with real values
+. .\scripts\dev-env.ps1
+.\gradlew.bat bootRun
+```
+
+Bash:
+```bash
+cp ./scripts/dev-env.sh.example ./scripts/dev-env.sh
+# edit with real values
+source ./scripts/dev-env.sh
+./gradlew bootRun
+```
+
 Default base URL:
 - `http://localhost:8080`
 

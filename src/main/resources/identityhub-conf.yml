@@ -24,8 +24,8 @@ identity-hub:
         enabled: true
         base-uri: https://accounts.google.com/o/oauth2/v2/auth
         credentials:
-          client-id: YOUR_GOOGLE_CLIENT_ID
-          client-secret: YOUR_GOOGLE_CLIENT_SECRET
+          client-id: ${GOOGLE_CLIENT_ID:YOUR_GOOGLE_CLIENT_ID}
+          client-secret: ${GOOGLE_CLIENT_SECRET:YOUR_GOOGLE_CLIENT_SECRET}
           token-url: https://oauth2.googleapis.com
           user-info-url: https://openidconnect.googleapis.com
           scopes:
