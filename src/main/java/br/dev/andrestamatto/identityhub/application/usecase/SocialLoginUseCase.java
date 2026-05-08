@@ -57,7 +57,8 @@ public class SocialLoginUseCase implements SocialLoginUseCasePort {
                 .queryParam("redirect_uri", effectiveRedirectUri)
                 .queryParam("scope", scope)
                 .queryParam("state", state)
-                .build(true)
+                .encode()
+                .build()
                 .toUriString();
 
         return new AuthorizationResult(URI.create(authUrl), state);
