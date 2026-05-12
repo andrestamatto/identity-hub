@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -72,7 +73,7 @@ public class GoogleOAuth2ProviderClientAdapter implements OAuth2ProviderClient {
                 throw new IllegalArgumentException("Google user info does not contain email.");
             }
 
-            return new SocialIdentity(provider(), userInfo.sub(), userInfo.email(), buildIdentityAttributes(tokenResponse, userInfo));
+            return new SocialIdentity(provider(), userInfo.sub(), userInfo.email(), buildIdentityAttributes(userInfo));
         } catch (FeignException.BadRequest exception) {
             throw new IllegalArgumentException("Invalid authorization code for Google provider.", exception);
         } catch (FeignException exception) {
@@ -92,19 +93,23 @@ public class GoogleOAuth2ProviderClientAdapter implements OAuth2ProviderClient {
         }
     }
 
-    private Map<String, Object> buildIdentityAttributes(GoogleTokenResponse tokenResponse, GoogleUserInfoResponse userInfo) {
-        return Map.of(
-                "accessToken", tokenResponse.accessToken(),
-                "refreshToken", tokenResponse.refreshToken(),
-                "tokenType", tokenResponse.tokenType(),
-                "expiresIn", tokenResponse.expiresIn(),
-                "scope", tokenResponse.scope(),
-                "emailVerified", userInfo.emailVerified(),
-                "name", userInfo.name(),
-                "givenName", userInfo.givenName(),
-                "familyName", userInfo.familyName(),
-                "picture", userInfo.picture()
-        );
+    private Map<String, Object> buildIdentityAttributes(GoogleUserInfoResponse userInfo) {
+        Map<String, Object> attributes = new LinkedHashMap<>();
+
+        putIfNotNull(attributes, "sub", userInfo.sub());
+        putIfNotNull(attributes, "name", userInfo.name());
+        putIfNotNull(attributes, "given_name", userInfo.givenName());
+        putIfNotNull(attributes, "family_name", userInfo.familyName());
+        putIfNotNull(attributes, "picture", userInfo.picture());
+        putIfNotNull(attributes, "email", userInfo.email());
+        putIfNotNull(attributes, "email_verified", userInfo.emailVerified());
+        putIfNotNull(attributes, "locale", userInfo.locale());
+
+        return Map.copyOf(attributes);
+    }
+
+    private static void putIfNotNull(Map<String, Object> map, String key, Object value) {
+        if (value != null) map.put(key, value);
     }
 
     private boolean isBlank(String value) {

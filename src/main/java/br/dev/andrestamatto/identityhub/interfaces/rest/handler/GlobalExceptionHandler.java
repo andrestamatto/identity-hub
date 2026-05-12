@@ -55,6 +55,14 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotImplementedException(
+            UnsupportedOperationException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.NOT_IMPLEMENTED, exception.getMessage(), request);
+    }
+
     private ResponseEntity<ApiErrorResponse> buildResponse(HttpStatus status, String message, HttpServletRequest request) {
         return ResponseEntity.status(status)
                     .body(new ApiErrorResponse(

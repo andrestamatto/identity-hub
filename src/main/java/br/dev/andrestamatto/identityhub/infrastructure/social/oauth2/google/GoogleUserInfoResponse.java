@@ -16,6 +16,8 @@ public record GoogleUserInfoResponse(
         @JsonProperty("family_name")
         String familyName,
         @JsonProperty("picture")
-        String picture
+        String picture,
+        @JsonProperty("locale")
+        String locale
 ) {
 }

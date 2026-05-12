@@ -9,6 +9,6 @@ import org.springframework.stereotype.Component;
 public class StubResolveSocialUserAdapter implements ResolveSocialUserPort {
     @Override
     public User resolve(SocialIdentity socialIdentity) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        throw new UnsupportedOperationException("Resolve User is not implemented yet");
     }
 }

@@ -60,6 +60,7 @@ All notable changes to this project will be documented in this file.
 - Social login provider resolution now normalizes provider input before policy lookup (`GOOGLE` vs `google` consistency).
 - Fallback social login bean now implements both port methods (`requestAuthorization` and `execute`) after interface expansion.
 - OAuth2 Google token request now includes `grant_type=authorization_code` reliably, fixing `unsupported_grant_type` at provider token endpoint.
+- Authorization URL returned by social `authorize` flow is now encoded before response, preventing invalid query-param errors when scopes contain spaces (e.g. `openid profile email`).
 
 ### Removed
 - Deprecated aggregate auth configuration class (`AuthenticatableConfig`) in favor of focused module configurations.
