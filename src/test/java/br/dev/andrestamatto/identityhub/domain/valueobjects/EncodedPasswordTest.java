@@ -5,18 +5,27 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class RawPasswordTest {
+public class EncodedPasswordTest {
 
     @Test
-    public void shouldCreateRawPasswordSuccessfully() {
-        assertDoesNotThrow(() -> new RawPassword("123456"));
+    public void shouldCreateEncodedPasswordSuccessfully() {
+        assertDoesNotThrow(() -> new EncodedPassword("12345678912345678901"));
     }
 
     @Test
-    public void shouldThrowIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> new RawPassword(""));
-        assertThrows(IllegalArgumentException.class, () -> new RawPassword("12345"));
-        assertThrows(IllegalArgumentException.class, () -> new RawPassword(null));
+    public void shouldThrowIllegalArgumentExceptionWhenValueIsBlank() {
+        assertThrows(IllegalArgumentException.class, () -> new EncodedPassword(""));
+        assertThrows(IllegalArgumentException.class, () -> new EncodedPassword(" "));
+    }
+
+    @Test
+    public void shouldThrowIllegalArgumentExceptionWhenValueIsTooShort() {
+        assertThrows(IllegalArgumentException.class, () -> new EncodedPassword("1234567891234567890"));
+    }
+
+    @Test
+    public void shouldThrowIllegalArgumentExceptionWhenValueIsNull() {
+        assertThrows(IllegalArgumentException.class, () -> new EncodedPassword(null));
     }
 
 }
