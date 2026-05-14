@@ -1,4 +1,6 @@
 package br.dev.andrestamatto.identityhub.domain.valueobjects;
 
-public record RawIPAddress() {
+public record RawIPAddress(
+        String value
+) {
 }

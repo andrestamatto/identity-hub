@@ -1,4 +1,10 @@
 package br.dev.andrestamatto.identityhub.domain.valueobjects;
 
-public class RolePermission {
+import java.time.Instant;
+
+public record RolePermission(
+        Role role,
+        Permission permission,
+        Instant grantedAt
+) {
 }

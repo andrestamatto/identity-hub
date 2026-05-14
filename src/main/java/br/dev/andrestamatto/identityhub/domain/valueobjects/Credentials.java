@@ -1,10 +1,10 @@
 package br.dev.andrestamatto.identityhub.domain.valueobjects;
 
-public record LoginData(
+public record Credentials(
         Username username,
         RawPassword rawPassword
 ) {
-    public LoginData {
+    public Credentials {
         if (username == null || rawPassword == null) {
             throw new IllegalArgumentException("Username and rawPassword are required");
         }

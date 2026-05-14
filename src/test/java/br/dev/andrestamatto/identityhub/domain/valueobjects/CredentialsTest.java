@@ -5,24 +5,24 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class LoginDataTest {
+class CredentialsTest {
 
     @Test
     void shouldCreateLoginDataSuccessfully() {
         var username = new Username("test@test.com");
         var password = new RawPassword("Password@123");
-        assertDoesNotThrow(() -> new LoginData(username, password));
+        assertDoesNotThrow(() -> new Credentials(username, password));
     }
 
     @Test
     void shouldThrowIllegalArgumentExceptionWhenUsernameIsNull() {
         var password = new RawPassword("Password@123");
-        assertThrows(IllegalArgumentException.class, () -> new LoginData(null, password));
+        assertThrows(IllegalArgumentException.class, () -> new Credentials(null, password));
     }
 
     @Test
     void shouldThrowIllegalArgumentExceptionWhenRawPasswordIsNull() {
         var username = new Username("test@test.com");
-        assertThrows(IllegalArgumentException.class, () -> new LoginData(username, null));
+        assertThrows(IllegalArgumentException.class, () -> new Credentials(username, null));
     }
 }
