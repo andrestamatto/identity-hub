@@ -77,33 +77,33 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 
 ## 6. Estratégia de Implementação por Features
 
-### Feature 1 - Registro de Usuário
+### IH-001 - Registro de Usuário
 - Criar usuário ativo com email único e senha hasheada.
 - Critérios:
   - rejeita email duplicado;
   - rejeita senha inválida pelo domínio.
 
-### Feature 2 - Autenticação Base
+### IH-002 - Autenticação Base
 - Valida credenciais e status do usuário.
 - Critérios:
   - sucesso retorna tokens;
   - usuário inexistente ou senha inválida retorna falha genérica.
 
-### Feature 3 - Bloqueio por Tentativas
+### IH-003 - Bloqueio por Tentativas
 - Aplica política de lock por falhas consecutivas na janela.
 - Critérios:
   - bloqueia no limite;
   - impede login durante lock;
   - desbloqueia após expiração.
 
-### Feature 4 - Autorização RBAC
+### IH-004 - Autorização RBAC
 - Restringe endpoints por role/permission.
 - Critérios:
   - sem token -> 401;
   - sem permissão -> 403;
   - com permissão -> acesso liberado.
 
-### Feature 5 - Refresh e Logout
+### IH-005 - Refresh e Logout
 - Renovação de acesso e revogação de sessão.
 - Critérios:
   - refresh válido gera novo access token;
@@ -111,10 +111,10 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
   - logout invalida refresh ativo.
 
 ## 7. Estratégia TDD (por feature)
-1. Escrever testes de domínio (RED).
-2. Implementar mínimo para passar (GREEN).
-3. Refatorar sem alterar comportamento (REFACTOR).
-4. Subir para testes de caso de uso.
+1. Selecionar a feature por ID (ex.: `IH-001`).
+2. Escrever testes de domínio/caso de uso (RED).
+3. Implementar mínimo para passar (GREEN).
+4. Refatorar sem alterar comportamento (REFACTOR).
 5. Subir para testes de integração (infra/security).
 
 ## 8. Decisões Técnicas de Domínio
