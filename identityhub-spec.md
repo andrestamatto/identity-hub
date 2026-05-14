@@ -3,13 +3,18 @@
 ## 1. Objetivo
 IdentityHub é um sistema de autenticação e autorização para APIs, com foco em segurança, rastreabilidade e evolução incremental guiada por TDD.
 
-## 2. Escopo Inicial (MVP)
+## 1.1 Modos de Distribuição
+- `Embedded Mode` (prioritário no MVP): IdentityHub como biblioteca/starter incorporada ao projeto consumidor.
+- `Service Mode` (fase posterior): IdentityHub como microsserviço independente com contratos de integração estáveis.
+
+## 2. Escopo Inicial (MVP - Embedded Mode)
 - Cadastro de usuário.
 - Autenticação por credenciais.
 - Bloqueio por tentativas inválidas.
 - Autorização baseada em roles e permissions.
 - Emissão de token de acesso.
 - Refresh token e logout seguro.
+- Configuração mínima via `application.yml` no projeto consumidor.
 
 ## 3. Linguagem Ubíqua
 - `User`: conta autenticável do sistema.
@@ -57,6 +62,7 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 2. `RefreshToken` tem ciclo de vida separado e pode ser revogado.
 3. Logout deve invalidar sessão/token de refresh ativo.
 4. Token expirado ou inválido nunca concede acesso.
+5. No `Embedded Mode`, o projeto consumidor define parâmetros de expiração por configuração.
 
 ### 4.6 Auditoria e Segurança
 1. Registrar `LoginAttempt` com timestamp UTC (`Instant`) e resultado.
@@ -116,10 +122,17 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 - Entidade pode depender de VO.
 - `LoginAttempt` é registro de auditoria; controle de lock no `User` usa estado mínimo.
 - Evitar acoplamento de domínio com anotações/frameworks do Spring.
+- Core de domínio/aplicação desacoplado de infraestrutura (ports/adapters).
+- O projeto consumidor é fonte de verdade de usuários no MVP.
 
-## 9. Fora do Escopo do MVP
+## 9. Evolução por Versão
+- `v0.x`: Embedded Mode com JWT, RBAC, lockout, refresh/logout e starter Spring Boot.
+- `v1.x`: evolução da biblioteca com OAuth2/OIDC básico, observabilidade e contratos estáveis.
+- `v2.x`: Service Mode para execução independente (REST/gRPC), incluindo estratégia de storage para sessão/revogação/auditoria.
+- `v3.x`: plataforma completa com painel administrativo e recursos avançados (MFA e federação).
+
+## 10. Fora do Escopo do MVP
 - MFA.
 - OAuth2/OpenID Connect completos.
 - Gestão multi-tenant avançada.
 - Device fingerprinting e risk engine.
-
