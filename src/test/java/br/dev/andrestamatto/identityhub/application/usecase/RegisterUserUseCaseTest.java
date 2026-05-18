@@ -1,14 +1,12 @@
 package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
+import br.dev.andrestamatto.identityhub.application.ports.input.UserRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
 import br.dev.andrestamatto.identityhub.application.repository.UserRepository;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.EncodedPassword;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.RawPassword;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.UserStatus;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
+import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,34 +24,42 @@ import static org.mockito.Mockito.*;
 
 public class RegisterUserUseCaseTest {
 
+    private RegisterUserUseCase registerUserUseCase;
     private UserRepository registerUserRepository;
-    private PasswordHasher passwordHasher;
+    private UserRegistrationPolicy userRegistrationPolicy;
     private RegisterUserCommand validUserCommand;
     private EncodedPassword hashedPassword;
-    private Clock fixedClock;
 
     @BeforeEach
     public void setup() {
+
+        PasswordHasher passwordHasher = mock(PasswordHasher.class);
+        userRegistrationPolicy = mock(UserRegistrationPolicy.class);
         registerUserRepository = mock(UserRepository.class);
-        passwordHasher = mock(PasswordHasher.class);
+
+        Clock fixedClock = Clock.fixed(Instant.parse("2026-05-18T10:00:00Z"), ZoneOffset.UTC);
+
         validUserCommand = new RegisterUserCommand(
                 validUsernameString,
                 validRawPasswordString
         );
         hashedPassword = new EncodedPassword(UserTestData.validEncodedPasswordString);
-        fixedClock = Clock.fixed(Instant.parse("2026-05-18T10:00:00Z"), ZoneOffset.UTC);
+
 
         var validRawPassword = RawPassword.create(validRawPasswordString);
+
         when(passwordHasher.hashRawPassword(validRawPassword)).thenReturn(hashedPassword);
+
+        registerUserUseCase = new RegisterUserUseCase(userRegistrationPolicy, passwordHasher, registerUserRepository, fixedClock);
     }
 
     @Test
     public void IH001ShouldRegisterUserWhenUsernameIsAvailable() {
-        var registerUserUseCase = new RegisterUserUseCase(passwordHasher, registerUserRepository, fixedClock);
         User registeredUser = UserTestData.registered();
 
         when(registerUserRepository.existsBy(Username.create(validUsernameString))).thenReturn(false);
         when(registerUserRepository.save(any(User.class))).thenReturn(registeredUser);
+        when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(UserStatus.ACTIVE);
 
         User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.register(validUserCommand));
 
@@ -65,8 +71,6 @@ public class RegisterUserUseCaseTest {
 
     @Test
     public void IH001ShouldRejectWhenUsernameAlreadyExists() {
-        var registerUserUseCase = new RegisterUserUseCase(passwordHasher, registerUserRepository, fixedClock);
-
         when(registerUserRepository.existsBy(any())).thenReturn(true);
 
         assertThrows(UserAlreadyExistsException.class, () -> registerUserUseCase.register(validUserCommand));
@@ -75,10 +79,10 @@ public class RegisterUserUseCaseTest {
 
     @Test
     public void IH001ShouldStoreOnlyEncodedPassword() {
-        var registerUserUseCase = new RegisterUserUseCase(passwordHasher, registerUserRepository, fixedClock);
 
         when(registerUserRepository.existsBy(Username.create(validUsernameString))).thenReturn(false);
         when(registerUserRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0, User.class));
+        when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(UserStatus.ACTIVE);
 
         User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.register(validUserCommand));
 
@@ -93,11 +97,20 @@ public class RegisterUserUseCaseTest {
     }
 
     @Test
-    public void IH001ShouldCreateUserWithActiveStatus() {
-        var registerUserUseCase = new RegisterUserUseCase(passwordHasher, registerUserRepository, fixedClock);
+    public void IH001ShouldCreateUserWithActiveStatusWhenUsernameTypeVerificationIsDisabled() {
+        executeShouldCreateUserWithStatus(UserStatus.ACTIVE);
+    }
+
+    @Test
+    public void IH001ShouldCreateUserWithPendingVerificationStatusWhenUsernameTypeVerificationIsDisabled() {
+        executeShouldCreateUserWithStatus(UserStatus.PENDING_VERIFICATION);
+    }
+
+    private void executeShouldCreateUserWithStatus(UserStatus userStatus) {
 
         when(registerUserRepository.existsBy(Username.create(validUsernameString))).thenReturn(false);
         when(registerUserRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0, User.class));
+        when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(userStatus);
 
         User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.register(validUserCommand));
 
@@ -105,7 +118,7 @@ public class RegisterUserUseCaseTest {
         verify(registerUserRepository).save(savedUserCaptor.capture());
         User savedUser = savedUserCaptor.getValue();
 
-        assertEquals(UserStatus.ACTIVE, savedUser.status());
-        assertEquals(UserStatus.ACTIVE, resultTestUser.status());
+        assertEquals(userStatus, savedUser.status());
+        assertEquals(userStatus, resultTestUser.status());
     }
 }
