@@ -10,45 +10,45 @@ public class UsernameTest {
 
     @Test
     public void shouldCreateUsernameSuccessfully() {
-        assertDoesNotThrow(() -> new Username("test@test.com"));
-        assertDoesNotThrow(() -> new Username("42779846062", UsernameType.CPF));
-        assertDoesNotThrow(() -> new Username("nonNullAndNonBlankText", UsernameType.ID));
+        assertDoesNotThrow(() -> Username.create("test@test.com"));
+        assertDoesNotThrow(() -> Username.create("42779846062", UsernameType.CPF));
+        assertDoesNotThrow(() -> Username.create("nonNullAndNonBlankText", UsernameType.ID));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenValueAndTypeAreNull() {
-        assertThrows(IllegalArgumentException.class, () -> new Username(null, null));
+        assertThrows(IllegalArgumentException.class, () -> Username.create(null, null));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenValueIsNull() {
-        assertThrows(IllegalArgumentException.class, () -> new Username(null, UsernameType.ID));
+        assertThrows(IllegalArgumentException.class, () -> Username.create(null, UsernameType.ID));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenIdValueIsBlank() {
-        assertThrows(IllegalArgumentException.class, () -> new Username("", UsernameType.ID));
-        assertThrows(IllegalArgumentException.class, () -> new Username(" ", UsernameType.ID));
+        assertThrows(IllegalArgumentException.class, () -> Username.create("", UsernameType.ID));
+        assertThrows(IllegalArgumentException.class, () -> Username.create(" ", UsernameType.ID));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenTypeIsNull() {
-        assertThrows(IllegalArgumentException.class, () -> new Username("test@test.com", null));
+        assertThrows(IllegalArgumentException.class, () -> Username.create("test@test.com", null));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenEmailIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> new Username("invalidEmail"));
-        assertThrows(IllegalArgumentException.class, () -> new Username("invalidEmail", UsernameType.EMAIL));
+        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidEmail"));
+        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidEmail", UsernameType.EMAIL));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenCpfIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> new Username("invalidCPF", UsernameType.CPF));
+        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidCPF", UsernameType.CPF));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenSsnIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> new Username("invalidSSN", UsernameType.SSN));
+        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidSSN", UsernameType.SSN));
     }
 }

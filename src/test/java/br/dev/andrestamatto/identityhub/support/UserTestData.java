@@ -9,7 +9,10 @@ import java.util.UUID;
 
 public final class UserTestData {
 
+    public static final String validUsernameString = "user1@identityhub.com";
+    public static final String validRawPasswordString = "Password@123";
     public static final String validEncodedPasswordString = "$2a$12$R9h/cIPz0gi.UR3XvMhoHeM3N2fU3s.8k3cT6K7qgI8c/bK16A9i6";
+
 
     private UserTestData() {}
 
@@ -33,7 +36,7 @@ public final class UserTestData {
     }
 
     public static Username validEmailUsername(){
-        return new Username("user1@identityhub.com");
+        return Username.create(validUsernameString);
     }
 
     public static Set<Role> customerRoleAsSet() {
