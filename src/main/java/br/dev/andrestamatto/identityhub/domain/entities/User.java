@@ -29,7 +29,20 @@ public record User(
         if (encodedPassword == null || encodedPassword.value().isBlank()) {throw new IllegalArgumentException("User's encoded password cannot be null or blank");}
     }
 
-    public static Builder builder() {
+
+    public static User register(Username username, EncodedPassword encodedPassword, Instant createdAt) {
+
+        if (createdAt == null) throw new IllegalArgumentException("createdAt is required");
+
+        return User.builder()
+                .username(username)
+                .encodedPassword(encodedPassword)
+                .status(UserStatus.ACTIVE)
+                .createdAt(createdAt)
+                .build();
+    }
+
+    private static Builder builder() {
         return new Builder();
     }
 
@@ -67,7 +80,7 @@ public record User(
             return this;
         }
 
-        public Builder password(EncodedPassword encodedPassword) {
+        public Builder encodedPassword(EncodedPassword encodedPassword) {
             this.encodedPassword = encodedPassword;
             return this;
         }

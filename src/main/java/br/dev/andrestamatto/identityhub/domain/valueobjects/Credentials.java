@@ -17,8 +17,8 @@ public record Credentials(
 
     public static Credentials create(String username,  String rawPassword) {
         return new Credentials(
-                new Username(username),
-                new RawPassword(rawPassword)
+                Username.create(username),
+                RawPassword.create(rawPassword)
         );
     }
 

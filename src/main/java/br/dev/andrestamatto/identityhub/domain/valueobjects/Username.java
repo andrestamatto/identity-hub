@@ -10,8 +10,12 @@ public record Username(
     }
 
     // Default type: EMAIL
-    public Username(String value) {
-        this(value, UsernameType.EMAIL);
+    public static Username create(String value) {
+        return Username.create(value, UsernameType.EMAIL);
+    }
+
+    public static Username create(String value, UsernameType type) {
+        return new Username(value, type);
     }
 
 }
