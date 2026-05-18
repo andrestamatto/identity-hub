@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
+- Simplified `UsernameType` support to `EMAIL`, `PHONE`, and `EXTERNAL_ID` (removed regional document-specific types from core).
 - Refactored `IH-001` orchestration:
   - duplicate check before hashing
   - `Clock` injection for deterministic timestamps

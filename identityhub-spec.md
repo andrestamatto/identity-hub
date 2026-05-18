@@ -19,6 +19,7 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 ## 3. Linguagem Ubíqua
 - `User`: conta autenticável do sistema.
 - `Credentials`: dados de login (identificador + segredo em claro no input).
+- `UsernameType`: tipo de identificador de login suportado pelo core (`EMAIL`, `PHONE`, `EXTERNAL_ID`).
 - `PasswordHash`: senha armazenada somente em formato seguro.
 - `UserStatus`: estado da conta (`ACTIVE`, `LOCKED`, `DISABLED`, `PENDING_VERIFICATION`).
 - `Role`: papel de acesso (ex.: `ADMIN`, `USER`).
@@ -30,10 +31,16 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 
 ### 4.1 Usuário
 1. Todo `User` possui identidade única estável (`UserId`).
-2. `email` é obrigatório e único.
+2. `username` é obrigatório e único no contexto configurado do consumidor.
 3. `password` nunca é persistida em texto puro; somente `PasswordHash`.
 4. Apenas usuários `ACTIVE` podem autenticar.
 5. `DISABLED` nunca autentica até reativação explícita.
+
+### 4.1.1 Regras de Identificador (`UsernameType`)
+1. O core suporta nativamente `EMAIL`, `PHONE` e `EXTERNAL_ID`.
+2. O projeto consumidor deve configurar quais `UsernameType` são permitidos na aplicação.
+3. A validação de formato do identificador é responsabilidade de domínio e atualmente está encapsulada em `UsernameType`.
+4. `EXTERNAL_ID` representa identificadores externos/custom do consumidor, com validação mínima de não nulo e não vazio.
 
 ### 4.2 Senha
 1. Hash deve usar algoritmo forte (BCrypt ou equivalente).
@@ -68,6 +75,11 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 1. Registrar `LoginAttempt` com timestamp UTC (`Instant`) e resultado.
 2. Não expor detalhes sensíveis em mensagens de erro de autenticação.
 3. Mensagens externas devem ser genéricas (ex.: "credenciais inválidas").
+
+### 4.7 Política de Ativação Inicial
+1. O status inicial de registro deve ser configurável pelo projeto consumidor.
+2. Se o status inicial for `PENDING_VERIFICATION`, o consumidor deve prover fluxo de verificação compatível com os `UsernameType` permitidos.
+3. Se o status inicial for `ACTIVE`, o fluxo de verificação pode ser ignorado por configuração.
 
 ## 5. Invariantes do Agregado User
 - `failedLoginCount >= 0`.
