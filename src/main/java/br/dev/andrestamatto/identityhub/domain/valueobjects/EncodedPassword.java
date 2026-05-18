@@ -11,4 +11,5 @@ public record EncodedPassword(
         if ( value.length() < MINIMUM_VALUE_SIZE_ALLOWED ) { throw new IllegalArgumentException("Invalid value for EncodedPassword."); }
     }
 
+
 }
