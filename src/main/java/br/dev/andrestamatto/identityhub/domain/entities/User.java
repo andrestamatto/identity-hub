@@ -30,14 +30,15 @@ public record User(
     }
 
 
-    public static User register(Username username, EncodedPassword encodedPassword, Instant createdAt) {
+    public static User register(Username username, EncodedPassword encodedPassword, UserStatus initialStatus, Instant createdAt) {
 
-        if (createdAt == null) throw new IllegalArgumentException("createdAt is required");
+        if (createdAt == null) throw new IllegalArgumentException("createdAt is required.");
+        if (initialStatus == null) throw new IllegalArgumentException("initialStatus is required.");
 
         return User.builder()
                 .username(username)
                 .encodedPassword(encodedPassword)
-                .status(UserStatus.ACTIVE)
+                .status(initialStatus)
                 .createdAt(createdAt)
                 .build();
     }
