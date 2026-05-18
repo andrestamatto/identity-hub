@@ -7,16 +7,41 @@ All notable changes to this project will be documented in this file.
 - Initial domain modeling for authentication core:
   - `Username` and `UsernameType`
   - `RawPassword` and `EncodedPassword`
-  - `LoginData`
+  - `Credentials` (replacing `LoginData`)
 - First unit tests for domain value objects and login composition.
+- Product and architecture documentation:
+  - `identityhub-spec.md` with feature IDs (`IH-001` ... `IH-005`)
+  - ADRs for deployment modes, source of truth, and token/session model
+- `IH-001` application flow:
+  - `RegisterUserUseCase`
+  - `RegisterUserCommand`
+  - `UserRepository` port
+  - `PasswordHasher` port
+  - `UserAlreadyExistsException`
+- Security infrastructure for password hashing:
+  - `BCryptPasswordHasher`
+  - `SecurityProperties` + configuration binding
+  - support configuration for `Clock`
+- Test support and application tests for `IH-001`:
+  - `RegisterUserUseCaseTest`
+  - fixtures in `support/*`
 
 ### Changed
-- Reorganized `LoginData` from `domain/entities` to `domain/valueobjects` to align with value-object semantics.
-- Simplified `LoginDataTest` to validate `LoginData` invariants directly without false positives caused by invalid setup objects.
+- Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
+- Refactored `IH-001` orchestration:
+  - duplicate check before hashing
+  - `Clock` injection for deterministic timestamps
+  - domain creation delegated to `User.register(...)`
+- Refined domain construction APIs:
+  - `Username.create(...)`
+  - `RawPassword.create(...)`
+- Kept `User` builder internal/private and moved registration defaults to domain method.
+- Simplified and aligned unit tests to current command flow (`username` + `rawPassword`).
 - Refined domain unit tests with one-scenario assertions for failure paths and added boundary coverage for `UsernameType` validations.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
+- Fixed Spring context bootstrap issue for configuration properties binding.
 
 ## [0.1.0] - 2026-05-12
 ### Added
