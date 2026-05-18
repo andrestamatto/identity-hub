@@ -1,0 +1,3 @@
+identity-hub:
+  security:
+    api-secret: ${IDENTITY_HUB_API_SECRET:temporaryUltraSecretValueForIdentityHubAPI}
