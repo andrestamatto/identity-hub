@@ -1,7 +1,6 @@
 package br.dev.andrestamatto.identityhub.domain.valueobjects;
 
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 
 /**
