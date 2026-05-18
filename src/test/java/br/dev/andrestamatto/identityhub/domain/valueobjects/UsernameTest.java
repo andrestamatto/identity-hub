@@ -11,8 +11,8 @@ public class UsernameTest {
     @Test
     public void shouldCreateUsernameSuccessfully() {
         assertDoesNotThrow(() -> Username.create("test@test.com"));
-        assertDoesNotThrow(() -> Username.create("42779846062", UsernameType.CPF));
-        assertDoesNotThrow(() -> Username.create("nonNullAndNonBlankText", UsernameType.ID));
+        assertDoesNotThrow(() -> Username.create("+5511999998888", UsernameType.PHONE));
+        assertDoesNotThrow(() -> Username.create("nonNullAndNonBlankText", UsernameType.EXTERNAL_ID));
     }
 
     @Test
@@ -22,13 +22,13 @@ public class UsernameTest {
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenValueIsNull() {
-        assertThrows(IllegalArgumentException.class, () -> Username.create(null, UsernameType.ID));
+        assertThrows(IllegalArgumentException.class, () -> Username.create(null, UsernameType.EXTERNAL_ID));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenIdValueIsBlank() {
-        assertThrows(IllegalArgumentException.class, () -> Username.create("", UsernameType.ID));
-        assertThrows(IllegalArgumentException.class, () -> Username.create(" ", UsernameType.ID));
+        assertThrows(IllegalArgumentException.class, () -> Username.create("", UsernameType.EXTERNAL_ID));
+        assertThrows(IllegalArgumentException.class, () -> Username.create(" ", UsernameType.EXTERNAL_ID));
     }
 
     @Test
@@ -43,12 +43,8 @@ public class UsernameTest {
     }
 
     @Test
-    public void shouldThrowIllegalArgumentExceptionWhenCpfIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidCPF", UsernameType.CPF));
-    }
-
-    @Test
-    public void shouldThrowIllegalArgumentExceptionWhenSsnIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidSSN", UsernameType.SSN));
+    public void shouldThrowIllegalArgumentExceptionWhenPhoneIsInvalid() {
+        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidPhone", UsernameType.PHONE));
+        assertThrows(IllegalArgumentException.class, () -> Username.create("0123456789", UsernameType.PHONE));
     }
 }

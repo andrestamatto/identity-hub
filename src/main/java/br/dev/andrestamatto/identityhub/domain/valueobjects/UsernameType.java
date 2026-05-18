@@ -7,20 +7,13 @@ public enum UsernameType {
             return value != null && value.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
         }
     },
-    CPF {
+    PHONE {
         @Override
         public boolean validate(String value) {
-            // TODO: validate the last two digits.
-            return value != null && value.matches("\\d{11}");
+            return value != null && value.matches("^\\+?[1-9]\\d{7,14}$");
         }
     },
-    SSN {
-        @Override
-        public boolean validate(String value) {
-            return value != null && value.matches("\\d{3}-\\d{2}-\\d{4}");
-        }
-    },
-    ID {
+    EXTERNAL_ID {
         @Override
         public boolean validate(String value) {
             return value != null && !value.isBlank();

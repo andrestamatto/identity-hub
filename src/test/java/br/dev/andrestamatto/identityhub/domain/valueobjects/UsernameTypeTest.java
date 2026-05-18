@@ -21,39 +21,28 @@ public class UsernameTypeTest {
     }
 
     @Test
-    public void shouldValidateCPFTypeSuccessfully() {
-        assertTrue(UsernameType.CPF.validate("42779846062"));
+    public void shouldValidatePhoneTypeSuccessfully() {
+        assertTrue(UsernameType.PHONE.validate("+5511999998888"));
+        assertTrue(UsernameType.PHONE.validate("11999998888"));
     }
 
     @Test
-    public void shouldFailCPFTypeValidation() {
-        shouldFailUsernameTypeValidation(UsernameType.CPF);
-        assertFalse(UsernameType.CPF.validate("text"));
-        assertFalse(UsernameType.CPF.validate("1234567890"));
-        assertFalse(UsernameType.CPF.validate("123456789012"));
+    public void shouldFailPhoneTypeValidation() {
+        shouldFailUsernameTypeValidation(UsernameType.PHONE);
+        assertFalse(UsernameType.PHONE.validate("text"));
+        assertFalse(UsernameType.PHONE.validate("0123456789"));
+        assertFalse(UsernameType.PHONE.validate("+"));
     }
 
     @Test
-    public void shouldValidateSSNTypeSuccessfully() {
-        assertTrue(UsernameType.SSN.validate("136-10-0215"));
+    public void shouldValidateExternalIdTypeSuccessfully() {
+        assertTrue(UsernameType.EXTERNAL_ID.validate("1234567890"));
+        assertTrue(UsernameType.EXTERNAL_ID.validate("  id  "));
     }
 
     @Test
-    public void shouldFailSSNTypeValidation() {
-        shouldFailUsernameTypeValidation(UsernameType.SSN);
-        assertFalse(UsernameType.SSN.validate("text"));
-        assertFalse(UsernameType.SSN.validate("136100215"));
-    }
-
-    @Test
-    public void shouldValidateIDTypeSuccessfully() {
-        assertTrue(UsernameType.ID.validate("1234567890"));
-        assertTrue(UsernameType.ID.validate("  id  "));
-    }
-
-    @Test
-    public void shouldFailIDTypeValidation() {
-        shouldFailUsernameTypeValidation(UsernameType.ID);
+    public void shouldFailExternalIdTypeValidation() {
+        shouldFailUsernameTypeValidation(UsernameType.EXTERNAL_ID);
     }
 
     private void shouldFailUsernameTypeValidation(UsernameType usernameType) {
