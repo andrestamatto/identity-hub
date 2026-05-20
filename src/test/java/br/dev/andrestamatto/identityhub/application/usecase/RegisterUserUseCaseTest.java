@@ -1,10 +1,10 @@
 package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
-import br.dev.andrestamatto.identityhub.application.ports.input.UserRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
-import br.dev.andrestamatto.identityhub.application.repository.UserRepository;
+import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;
+import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
 
 public class RegisterUserUseCaseTest {
 
-    private RegisterUserUseCase registerUserUseCase;
+    private RegisterUser registerUserUseCase;
     private UserRepository registerUserRepository;
     private UserRegistrationPolicy userRegistrationPolicy;
     private RegisterUserCommand validUserCommand;
@@ -54,14 +54,14 @@ public class RegisterUserUseCaseTest {
     }
 
     @Test
-    public void IH001ShouldRegisterUserWhenUsernameIsAvailable() {
+    public void IH001ShouldExecuteUserWhenUsernameIsAvailable() {
         User registeredUser = UserTestData.registered();
 
         when(registerUserRepository.existsBy(Username.create(validUsernameString))).thenReturn(false);
         when(registerUserRepository.save(any(User.class))).thenReturn(registeredUser);
         when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(UserStatus.ACTIVE);
 
-        User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.register(validUserCommand));
+        User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.execute(validUserCommand));
 
         assertNotNull(resultTestUser);
         assertEquals(registeredUser, resultTestUser);
@@ -73,7 +73,7 @@ public class RegisterUserUseCaseTest {
     public void IH001ShouldRejectWhenUsernameAlreadyExists() {
         when(registerUserRepository.existsBy(any())).thenReturn(true);
 
-        assertThrows(UserAlreadyExistsException.class, () -> registerUserUseCase.register(validUserCommand));
+        assertThrows(UserAlreadyExistsException.class, () -> registerUserUseCase.execute(validUserCommand));
         verify(registerUserRepository, never()).save(any(User.class));
     }
 
@@ -84,7 +84,7 @@ public class RegisterUserUseCaseTest {
         when(registerUserRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0, User.class));
         when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(UserStatus.ACTIVE);
 
-        User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.register(validUserCommand));
+        User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.execute(validUserCommand));
 
         var savedUserCaptor = ArgumentCaptor.forClass(User.class);
         verify(registerUserRepository).save(savedUserCaptor.capture());
@@ -102,7 +102,7 @@ public class RegisterUserUseCaseTest {
     }
 
     @Test
-    public void IH001ShouldCreateUserWithPendingVerificationStatusWhenUsernameTypeVerificationIsDisabled() {
+    public void IH001ShouldCreateUserWithPendingVerificationStatusWhenUsernameTypeVerificationIsEnabled() {
         executeShouldCreateUserWithStatus(UserStatus.PENDING_VERIFICATION);
     }
 
@@ -112,7 +112,7 @@ public class RegisterUserUseCaseTest {
         when(registerUserRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0, User.class));
         when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(userStatus);
 
-        User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.register(validUserCommand));
+        User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.execute(validUserCommand));
 
         var savedUserCaptor = ArgumentCaptor.forClass(User.class);
         verify(registerUserRepository).save(savedUserCaptor.capture());
@@ -120,5 +120,7 @@ public class RegisterUserUseCaseTest {
 
         assertEquals(userStatus, savedUser.status());
         assertEquals(userStatus, resultTestUser.status());
+        verify(userRegistrationPolicy).initialStatusFor(UsernameType.EMAIL);
     }
+
 }
