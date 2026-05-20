@@ -34,12 +34,32 @@ public record User(
 
         if (createdAt == null) throw new IllegalArgumentException("createdAt is required.");
         if (initialStatus == null) throw new IllegalArgumentException("initialStatus is required.");
+        if (initialStatus != UserStatus.ACTIVE && initialStatus != UserStatus.PENDING_VERIFICATION) { throw new IllegalArgumentException("Invalid initialStatus for user registration.");}
 
         return User.builder()
+                .uuid(UUID.randomUUID())
                 .username(username)
                 .encodedPassword(encodedPassword)
                 .status(initialStatus)
                 .createdAt(createdAt)
+                .build();
+    }
+
+    public static User fromPersistence(
+            UUID id,
+            Username username,
+            EncodedPassword encodedPassword,
+            UserStatus status,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        return User.builder()
+                .uuid(id)
+                .username(username)
+                .encodedPassword(encodedPassword)
+                .status(status)
+                .createdAt(createdAt)
+                .updatedAt(updatedAt)
                 .build();
     }
 

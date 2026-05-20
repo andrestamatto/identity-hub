@@ -1,10 +1,10 @@
 package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
-import br.dev.andrestamatto.identityhub.application.ports.input.UserRegistrationPolicy;
+import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
-import br.dev.andrestamatto.identityhub.application.repository.UserRepository;
+import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.RawPassword;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
@@ -12,7 +12,7 @@ import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
 import java.time.Clock;
 import java.time.Instant;
 
-public class RegisterUserUseCase {
+public class RegisterUserUseCase implements RegisterUser {
 
     private final UserRegistrationPolicy registrationPolicy;
     private final PasswordHasher passwordHasher;
@@ -26,7 +26,8 @@ public class RegisterUserUseCase {
         this.clock = clock;
     }
 
-    public User register(RegisterUserCommand command) {
+    @Override
+    public User execute(RegisterUserCommand command) {
 
         var username = Username.create(command.username());
 
