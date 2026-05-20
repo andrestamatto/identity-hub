@@ -14,10 +14,19 @@ All notable changes to this project will be documented in this file.
   - ADRs for deployment modes, source of truth, and token/session model
 - `IH-001` application flow:
   - `RegisterUserUseCase`
+  - `RegisterUser` use case contract
   - `RegisterUserCommand`
   - `UserRepository` port
   - `PasswordHasher` port
+  - `UserRegistrationPolicy` port
   - `UserAlreadyExistsException`
+- REST layer for `IH-001`:
+  - `UserController` (`POST /users/register`)
+  - `GlobalExceptionHandler` with `ApiErrorResponse`
+  - response mapping via `UserResponseMapper` and `RegisteredUserResponse`
+- Optional persistence adapters:
+  - in-memory repository fallback
+  - optional JPA adapter (`JpaUserRepositoryAdapter`) with mapper/entity/repository port
 - Security infrastructure for password hashing:
   - `BCryptPasswordHasher`
   - `SecurityProperties` + configuration binding
@@ -33,10 +42,15 @@ All notable changes to this project will be documented in this file.
   - duplicate check before hashing
   - `Clock` injection for deterministic timestamps
   - domain creation delegated to `User.register(...)`
+  - initial status delegated to configurable `UserRegistrationPolicy`
 - Refined domain construction APIs:
   - `Username.create(...)`
   - `RawPassword.create(...)`
 - Kept `User` builder internal/private and moved registration defaults to domain method.
+- Refined architecture package consistency:
+  - moved output ports to `application.ports.output`
+  - added explicit use case wiring via `infrastructure.usecase.UseCaseConfiguration`
+- Replaced `HelloController` bootstrap endpoint with `UserController` for feature-driven delivery.
 - Simplified and aligned unit tests to current command flow (`username` + `rawPassword`).
 - Refined domain unit tests with one-scenario assertions for failure paths and added boundary coverage for `UsernameType` validations.
 
