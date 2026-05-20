@@ -5,11 +5,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties({PoliciesProperties.class})
+@EnableConfigurationProperties({UserRegistrationPolicies.class})
 public class PolicyConfiguration {
 
     @Bean
-    public ConfigBasedRegistrationPolicy configBasedRegistrationPolicy(PoliciesProperties policiesProperties) {
-        return new ConfigBasedRegistrationPolicy(policiesProperties);
+    public ConfigBasedRegistrationPolicy userRegistrationPolicy(UserRegistrationPolicies userRegistrationPolicies) {
+        return new ConfigBasedRegistrationPolicy(userRegistrationPolicies);
     }
 }

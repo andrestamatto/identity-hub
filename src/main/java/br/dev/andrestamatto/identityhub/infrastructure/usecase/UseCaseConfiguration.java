@@ -1,4 +1,4 @@
-package br.dev.andrestamatto.identityhub.infrastructure;
+package br.dev.andrestamatto.identityhub.infrastructure.usecase;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;

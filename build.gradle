@@ -23,6 +23,7 @@ dependencies {
 
     implementation 'org.springframework.security:spring-security-crypto:6.3.1'
     implementation 'commons-codec:commons-codec:1.16.1'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

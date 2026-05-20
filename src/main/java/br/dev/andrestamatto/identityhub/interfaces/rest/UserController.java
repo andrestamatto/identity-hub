@@ -9,27 +9,34 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController("/user")
-public class RegisterUserController {
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
 
     private final RegisterUser registerUser;
     private final UserResponseMapper userResponseMapper;
 
-    public RegisterUserController(RegisterUser registerUser, UserResponseMapper userResponseMapper) {
+    public UserController(RegisterUser registerUser, UserResponseMapper userResponseMapper) {
         this.registerUser = registerUser;
         this.userResponseMapper = userResponseMapper;
     }
 
     @PostMapping(value="/register", consumes = "application/json")
-    public ResponseEntity<RegisteredUserResponse> registerUser(@RequestBody RegisterUserCommand registerUserCommand) {
+    public ResponseEntity<RegisteredUserResponse> register(@RequestBody RegisterUserCommand registerUserCommand) {
 
-        var userResponse = userResponseMapper.registeredUserResponseFrom(
-                registerUser.execute(registerUserCommand)
-        );
+        var userResponse = Optional.of(
+                userResponseMapper.registeredUserResponseFrom(
+                    registerUser.execute(registerUserCommand)
+                )
+        ).orElseThrow();
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(userResponse);
     }
+
 }

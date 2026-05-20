@@ -1,4 +1,4 @@
-package br.dev.andrestamatto.identityhub.infrastructure.repository;
+package br.dev.andrestamatto.identityhub.infrastructure.repository.ports;
 
 import br.dev.andrestamatto.identityhub.infrastructure.repository.entity.UserJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
