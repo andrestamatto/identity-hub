@@ -21,7 +21,9 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static br.dev.andrestamatto.identityhub.support.UserTestData.validRawPasswordString;
 import static br.dev.andrestamatto.identityhub.support.UserTestData.validUsernameString;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -65,8 +67,10 @@ class UserControllerTest {
 
         ResultActions unprocessableEntity = mockMvc.perform(postPerform)
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.status").value(422))
-                .andExpect(jsonPath("$.error").value("Unprocessable Entity"));
+                .andExpect(jsonPath("$.httpStatus").value(422))
+                .andExpect(jsonPath("$.httpError").value("Unprocessable Entity"))
+                .andExpect(jsonPath("$.message").value("Username already exists."))
+                .andExpect(jsonPath("$.path").value("/users/register"));
 
     }
 
