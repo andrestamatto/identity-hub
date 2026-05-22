@@ -1,9 +1,8 @@
 spring:
-  config:
-    import: optional:classpath:identityhub-conf.yml
   application:
     name: identity-hub
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+  profiles:
+    default: inmemory
+  config:
+    import:
+      - optional:classpath:identityhub-conf.yml
