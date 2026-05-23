@@ -1,0 +1,13 @@
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/identityhub
+  datasource:
+    url: jdbc:postgresql://localhost:5432/identityhub
+    username: your_user
+    password: your_pass
+    driver-class-name: org.postgresql.Driver
+
+identity-hub:
+  repository:
+    type: jpa

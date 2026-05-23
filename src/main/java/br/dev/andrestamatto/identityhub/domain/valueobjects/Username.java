@@ -9,8 +9,13 @@ public record Username(
         if (!usernameType.validate(value)) { throw new IllegalArgumentException("Invalid username value"); }
     }
 
-    public Username(String value) {
-        this(value, UsernameType.EMAIL);
+    // Default type: EMAIL
+    public static Username create(String value) {
+        return Username.create(value, UsernameType.EMAIL);
+    }
+
+    public static Username create(String value, UsernameType type) {
+        return new Username(value, type);
     }
 
 }

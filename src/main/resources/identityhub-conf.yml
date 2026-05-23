@@ -1,0 +1,7 @@
+identity-hub:
+  security:
+    api-secret: ${IDENTITY_HUB_API_SECRET:temporaryUltraSecretValueForIdentityHubAPI}
+  policies:
+    user-registration:
+      username-type-policy:
+        enable-verification-upon-registration: true

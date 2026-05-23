@@ -11,4 +11,8 @@ public record RawPassword(
         if ( value.length() < MINIMUM_VALUE_SIZE_ALLOWED ) { throw new IllegalArgumentException("Invalid value for RawPassword."); }
     }
 
+    public static RawPassword create(String rawPassword) {
+        return new RawPassword(rawPassword);
+    }
+
 }
