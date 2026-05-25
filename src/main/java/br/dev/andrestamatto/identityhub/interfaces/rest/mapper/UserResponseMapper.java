@@ -3,6 +3,7 @@ package br.dev.andrestamatto.identityhub.interfaces.rest.mapper;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Permission;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Role;
+import br.dev.andrestamatto.identityhub.domain.valueobjects.VerificationToken;
 import br.dev.andrestamatto.identityhub.interfaces.rest.response.RegisteredUserResponse;
 
 import java.util.Optional;
@@ -15,12 +16,22 @@ public class UserResponseMapper {
         return Optional.ofNullable(registeredUser)
                 .map((validRegisteredUser) ->
                         new RegisteredUserResponse(
-                                validRegisteredUser.uuid().toString(),
-                                validRegisteredUser.username().value(),
-                                validRegisteredUser.status().toString(),
+                                String.valueOf(validRegisteredUser.uuid()),
+                                String.valueOf(validRegisteredUser.username()),
+                                String.valueOf(validRegisteredUser.status()),
                                 userRolesSetToStringSet(validRegisteredUser.roles()),
                                 userPermissionSetToStringSet(validRegisteredUser.permissions()),
-                                validRegisteredUser.createdAt().toString()
+                                String.valueOf(validRegisteredUser.createdAt()),
+                                String.valueOf(
+                                        Optional.ofNullable(validRegisteredUser.verificationToken()).
+                                                map(VerificationToken::method)
+                                                .orElse(null)
+                                ),
+                                String.valueOf(
+                                        Optional.ofNullable(validRegisteredUser.verificationToken()).
+                                                map(VerificationToken::expiresAt)
+                                                .orElse(null)
+                                )
                     )
                 ).orElseThrow();
     }
