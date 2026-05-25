@@ -16,6 +16,7 @@ public final class UserTestData {
     public static final String validEncodedPasswordString = "$2a$12$R9h/cIPz0gi.UR3XvMhoHeM3N2fU3s.8k3cT6K7qgI8c/bK16A9i6";
     public static final ObjectMapper userMapper = new ObjectMapper();
 
+    private static User resultUser;
 
     private UserTestData() {}
 
@@ -25,7 +26,7 @@ public final class UserTestData {
                 null,
                 validEmailUsername(),
                 new EncodedPassword(validEncodedPasswordString),
-                UserStatus.ACTIVE,
+                null,
                 customerRoleAsSet(),
                 customerPermissionsAsSet(),
                 null,  // 0 failedLoginAttempts
@@ -34,8 +35,13 @@ public final class UserTestData {
                 null,
                 Instant.now(),
                 null,
+                null,
                 null
         );
+    }
+
+    public static User createUser(User withUser, UserStatus withUserStatus) {
+        return User.create(withUser, withUserStatus);
     }
 
     public static String registeredAsJsonString() {

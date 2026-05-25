@@ -4,6 +4,7 @@ import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExists
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUserUseCase;
+import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUser;
 import br.dev.andrestamatto.identityhub.interfaces.rest.handler.GlobalExceptionHandler;
 import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.UserResponseMapper;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
@@ -40,14 +41,33 @@ class UserControllerTest {
     @MockBean
     private RegisterUser registerUser;
 
+    @MockBean
+    private ConfirmUser confirmUser;
+
+    private RegisterUser mockedRegisterUserUseCase;
+    private ConfirmUser mockedConfirmUserUseCase;
+
+    private UserController userController;
     private RegisterUserCommand validUserCommand;
+    private UserResponseMapper userResponseMapper;
+
 
     @BeforeEach
     public void setup() {
+        mockedRegisterUserUseCase = mock(RegisterUserUseCase.class);
+
+        userResponseMapper = new UserResponseMapper();
         validUserCommand = new RegisterUserCommand(
                 validUsernameString,
                 validRawPasswordString
         );
+
+        userController = new UserController(
+                mockedRegisterUserUseCase,
+                mockedConfirmUserUseCase,
+                userResponseMapper
+        );
+
     }
 
     @Test
@@ -76,13 +96,9 @@ class UserControllerTest {
 
 
     @Test
-    public void IH001ShouldReturnCreatedStatusOnSuccessfulUserRegistration() {
-        var mockedRegisterUserUseCase = mock(RegisterUserUseCase.class);
-        var userResponseMapper = new UserResponseMapper();
+    public void IH001ShouldReturnCreatedHttpStatusOnSuccessfulUserRegistration() {
         var registeredUser = UserTestData.registered();
         var registeredUserResponse = userResponseMapper.registeredUserResponseFrom(registeredUser);
-
-        UserController userController = new UserController(mockedRegisterUserUseCase, userResponseMapper);
 
         when(mockedRegisterUserUseCase.execute(any())).thenReturn(registeredUser);
 
