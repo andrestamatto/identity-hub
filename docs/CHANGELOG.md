@@ -34,6 +34,19 @@ All notable changes to this project will be documented in this file.
 - Test support and application tests for `IH-001`:
   - `RegisterUserUseCaseTest`
   - fixtures in `support/*`
+- `IH-002` initial confirmation flow:
+  - `ConfirmUserUseCase` + `ConfirmUser` contract
+  - `ConfirmUserCommand`
+  - `VerificationToken` and `NotificationMethod`
+  - registration/confirmation events:
+    - `UserRegisteredPendingVerificationEvent`
+    - `UserConfirmedEvent`
+  - notification port/listeners:
+    - `UserNotifier`
+    - `UserNotificationListeners`
+- Token generation abstraction:
+  - `VerificationTokenGenerator` port
+  - `RandomVerificationTokenGenerator` adapter
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -53,10 +66,16 @@ All notable changes to this project will be documented in this file.
 - Replaced `HelloController` bootstrap endpoint with `UserController` for feature-driven delivery.
 - Simplified and aligned unit tests to current command flow (`username` + `rawPassword`).
 - Refined domain unit tests with one-scenario assertions for failure paths and added boundary coverage for `UsernameType` validations.
+- `RegisterUserUseCase` now:
+  - publishes event when user is pending verification with active token
+  - delegates token generation to `VerificationTokenGenerator` instead of creating time/random values directly in VO
+- `User.register(...)` now receives pre-generated `VerificationToken` from application layer.
+- `UserController` now includes confirmation endpoint (`GET /users/confirm`) with command orchestration.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
 - Fixed Spring context bootstrap issue for configuration properties binding.
+- Fixed `RegisterUserUseCaseTest` setup for deterministic token generation after introducing `VerificationTokenGenerator`.
 
 ## [0.1.0] - 2026-05-12
 ### Added

@@ -81,6 +81,17 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 2. Se o status inicial for `PENDING_VERIFICATION`, o consumidor deve prover fluxo de verificação compatível com os `UsernameType` permitidos.
 3. Se o status inicial for `ACTIVE`, o fluxo de verificação pode ser ignorado por configuração.
 
+### 4.8 Verificação de Registro (IH-002)
+1. Quando o usuário é registrado com `PENDING_VERIFICATION`, um `VerificationToken` deve ser gerado e associado ao usuário.
+2. `VerificationToken` ativo contém: `code`, `method` (`EMAIL`/`SMS`) e `expiresAt`.
+3. O endpoint de confirmação valida `username` + `verificationCode`.
+4. Na confirmação bem-sucedida:
+   - o status do usuário deve ser atualizado para `ACTIVE`;
+   - o `verificationToken` ativo deve ser removido (`null`);
+   - um evento de domínio/aplicação de confirmação pode ser publicado.
+5. Usuário inexistente, status incompatível, token expirado ou código divergente devem resultar em falha de confirmação.
+6. A geração de token não deve depender de `Instant.now()` dentro do VO; tempo e aleatoriedade devem ser fornecidos por portas/adapters para manter previsibilidade de testes.
+
 ## 5. Invariantes do Agregado User
 - `failedLoginCount >= 0`.
 - `lockedUntil` só pode estar no futuro quando status de bloqueio estiver ativo.
@@ -97,12 +108,14 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
   - usuário registrado deve apresentar status PENDING_VERIFICATION.
 
 ### IH-002 - Autenticação Base
-- Valida credenciais e status do usuário.
-- Se status do usuário é PENDING_VERIFICATION (recém registrado) → envia código de validação (EMAIL ou PHONE):
-- Se status do usuário é ACTIVE, prossegue para validação de senha.
+- Fluxo inicial de confirmação de registro por código.
+- Se status do usuário é `PENDING_VERIFICATION`, deve existir token válido para confirmação.
+- Confirmação válida ativa usuário e invalida token ativo.
 - Critérios:
-  - sucesso retorna tokens;
-  - usuário inexistente ou senha inválida retorna falha genérica.
+  - confirma usuário quando código é válido e não expirado;
+  - rejeita confirmação para usuário inexistente;
+  - rejeita confirmação para status incompatível;
+  - rejeita confirmação para token expirado ou código inválido.
 
 ### IH-003 - Bloqueio por Tentativas
 - Aplica política de lock por falhas consecutivas na janela.
