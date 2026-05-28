@@ -1,6 +1,7 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest.handler;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
+import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundException;
 import br.dev.andrestamatto.identityhub.interfaces.rest.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiErrorResponse> handleUserAlreadyExistsException(Exception exception, HttpServletRequest request) {
         return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleUserNotFoundException(Exception exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
     }
 
     private ResponseEntity<ApiErrorResponse> buildResponse(HttpStatus status, String message, HttpServletRequest request) {

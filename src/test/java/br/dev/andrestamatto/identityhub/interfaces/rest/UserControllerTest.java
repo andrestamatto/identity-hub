@@ -1,6 +1,8 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
+import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundException;
+import br.dev.andrestamatto.identityhub.application.ports.input.command.ConfirmUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUserUseCase;
@@ -27,6 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -108,6 +112,34 @@ class UserControllerTest {
         assertNotNull(response);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(registeredUserResponse, response.getBody());
+    }
+
+    @Test
+    void IH002ShouldReturnCreatedHttpStatusOnSuccessfulUserConfirmation() throws Exception {
+        var confirmRequest = MockMvcRequestBuilders.get("/users/confirm")
+                .param("username", validUsernameString)
+                .param("code", UserTestData.validVerificationCode);
+
+        mockMvc.perform(confirmRequest)
+                .andExpect(status().isCreated());
+
+        verify(confirmUser).execute(any(ConfirmUserCommand.class));
+    }
+
+    @Test
+    void IH002ShouldReturnApiErrorResponseWhenUserIsNotFoundOnConfirmation() throws Exception {
+        doThrow(new UserNotFoundException()).when(confirmUser).execute(any());
+
+        var confirmRequest = MockMvcRequestBuilders.get("/users/confirm")
+                .param("username", validUsernameString)
+                .param("code", UserTestData.validVerificationCode);
+
+        mockMvc.perform(confirmRequest)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.httpError").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("User not found."))
+                .andExpect(jsonPath("$.path").value("/users/confirm"));
     }
 
 

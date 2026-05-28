@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ConfirmUserRegistrationUseCaseTest {
 
@@ -74,8 +76,15 @@ public class ConfirmUserRegistrationUseCaseTest {
 
         assertDoesNotThrow(() -> confirmUserUseCase.execute(validConfirmUserCommand));
 
-        verify(mockedUserRepository).save(any(User.class));
-        verify(mockedAppEventPublisher).publishEvent(any(UserConfirmedEvent.class));
+        var savedUserCaptor = org.mockito.ArgumentCaptor.forClass(User.class);
+        verify(mockedUserRepository).save(savedUserCaptor.capture());
+        var savedUser = savedUserCaptor.getValue();
+        assertEquals(UserStatus.ACTIVE, savedUser.status());
+        assertNull(savedUser.verificationToken());
+
+        var eventCaptor = org.mockito.ArgumentCaptor.forClass(UserConfirmedEvent.class);
+        verify(mockedAppEventPublisher).publishEvent(eventCaptor.capture());
+        assertEquals(UserTestData.validUsernameString, eventCaptor.getValue().username().value());
     }
 
     @Test

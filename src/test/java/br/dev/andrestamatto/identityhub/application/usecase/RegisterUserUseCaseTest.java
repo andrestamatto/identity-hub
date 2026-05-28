@@ -125,12 +125,14 @@ public class RegisterUserUseCaseTest {
     public void IH002ShouldSendConfirmationCodeOnFirstUserAccessWhenPendingVerificationStatus() {
         executeShouldCreateUserWithStatus(UserStatus.PENDING_VERIFICATION);
         verify(appPublisher).publishEvent(any(UserRegisteredPendingVerificationEvent.class));
+        verify(verificationTokenGenerator).generate(NotificationMethod.EMAIL);
     }
 
     @Test
     public void IH002ShouldNotSendConfirmationCodeOnFirstUserAccessWhenActiveStatus() {
         executeShouldCreateUserWithStatus(UserStatus.ACTIVE);
         verify(appPublisher, never()).publishEvent(any());
+        verify(verificationTokenGenerator, never()).generate(any(NotificationMethod.class));
     }
 
     private void executeShouldCreateUserWithStatus(UserStatus userStatus) {
