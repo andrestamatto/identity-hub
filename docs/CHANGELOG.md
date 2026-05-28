@@ -47,6 +47,12 @@ All notable changes to this project will be documented in this file.
 - Token generation abstraction:
   - `VerificationTokenGenerator` port
   - `RandomVerificationTokenGenerator` adapter
+- Confirmation flow tests (`IH-002`):
+  - success path (activate + publish event)
+  - invalid code
+  - expired token
+  - invalid user status
+  - user not found
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -71,6 +77,7 @@ All notable changes to this project will be documented in this file.
   - delegates token generation to `VerificationTokenGenerator` instead of creating time/random values directly in VO
 - `User.register(...)` now receives pre-generated `VerificationToken` from application layer.
 - `UserController` now includes confirmation endpoint (`GET /users/confirm`) with command orchestration.
+- Test suite updated for deterministic clock handling in confirmation scenarios.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
