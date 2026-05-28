@@ -5,12 +5,15 @@ import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 
 public final class UserTestData {
 
+    public static final String invalidVerificationCode = " 79A2 ";
+    public static final String validVerificationCode = "123456";
     public static final String validUsernameString = "user1@identityhub.com";
     public static final String validRawPasswordString = "Password@123";
     public static final String validEncodedPasswordString = "$2a$12$R9h/cIPz0gi.UR3XvMhoHeM3N2fU3s.8k3cT6K7qgI8c/bK16A9i6";
@@ -21,6 +24,12 @@ public final class UserTestData {
     private UserTestData() {}
 
     public static User registered() {
+        return registeredWithVerificationToken(
+                createDefaultValidVerificationToken(validVerificationCode, Clock.systemDefaultZone())
+        );
+    }
+
+    public static User registeredWithVerificationToken(VerificationToken verificationToken) {
         return new User(
                 UUID.randomUUID(),
                 null,
@@ -36,12 +45,16 @@ public final class UserTestData {
                 Instant.now(),
                 null,
                 null,
-                null
+                verificationToken
         );
     }
 
     public static User createUser(User withUser, UserStatus withUserStatus) {
         return User.create(withUser, withUserStatus);
+    }
+
+    public static User activate(User pendingVerificationUser) {
+        return User.activate(pendingVerificationUser);
     }
 
     public static String registeredAsJsonString() {
@@ -83,6 +96,14 @@ public final class UserTestData {
                         "Permission to save or update itself.",
                         Instant.now()
                 )
+        );
+    }
+
+    public static VerificationToken createDefaultValidVerificationToken(String verificationCode, Clock clock) {
+        return new VerificationToken(
+                verificationCode,
+                NotificationMethod.EMAIL,
+                Instant.now(clock).plusSeconds(900) // Fifteen minutes
         );
     }
 }

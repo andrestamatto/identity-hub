@@ -55,6 +55,7 @@ class UserControllerTest {
     @BeforeEach
     public void setup() {
         mockedRegisterUserUseCase = mock(RegisterUserUseCase.class);
+        mockedConfirmUserUseCase = mock(ConfirmUser.class);
 
         userResponseMapper = new UserResponseMapper();
         validUserCommand = new RegisterUserCommand(
@@ -108,4 +109,6 @@ class UserControllerTest {
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(registeredUserResponse, response.getBody());
     }
+
+
 }
