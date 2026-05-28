@@ -53,6 +53,10 @@ All notable changes to this project will be documented in this file.
   - expired token
   - invalid user status
   - user not found
+  - assert for saved user final state (`ACTIVE` + null token)
+  - assert for published event payload (`UserConfirmedEvent.username`)
+  - register flow assertions for token generation invocation rules
+  - controller-level confirmation endpoint tests (`/users/confirm`) for success and not-found error contract
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -78,6 +82,7 @@ All notable changes to this project will be documented in this file.
 - `User.register(...)` now receives pre-generated `VerificationToken` from application layer.
 - `UserController` now includes confirmation endpoint (`GET /users/confirm`) with command orchestration.
 - Test suite updated for deterministic clock handling in confirmation scenarios.
+- REST error mapping updated to include `UserNotFoundException` as `404 Not Found` with `ApiErrorResponse`.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
