@@ -19,6 +19,14 @@ public enum UsernameType {
                     .orElse(false);
         }
     },
+    EMAIL_OR_PHONE {
+        @Override
+        public boolean validate(String value) {
+            return Optional.ofNullable(value)
+                    .map((nonNullValue) -> (nonNullValue.matches("^\\+?[1-9]\\d{7,14}$") || nonNullValue.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")))
+                    .orElse(false);
+        }
+    },
     EXTERNAL_ID {
         @Override
         public boolean validate(String value) {

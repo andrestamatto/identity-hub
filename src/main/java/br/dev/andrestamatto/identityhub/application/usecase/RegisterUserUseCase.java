@@ -56,8 +56,7 @@ public class RegisterUserUseCase implements RegisterUser {
         if (UserStatus.PENDING_VERIFICATION.equals(registeredUser.status()) && registeredUser.verificationToken() != null) {
             appEventPublisher.publishEvent(new UserRegisteredPendingVerificationEvent(
                     registeredUser.username(),
-                    registeredUser.verificationToken().code(),
-                    registeredUser.verificationToken().method()
+                    registeredUser.verificationToken()
             ));
         }
 
@@ -73,6 +72,7 @@ public class RegisterUserUseCase implements RegisterUser {
         var verificationMethod = switch (username.usernameType()) {
             case EMAIL -> NotificationMethod.EMAIL;
             case PHONE -> NotificationMethod.SMS;
+            case EMAIL_OR_PHONE -> NotificationMethod.BOTH;
             case EXTERNAL_ID -> throw new UnsupportedOperationException("ExternalId is not supported yet.");
             case UNKNOWN -> throw new UnsupportedOperationException("Unknown user type.");
         };
