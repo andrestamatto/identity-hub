@@ -1,19 +1,20 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging;
 
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.EmailSender;
-import br.dev.andrestamatto.identityhub.infrastructure.messaging.templates.ConfirmationCodeEmailTemplate;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.SmsSender;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class UserVerificationEmailSender implements EmailSender {
-
-    private final ConfirmationCodeEmailTemplate confirmationCodeEmailTemplate;
-
-    public UserVerificationEmailSender(ConfirmationCodeEmailTemplate confirmationCodeEmailTemplate) {
-        this.confirmationCodeEmailTemplate = confirmationCodeEmailTemplate;
-    }
+public class UserVerificationSmsSender implements SmsSender {
+    private static final Logger log = LoggerFactory.getLogger(UserVerificationSmsSender.class);
 
     @Override
-    public void send(String to, String subject, String body) {
-        var message = confirmationCodeEmailTemplate.create(event.username().value(), event.verificationToken().code(), event.verificationToken().expiresAt());
-        var subject = "Verify your identity";
+    public void send(NotificationMessage notificationMessage) {
+        var message = notificationMessage.details() != null
+                ? notificationMessage.details().getOrDefault("message", "IdentityHub verification")
+                : "IdentityHub verification";
+
+        // TODO integrate with a real provider (Twilio, SNS, etc.)
+        log.info("Sending SMS to {}. Message size={}", notificationMessage.recipient(), message.length());
     }
 }

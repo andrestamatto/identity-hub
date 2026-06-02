@@ -6,14 +6,14 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import java.util.Map;
 
-public class ConfirmationCodeEmailTemplate implements EmailTemplate {
+public class UserVerificationCodeEmailSender implements EmailTemplate {
 
     private static final String EMAIL_TEMPLATES_PATH = "emails/";
     private final static String USER_VERIFICATION_CODE_TEMPLATE = EMAIL_TEMPLATES_PATH + "user-verification-code";
 
     private final SpringTemplateEngine springTemplateEngine;
 
-    public ConfirmationCodeEmailTemplate(SpringTemplateEngine springTemplateEngine) {
+    public UserVerificationCodeEmailSender(SpringTemplateEngine springTemplateEngine) {
         this.springTemplateEngine = springTemplateEngine;
     }
 
