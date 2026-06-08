@@ -57,6 +57,18 @@ All notable changes to this project will be documented in this file.
   - assert for published event payload (`UserConfirmedEvent.username`)
   - register flow assertions for token generation invocation rules
   - controller-level confirmation endpoint tests (`/users/confirm`) for success and not-found error contract
+- Notification messaging contracts:
+  - `NotificationMessage`
+  - `NotificationChannel` and `NotificationChannels`
+  - `EmailSender`, `SmsSender`, and `UserNotifier` ports
+  - `EmailRenderer`, `RenderedEmail`, and `EmailDelivery` separation
+  - email/SMS template identifiers
+- Email notification infrastructure:
+  - `DefaultEmailSender`
+  - `TemplatedEmailRenderer`
+  - `UserVerificationCodeEmailTemplate`
+  - SMTP delivery adapter placeholder (`SmtpEmailDelivery`)
+  - HTML verification-code email template
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -83,6 +95,14 @@ All notable changes to this project will be documented in this file.
 - `UserController` now includes confirmation endpoint (`GET /users/confirm`) with command orchestration.
 - Test suite updated for deterministic clock handling in confirmation scenarios.
 - REST error mapping updated to include `UserNotFoundException` as `404 Not Found` with `ApiErrorResponse`.
+- Notification delivery flow now separates:
+  - message intent (`NotificationMessage`)
+  - logical channels (`NotificationChannels`)
+  - template rendering (`EmailRenderer`)
+  - rendered email value (`RenderedEmail`)
+  - provider delivery (`EmailDelivery`)
+- Notification providers are resolved by infrastructure configuration instead of being carried by notification messages.
+- Messaging packages were reorganized to clarify ports, senders, renderers, templates, delivery, and Spring configuration.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
