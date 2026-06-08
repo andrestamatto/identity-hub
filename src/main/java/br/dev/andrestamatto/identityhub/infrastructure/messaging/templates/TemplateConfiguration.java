@@ -4,11 +4,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
+/**
+ * Spring configuration that registers email template renderers.
+ * New email templates should be exposed here as EmailTemplate beans.
+ */
 @Configuration
 public class TemplateConfiguration {
 
     @Bean
-    public UserVerificationCodeEmailSender userVerificationCodeEmailSender(SpringTemplateEngine springTemplateEngine) {
-        return new UserVerificationCodeEmailSender(springTemplateEngine);
+    public EmailTemplate userVerificationCodeEmailTemplate(SpringTemplateEngine engine) {
+        return new UserVerificationCodeEmailTemplate(engine);
     }
 }

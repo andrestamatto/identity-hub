@@ -1,4 +1,25 @@
-package br.dev.andrestamatto.identityhub.infrastructure.messaging;
+package br.dev.andrestamatto.identityhub.infrastructure.messaging.config;
 
-public record NotificationProperties() {
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix="identity-hub.notification")
+public record NotificationProperties(
+    EmailNotification email
+) {
+
+    public record EmailNotification(
+        boolean enabled,
+        String provider,
+        String from,
+        Smtp smtp
+    ) {}
+
+    public record Smtp(
+        String host,
+        int port,
+        String username,
+        String password,
+        boolean auth,
+        boolean starttls
+    ){}
 }

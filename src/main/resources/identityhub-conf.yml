@@ -5,3 +5,15 @@ identity-hub:
     user-registration:
       username-type-policy:
         enable-verification-upon-registration: true
+  notification:
+    email:
+      enabled: true
+      provider: smtp
+      from: no-reply@identityhub.dev
+      smtp:
+        host: localhost
+        port: 1025
+        username:
+        password:
+        auth: false
+        starttls: false
