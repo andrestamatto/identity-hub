@@ -4,7 +4,7 @@ import br.dev.andrestamatto.identityhub.application.events.UserRegisteredPending
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.output.*;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.UserNotifier;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notifiers.UserNotifier;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
 import br.dev.andrestamatto.identityhub.support.UserTestData;

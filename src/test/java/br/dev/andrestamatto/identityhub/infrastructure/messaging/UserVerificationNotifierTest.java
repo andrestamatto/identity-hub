@@ -1,9 +1,12 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging;
 
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.EmailSender;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.EmailSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.SmsSender;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplate;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.channels.NotificationChannels;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.SmsSender;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
 import br.dev.andrestamatto.identityhub.support.UserNotifierTestData;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,9 +37,10 @@ public class UserVerificationNotifierTest {
     @Test
     public void IH002ShouldSendEmailWhenValidDataAndMethodIsEMAIL(){
         var notificationMessage = NotificationMessage.create(
-                MessageTemplate.USER_VERIFICATION_CODE,
                 UserNotifierTestData.validWhoEmail,
-                Map.of("subject", UserNotifierTestData.verifyYourIdentitySubject, "message", UserNotifierTestData.validWhat)
+                Map.of("subject", UserNotifierTestData.verifyYourIdentitySubject, "message", UserNotifierTestData.validWhat),
+                verificationCodeTemplates(),
+                NotificationChannels.email()
         );
 
         assertDoesNotThrow(
@@ -54,9 +58,10 @@ public class UserVerificationNotifierTest {
     @Test
     public void IH002ShouldSendSMSWhenValidDataAndMethodIsSMS(){
         var notificationMessage = NotificationMessage.create(
-                MessageTemplate.USER_VERIFICATION_CODE,
                 UserNotifierTestData.validWhoSms,
-                Map.of("subject", UserNotifierTestData.verifyYourIdentitySubject, "message", UserNotifierTestData.validWhat)
+                Map.of("subject", UserNotifierTestData.verifyYourIdentitySubject, "message", UserNotifierTestData.validWhat),
+                verificationCodeTemplates(),
+                NotificationChannels.sms()
         );
 
         assertDoesNotThrow(
@@ -73,9 +78,10 @@ public class UserVerificationNotifierTest {
     @Test
     public void IH002ShouldSendEmailAndSmsWhenValidDataAndMethodIsBOTH(){
         var notificationMessage = NotificationMessage.create(
-                MessageTemplate.USER_VERIFICATION_CODE,
                 UserNotifierTestData.validWhoBoth,
-                Map.of("subject", UserNotifierTestData.verifyYourIdentitySubject, "message", UserNotifierTestData.validWhat)
+                Map.of("subject", UserNotifierTestData.verifyYourIdentitySubject, "message", UserNotifierTestData.validWhat),
+                verificationCodeTemplates(),
+                NotificationChannels.emailAndSms()
         );
 
         assertDoesNotThrow(
@@ -87,6 +93,13 @@ public class UserVerificationNotifierTest {
 
         verify(mockedEmailSender).send(any(NotificationMessage.class));
         verify(mockedSmsSender).send(any(NotificationMessage.class));
+    }
+
+    private MessageTemplates verificationCodeTemplates() {
+        return new MessageTemplates(
+                EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE,
+                SmsMessageTemplate.SMS_USER_VERIFICATION_CODE
+        );
     }
 
 }
