@@ -103,6 +103,7 @@ All notable changes to this project will be documented in this file.
   - provider delivery (`EmailDelivery`)
 - Notification providers are resolved by infrastructure configuration instead of being carried by notification messages.
 - Messaging packages were reorganized to clarify ports, senders, renderers, templates, delivery, and Spring configuration.
+- Moved `SmtpEmailDelivery` to `infrastructure.messaging.delivery` to align infrastructure delivery adapters with the output delivery port.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.

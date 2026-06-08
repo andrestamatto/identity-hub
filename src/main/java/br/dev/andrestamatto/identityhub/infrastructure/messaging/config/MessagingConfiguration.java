@@ -8,7 +8,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notif
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.UserVerificationNotifier;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.UserVerificationSmsSender;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.email.DefaultEmailSender;
-import br.dev.andrestamatto.identityhub.infrastructure.messaging.smtp.SmtpEmailDelivery;
+import br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.SmtpEmailDelivery;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.templates.EmailTemplate;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.templates.TemplatedEmailRenderer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
