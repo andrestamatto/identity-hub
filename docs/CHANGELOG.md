@@ -77,6 +77,7 @@ All notable changes to this project will be documented in this file.
 - Welcome email notification after successful user confirmation:
   - `UserWelcomeEmailTemplate`
   - HTML welcome email template
+- Mailpit setup guide for local SMTP verification flows.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -117,6 +118,7 @@ All notable changes to this project will be documented in this file.
 - Application use cases now publish domain/application events through a `DomainEventPublisher` output port instead of depending directly on Spring.
 - Domain exceptions for verification-token validation and registration-confirmation status moved to the domain layer.
 - Renamed REST user response model from `RegisteredUserResponse` to `UserResponse` so registration and confirmation can share the same response contract.
+- Updated `identityhub-spec.md` to reflect the implemented IH-002 scope and document `IH-006` as the future outbox/retry notification feature.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
