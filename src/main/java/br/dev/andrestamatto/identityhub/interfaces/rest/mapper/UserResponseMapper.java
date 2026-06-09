@@ -4,7 +4,7 @@ import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Permission;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Role;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.VerificationToken;
-import br.dev.andrestamatto.identityhub.interfaces.rest.response.RegisteredUserResponse;
+import br.dev.andrestamatto.identityhub.interfaces.rest.response.UserResponse;
 
 import java.util.Optional;
 import java.util.Set;
@@ -12,26 +12,24 @@ import java.util.stream.Collectors;
 
 public class UserResponseMapper {
 
-    public RegisteredUserResponse registeredUserResponseFrom(User registeredUser) {
-        return Optional.ofNullable(registeredUser)
+    public UserResponse from(User user) {
+        return Optional.ofNullable(user)
                 .map((validRegisteredUser) ->
-                        new RegisteredUserResponse(
+                        new UserResponse(
                                 String.valueOf(validRegisteredUser.uuid()),
-                                String.valueOf(validRegisteredUser.username()),
+                                validRegisteredUser.username().value(),
                                 String.valueOf(validRegisteredUser.status()),
                                 userRolesSetToStringSet(validRegisteredUser.roles()),
                                 userPermissionSetToStringSet(validRegisteredUser.permissions()),
                                 String.valueOf(validRegisteredUser.createdAt()),
-                                String.valueOf(
-                                        Optional.ofNullable(validRegisteredUser.verificationToken()).
+                                Optional.ofNullable(validRegisteredUser.verificationToken()).
                                                 map(VerificationToken::method)
-                                                .orElse(null)
-                                ),
-                                String.valueOf(
-                                        Optional.ofNullable(validRegisteredUser.verificationToken()).
+                                                .map(String::valueOf)
+                                                .orElse(null),
+                                Optional.ofNullable(validRegisteredUser.verificationToken()).
                                                 map(VerificationToken::expiresAt)
+                                                .map(String::valueOf)
                                                 .orElse(null)
-                                )
                     )
                 ).orElseThrow();
     }

@@ -29,7 +29,7 @@ public class ConfirmUserUseCase implements ConfirmUser {
     }
 
     @Override
-    public void execute(ConfirmUserCommand confirmUserCommand) {
+    public User execute(ConfirmUserCommand confirmUserCommand) {
 
         Username username = Username.create(confirmUserCommand.username(), UsernameType.UNKNOWN);
         User foundUser = Optional.ofNullable(userRepository.findByUsername(username))
@@ -39,20 +39,18 @@ public class ConfirmUserUseCase implements ConfirmUser {
             throw new UserStatusDoesNotMatchRegistrationConfirmationException();
         }
 
-        if (
-            VerificationToken.validateCode(
-                    foundUser.verificationToken(), confirmUserCommand.verificationCode(), Instant.now(clock)
-            )
-        ) {
+        VerificationToken.validateCode(
+                foundUser.verificationToken(), confirmUserCommand.verificationCode(), Instant.now(clock)
+        );
 
-            User activeUser = userRepository.save(
-                    User.activate(foundUser)
-            );
+        User activeUser = userRepository.save(
+                User.activate(foundUser)
+        );
 
-            if (UserStatus.ACTIVE.equals(activeUser.status()) && activeUser.verificationToken() == null) {
-                domainEventPublisher.publish(new UserConfirmedEvent(activeUser.username()));
-            }
+        if (UserStatus.ACTIVE.equals(activeUser.status()) && activeUser.verificationToken() == null) {
+            domainEventPublisher.publish(new UserConfirmedEvent(activeUser.username()));
         }
 
+        return activeUser;
     }
 }

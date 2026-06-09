@@ -100,7 +100,7 @@ class UserControllerTest {
     @Test
     public void IH001ShouldReturnCreatedHttpStatusOnSuccessfulUserRegistration() {
         var registeredUser = UserTestData.registered();
-        var registeredUserResponse = userResponseMapper.registeredUserResponseFrom(registeredUser);
+        var userResponse = userResponseMapper.from(registeredUser);
 
         when(mockedRegisterUserUseCase.execute(any())).thenReturn(registeredUser);
 
@@ -108,17 +108,22 @@ class UserControllerTest {
 
         assertNotNull(response);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(registeredUserResponse, response.getBody());
+        assertEquals(userResponse, response.getBody());
     }
 
     @Test
-    void IH002ShouldReturnCreatedHttpStatusOnSuccessfulUserConfirmation() throws Exception {
+    void IH002ShouldReturnActiveUserResponseOnSuccessfulUserConfirmation() throws Exception {
+        var activeUser = UserTestData.activate(UserTestData.registered());
+        when(confirmUser.execute(any(ConfirmUserCommand.class))).thenReturn(activeUser);
+
         var confirmRequest = MockMvcRequestBuilders.get("/users/confirm")
                 .param("username", validUsernameString)
                 .param("code", UserTestData.validVerificationCode);
 
         mockMvc.perform(confirmRequest)
-                .andExpect(status().isCreated());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(validUsernameString))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
 
         verify(confirmUser).execute(any(ConfirmUserCommand.class));
     }

@@ -70,13 +70,15 @@ public class ConfirmUserRegistrationUseCaseTest {
 
         createDefaultExecuteConfirmUserUseCaseScenario();
 
-        assertDoesNotThrow(() -> confirmUserUseCase.execute(validConfirmUserCommand));
+        var result = assertDoesNotThrow(() -> confirmUserUseCase.execute(validConfirmUserCommand));
 
         var savedUserCaptor = org.mockito.ArgumentCaptor.forClass(User.class);
         verify(mockedUserRepository).save(savedUserCaptor.capture());
         var savedUser = savedUserCaptor.getValue();
         assertEquals(UserStatus.ACTIVE, savedUser.status());
         assertNull(savedUser.verificationToken());
+        assertEquals(UserStatus.ACTIVE, result.status());
+        assertNull(result.verificationToken());
 
         var eventCaptor = org.mockito.ArgumentCaptor.forClass(UserConfirmedEvent.class);
         verify(mockedDomainEventPublisher).publish(eventCaptor.capture());

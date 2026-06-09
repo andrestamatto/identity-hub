@@ -6,7 +6,7 @@ import br.dev.andrestamatto.identityhub.application.ports.input.command.Register
 import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUser;
 import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.UserResponseMapper;
-import br.dev.andrestamatto.identityhub.interfaces.rest.response.RegisteredUserResponse;
+import br.dev.andrestamatto.identityhub.interfaces.rest.response.UserResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,10 +28,10 @@ public class UserController {
     }
 
     @PostMapping(value="/register", consumes = "application/json")
-    public ResponseEntity<RegisteredUserResponse> register(@RequestBody RegisterUserCommand registerUserCommand) {
+    public ResponseEntity<UserResponse> register(@RequestBody RegisterUserCommand registerUserCommand) {
 
         var userResponse = Optional.of(
-                userResponseMapper.registeredUserResponseFrom(
+                userResponseMapper.from(
                     registerUser.execute(registerUserCommand)
                 )
         ).orElseThrow();
@@ -41,13 +41,18 @@ public class UserController {
     }
 
     @GetMapping(value="/confirm")
-    public ResponseEntity<Void> confirm(@RequestParam String username, @RequestParam String code) {
+    public ResponseEntity<UserResponse> confirm(@RequestParam String username, @RequestParam String code) {
 
         ConfirmUserCommand confirmUserCommand = new ConfirmUserCommand(username, code);
 
-        confirmUser.execute(confirmUserCommand);
+        var activeUserResponse = Optional.of(
+                userResponseMapper.from(
+                        confirmUser.execute(confirmUserCommand)
+            )
+        ).orElseThrow();
 
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(activeUserResponse);
     }
 
     // TODO: Create PUT "/resend-code"
