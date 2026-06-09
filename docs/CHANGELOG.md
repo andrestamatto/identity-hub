@@ -110,12 +110,15 @@ All notable changes to this project will be documented in this file.
 - Messaging packages were reorganized to clarify ports, senders, renderers, templates, delivery, and Spring configuration.
 - Moved `SmtpEmailDelivery` to `infrastructure.messaging.delivery` to align infrastructure delivery adapters with the output delivery port.
 - Verification notification emails now receive formatted expiration timestamps from the infrastructure listener instead of formatting dates inside the domain token.
+- Application use cases now publish domain/application events through a `DomainEventPublisher` output port instead of depending directly on Spring.
+- Domain exceptions for verification-token validation and registration-confirmation status moved to the domain layer.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
 - Fixed Spring context bootstrap issue for configuration properties binding.
 - Fixed `RegisterUserUseCaseTest` setup for deterministic token generation after introducing `VerificationTokenGenerator`.
 - Fixed Thymeleaf verification email template resolution by keeping template names independent from the `.html` suffix.
+- Fixed JPA user mapping to preserve verification-token state during persistence and rehydration.
 
 ## [0.1.0] - 2026-05-12
 ### Added
