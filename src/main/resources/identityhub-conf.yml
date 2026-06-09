@@ -17,3 +17,6 @@ identity-hub:
         password:
         auth: false
         starttls: false
+        connection-timeout: 3000
+        read-timeout: 3000
+        write-timeout: 3000

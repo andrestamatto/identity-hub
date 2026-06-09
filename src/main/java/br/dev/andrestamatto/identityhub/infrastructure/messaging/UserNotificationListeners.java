@@ -9,10 +9,14 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templ
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 /**
@@ -23,6 +27,10 @@ import java.util.Map;
 @Component
 public class UserNotificationListeners {
 
+    private static final DateTimeFormatter EMAIL_DATE_TIME_FORMATTER = DateTimeFormatter
+            .ofPattern("dd/MM/yyyy HH:mm:ss")
+            .withZone(ZoneId.systemDefault());
+
     private final UserNotifier userNotifier;
 
     public UserNotificationListeners(UserNotifier userNotifier) {
@@ -32,6 +40,7 @@ public class UserNotificationListeners {
     /*
      *  UserRegisteredPendingVerificationEvent
      * */
+    @Async("notificationTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(UserRegisteredPendingVerificationEvent event) {
         var notificationMethod = event.verificationToken().method();
@@ -46,7 +55,7 @@ public class UserNotificationListeners {
                 Map.of(
                         "subject", "Verify your identity",
                         "verificationCode", event.verificationToken().code(),
-                        "expiresAt", String.valueOf(event.verificationToken().expiresAt())
+                        "expiresAt", formatForEmail(event.verificationToken().expiresAt())
                 ),
                 messageTemplates,
                 notificationChannelsFrom(notificationMethod)
@@ -59,6 +68,7 @@ public class UserNotificationListeners {
     /*
     *  UserConfirmedEvent
     * */
+    @Async("notificationTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(UserConfirmedEvent event) {
         var notificationMethod = switch (event.username().usernameType()) {
@@ -91,6 +101,10 @@ public class UserNotificationListeners {
             case SMS -> NotificationChannels.sms();
             case BOTH -> NotificationChannels.emailAndSms();
         };
+    }
+
+    private String formatForEmail(Instant instant) {
+        return EMAIL_DATE_TIME_FORMATTER.format(instant);
     }
 
 }

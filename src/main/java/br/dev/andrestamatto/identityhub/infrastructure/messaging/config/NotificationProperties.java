@@ -20,6 +20,9 @@ public record NotificationProperties(
         String username,
         String password,
         boolean auth,
-        boolean starttls
+        boolean starttls,
+        int connectionTimeout,
+        int readTimeout,
+        int writeTimeout
     ){}
 }
