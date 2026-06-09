@@ -23,7 +23,7 @@ All notable changes to this project will be documented in this file.
 - REST layer for `IH-001`:
   - `UserController` (`POST /users/register`)
   - `GlobalExceptionHandler` with `ApiErrorResponse`
-  - response mapping via `UserResponseMapper` and `RegisteredUserResponse`
+  - response mapping via `UserResponseMapper` and `UserResponse`
 - Optional persistence adapters:
   - in-memory repository fallback
   - optional JPA adapter (`JpaUserRepositoryAdapter`) with mapper/entity/repository port
@@ -74,6 +74,9 @@ All notable changes to this project will be documented in this file.
   - configurable SMTP host, port, credentials, TLS, and timeouts
   - asynchronous notification execution with virtual threads
   - public REST error mapping for email delivery failures
+- Welcome email notification after successful user confirmation:
+  - `UserWelcomeEmailTemplate`
+  - HTML welcome email template
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -98,6 +101,7 @@ All notable changes to this project will be documented in this file.
   - delegates token generation to `VerificationTokenGenerator` instead of creating time/random values directly in VO
 - `User.register(...)` now receives pre-generated `VerificationToken` from application layer.
 - `UserController` now includes confirmation endpoint (`GET /users/confirm`) with command orchestration.
+- `GET /users/confirm` now returns the activated `UserResponse` with `200 OK` instead of an empty `201 Created` response.
 - Test suite updated for deterministic clock handling in confirmation scenarios.
 - REST error mapping updated to include `UserNotFoundException` as `404 Not Found` with `ApiErrorResponse`.
 - Notification delivery flow now separates:
@@ -112,6 +116,7 @@ All notable changes to this project will be documented in this file.
 - Verification notification emails now receive formatted expiration timestamps from the infrastructure listener instead of formatting dates inside the domain token.
 - Application use cases now publish domain/application events through a `DomainEventPublisher` output port instead of depending directly on Spring.
 - Domain exceptions for verification-token validation and registration-confirmation status moved to the domain layer.
+- Renamed REST user response model from `RegisteredUserResponse` to `UserResponse` so registration and confirmation can share the same response contract.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
@@ -119,6 +124,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `RegisterUserUseCaseTest` setup for deterministic token generation after introducing `VerificationTokenGenerator`.
 - Fixed Thymeleaf verification email template resolution by keeping template names independent from the `.html` suffix.
 - Fixed JPA user mapping to preserve verification-token state during persistence and rehydration.
+- Fixed local SMTP development config to use explicit IPv4 loopback (`127.0.0.1`) for SSH tunnel compatibility.
 
 ## [0.1.0] - 2026-05-12
 ### Added
