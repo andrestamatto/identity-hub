@@ -5,6 +5,8 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.deliv
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.email.RenderedEmail;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.config.NotificationProperties;
 import jakarta.mail.MessagingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -15,6 +17,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
  * already rendered email content through an SMTP server.
  */
 public class SmtpEmailDelivery implements EmailDelivery {
+
+    private static final Logger log = LoggerFactory.getLogger(SmtpEmailDelivery.class);
 
     private final NotificationProperties properties;
     private final JavaMailSender javaMailSender;
@@ -28,6 +32,12 @@ public class SmtpEmailDelivery implements EmailDelivery {
     @Override
     public void deliver(RenderedEmail email) {
         try {
+            log.info(
+                    "SMTP email delivery started. host={} port={} subject={}",
+                    properties.email().smtp().host(),
+                    properties.email().smtp().port(),
+                    email.subject()
+            );
             var message = javaMailSender.createMimeMessage();
             var helper = new MimeMessageHelper(message, "UTF-8");
 
@@ -37,9 +47,24 @@ public class SmtpEmailDelivery implements EmailDelivery {
             helper.setText(email.body(), true);
 
             javaMailSender.send(message);
+            log.info(
+                    "SMTP email delivery completed. host={} port={} subject={}",
+                    properties.email().smtp().host(),
+                    properties.email().smtp().port(),
+                    email.subject()
+            );
         } catch (MessagingException exception) {
+            log.error("SMTP email message preparation failed. subject={}", email.subject(), exception);
             throw new EmailDeliveryException("Email message could not be prepared for SMTP delivery.", exception);
         } catch (MailException exception) {
+            log.error(
+                    "SMTP email delivery failed. host={} port={} subject={} reason={}",
+                    properties.email().smtp().host(),
+                    properties.email().smtp().port(),
+                    email.subject(),
+                    exception.getMessage(),
+                    exception
+            );
             throw new EmailDeliveryException(errorMessageFrom(exception), exception);
         }
     }

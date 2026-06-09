@@ -6,6 +6,8 @@ import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundExcep
 import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
 import br.dev.andrestamatto.identityhub.interfaces.rest.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,23 +18,29 @@ import java.time.Instant;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler({UserAlreadyExistsException.class, UserStatusDoesNotMatchRegistrationConfirmationException.class})
     public ResponseEntity<ApiErrorResponse> handleUserAlreadyExistsException(Exception exception, HttpServletRequest request) {
+        log.warn("Request rejected by business rule. path={} reason={}", request.getRequestURI(), exception.getMessage());
         return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleUserNotFoundException(Exception exception, HttpServletRequest request) {
+        log.warn("Requested resource not found. path={} reason={}", request.getRequestURI(), exception.getMessage());
         return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
     }
 
     @ExceptionHandler(EmailDeliveryException.class)
     public ResponseEntity<ApiErrorResponse> handleEmailDeliveryException(Exception exception, HttpServletRequest request) {
+        log.error("Email delivery failed during request processing. path={} reason={}", request.getRequestURI(), exception.getMessage(), exception);
         return buildResponse(HttpStatus.BAD_GATEWAY, publicEmailDeliveryMessage(exception), request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgumentException(Exception exception, HttpServletRequest request) {
+        log.warn("Invalid request argument. path={} reason={}", request.getRequestURI(), exception.getMessage());
         return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
     }
 

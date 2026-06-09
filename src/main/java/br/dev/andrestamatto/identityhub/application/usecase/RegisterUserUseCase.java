@@ -10,11 +10,15 @@ import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
 import br.dev.andrestamatto.identityhub.application.ports.output.VerificationTokenGenerator;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Instant;
 
 public class RegisterUserUseCase implements RegisterUser {
+
+    private static final Logger log = LoggerFactory.getLogger(RegisterUserUseCase.class);
 
     private final UserRegistrationPolicy registrationPolicy;
     private final DomainEventPublisher domainEventPublisher;
@@ -36,6 +40,7 @@ public class RegisterUserUseCase implements RegisterUser {
     public User execute(RegisterUserCommand command) {
 
         var username = Username.create(command.username());
+        log.info("Register user requested. usernameType={}", username.usernameType());
 
         if ( userRepository.existsBy(username) ) {
             throw new UserAlreadyExistsException();
@@ -53,7 +58,20 @@ public class RegisterUserUseCase implements RegisterUser {
                 User.register(username, encodedPassword, initialUserStatus , Instant.now(clock), verificationToken)
         );
 
+        log.info(
+                "User registered. userId={} usernameType={} status={}",
+                registeredUser.uuid(),
+                registeredUser.username().usernameType(),
+                registeredUser.status()
+        );
+
         if (UserStatus.PENDING_VERIFICATION.equals(registeredUser.status()) && registeredUser.verificationToken() != null) {
+            log.info(
+                    "Publishing pending verification event. userId={} usernameType={} notificationMethod={}",
+                    registeredUser.uuid(),
+                    registeredUser.username().usernameType(),
+                    registeredUser.verificationToken().method()
+            );
             domainEventPublisher.publish(new UserRegisteredPendingVerificationEvent(
                     registeredUser.username(),
                     registeredUser.verificationToken()
@@ -66,6 +84,7 @@ public class RegisterUserUseCase implements RegisterUser {
     private VerificationToken generateToken(Username username, UserStatus initialStatus) {
 
         if ( !UserStatus.PENDING_VERIFICATION.equals(initialStatus) ) {
+            log.debug("Verification token not generated because initial status is {}.", initialStatus);
             return null;
         }
 
@@ -77,6 +96,7 @@ public class RegisterUserUseCase implements RegisterUser {
             case UNKNOWN -> throw new UnsupportedOperationException("Unknown user type.");
         };
 
+        log.info("Generating verification token. usernameType={} notificationMethod={}", username.usernameType(), verificationMethod);
         return verificationTokenGenerator.generate(verificationMethod);
 
     }

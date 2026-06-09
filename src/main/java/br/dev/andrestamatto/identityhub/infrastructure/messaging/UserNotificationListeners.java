@@ -9,6 +9,8 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templ
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -27,6 +29,8 @@ import java.util.Map;
 @Component
 public class UserNotificationListeners {
 
+    private static final Logger log = LoggerFactory.getLogger(UserNotificationListeners.class);
+
     private static final DateTimeFormatter EMAIL_DATE_TIME_FORMATTER = DateTimeFormatter
             .ofPattern("dd/MM/yyyy HH:mm:ss")
             .withZone(ZoneId.systemDefault());
@@ -44,6 +48,11 @@ public class UserNotificationListeners {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(UserRegisteredPendingVerificationEvent event) {
         var notificationMethod = event.verificationToken().method();
+        log.info(
+                "Handling pending verification notification event. usernameType={} notificationMethod={}",
+                event.username().usernameType(),
+                notificationMethod
+        );
 
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE,
@@ -59,6 +68,11 @@ public class UserNotificationListeners {
                 ),
                 messageTemplates,
                 notificationChannelsFrom(notificationMethod)
+        );
+        log.debug(
+                "Dispatching verification notification. usernameType={} channels={}",
+                event.username().usernameType(),
+                notificationMessage.notificationChannels().values()
         );
         userNotifier.notify(notificationMessage, notificationMethod);
 
@@ -77,6 +91,11 @@ public class UserNotificationListeners {
             case EMAIL_OR_PHONE -> NotificationMethod.BOTH;
             case EXTERNAL_ID, UNKNOWN -> NotificationMethod.EMAIL;
         };
+        log.info(
+                "Handling user confirmed notification event. usernameType={} notificationMethod={}",
+                event.username().usernameType(),
+                notificationMethod
+        );
 
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_SUCCESSFULLY_ACTIVATED,
@@ -90,6 +109,11 @@ public class UserNotificationListeners {
                 ),
                 messageTemplates,
                 notificationChannelsFrom(notificationMethod)
+        );
+        log.debug(
+                "Dispatching welcome notification. usernameType={} channels={}",
+                event.username().usernameType(),
+                notificationMessage.notificationChannels().values()
         );
         userNotifier.notify(notificationMessage, notificationMethod);
     }

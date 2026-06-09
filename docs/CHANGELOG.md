@@ -78,6 +78,7 @@ All notable changes to this project will be documented in this file.
   - `UserWelcomeEmailTemplate`
   - HTML welcome email template
 - Mailpit setup guide for local SMTP verification flows.
+- Minimal application logging for registration, confirmation, notification dispatch, SMTP delivery, and REST exception handling.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.

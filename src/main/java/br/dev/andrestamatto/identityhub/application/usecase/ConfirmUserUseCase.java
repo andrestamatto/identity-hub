@@ -11,12 +11,16 @@ import br.dev.andrestamatto.identityhub.domain.valueobjects.UserStatus;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.UsernameType;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.VerificationToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
 public class ConfirmUserUseCase implements ConfirmUser {
+
+    private static final Logger log = LoggerFactory.getLogger(ConfirmUserUseCase.class);
 
     private final UserRepository userRepository;
     private final DomainEventPublisher domainEventPublisher;
@@ -32,6 +36,7 @@ public class ConfirmUserUseCase implements ConfirmUser {
     public User execute(ConfirmUserCommand confirmUserCommand) {
 
         Username username = Username.create(confirmUserCommand.username(), UsernameType.UNKNOWN);
+        log.info("Confirm user registration requested.");
         User foundUser = Optional.ofNullable(userRepository.findByUsername(username))
                 .orElseThrow(UserNotFoundException::new);
 
@@ -47,7 +52,10 @@ public class ConfirmUserUseCase implements ConfirmUser {
                 User.activate(foundUser)
         );
 
+        log.info("User registration confirmed. userId={} status={}", activeUser.uuid(), activeUser.status());
+
         if (UserStatus.ACTIVE.equals(activeUser.status()) && activeUser.verificationToken() == null) {
+            log.info("Publishing user confirmed event. userId={} usernameType={}", activeUser.uuid(), activeUser.username().usernameType());
             domainEventPublisher.publish(new UserConfirmedEvent(activeUser.username()));
         }
 
