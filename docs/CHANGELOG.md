@@ -69,6 +69,11 @@ All notable changes to this project will be documented in this file.
   - `UserVerificationCodeEmailTemplate`
   - SMTP delivery adapter placeholder (`SmtpEmailDelivery`)
   - HTML verification-code email template
+- Real SMTP email delivery support:
+  - Spring Mail integration
+  - configurable SMTP host, port, credentials, TLS, and timeouts
+  - asynchronous notification execution with virtual threads
+  - public REST error mapping for email delivery failures
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -104,11 +109,13 @@ All notable changes to this project will be documented in this file.
 - Notification providers are resolved by infrastructure configuration instead of being carried by notification messages.
 - Messaging packages were reorganized to clarify ports, senders, renderers, templates, delivery, and Spring configuration.
 - Moved `SmtpEmailDelivery` to `infrastructure.messaging.delivery` to align infrastructure delivery adapters with the output delivery port.
+- Verification notification emails now receive formatted expiration timestamps from the infrastructure listener instead of formatting dates inside the domain token.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
 - Fixed Spring context bootstrap issue for configuration properties binding.
 - Fixed `RegisterUserUseCaseTest` setup for deterministic token generation after introducing `VerificationTokenGenerator`.
+- Fixed Thymeleaf verification email template resolution by keeping template names independent from the `.html` suffix.
 
 ## [0.1.0] - 2026-05-12
 ### Added
