@@ -51,7 +51,7 @@ public class RegisterUserUseCaseTest {
                 validRawPasswordString
         );
         hashedPassword = new EncodedPassword(UserTestData.validEncodedPasswordString);
-        generatedVerificationToken = new VerificationToken("123456", NotificationMethod.EMAIL, Instant.parse("2099-01-01T00:15:00Z"));
+        generatedVerificationToken = new VerificationToken(UserTestData.validVerificationCode, NotificationMethod.EMAIL, Instant.parse("2099-01-01T00:15:00Z"));
 
 
         var validRawPassword = RawPassword.create(validRawPasswordString);

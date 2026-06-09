@@ -1,6 +1,7 @@
 package br.dev.andrestamatto.identityhub.domain.valueobjects;
 
 import br.dev.andrestamatto.identityhub.domain.exceptions.VerificationTokenException;
+import br.dev.andrestamatto.identityhub.support.UserTestData;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -13,7 +14,7 @@ public class VerificationTokenTest {
     @Test
     public void shouldCreateExpiredVerificationTokenForPersistenceRehydration() {
         assertDoesNotThrow(() -> new VerificationToken(
-                "123456",
+                UserTestData.validVerificationCode,
                 NotificationMethod.EMAIL,
                 Instant.parse("2026-01-01T10:00:00Z")
         ));
@@ -22,7 +23,7 @@ public class VerificationTokenTest {
     @Test
     public void shouldRejectExpiredVerificationTokenWhenValidatingCode() {
         var verificationToken = new VerificationToken(
-                "123456",
+                UserTestData.validVerificationCode,
                 NotificationMethod.EMAIL,
                 Instant.parse("2026-01-01T10:00:00Z")
         );

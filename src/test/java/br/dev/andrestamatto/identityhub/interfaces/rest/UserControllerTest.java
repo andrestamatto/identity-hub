@@ -4,9 +4,9 @@ import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExists
 import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundException;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.ConfirmUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
+import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUserUseCase;
-import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUser;
 import br.dev.andrestamatto.identityhub.interfaces.rest.handler.GlobalExceptionHandler;
 import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.UserResponseMapper;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
@@ -24,14 +24,9 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static br.dev.andrestamatto.identityhub.support.UserTestData.validRawPasswordString;
 import static br.dev.andrestamatto.identityhub.support.UserTestData.validUsernameString;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 

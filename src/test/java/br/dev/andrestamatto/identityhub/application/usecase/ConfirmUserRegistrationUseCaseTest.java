@@ -3,13 +3,12 @@ package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.events.UserConfirmedEvent;
 import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundException;
-import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
-import br.dev.andrestamatto.identityhub.domain.exceptions.VerificationTokenException;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.ConfirmUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPublisher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
+import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
+import br.dev.andrestamatto.identityhub.domain.exceptions.VerificationTokenException;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.UserStatus;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
@@ -20,12 +19,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ConfirmUserRegistrationUseCaseTest {
 

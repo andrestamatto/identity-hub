@@ -1,8 +1,8 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging;
 
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.EmailSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.channels.NotificationChannels;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.EmailSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.SmsSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
