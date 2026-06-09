@@ -11,7 +11,7 @@ identity-hub:
       provider: smtp
       from: no-reply@identityhub.dev
       smtp:
-        host: localhost
+        host: 127.0.0.1
         port: 1025
         username:
         password:
