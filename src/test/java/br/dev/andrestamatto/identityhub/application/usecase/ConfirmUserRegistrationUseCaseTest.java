@@ -3,9 +3,10 @@ package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.events.UserConfirmedEvent;
 import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundException;
-import br.dev.andrestamatto.identityhub.application.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
-import br.dev.andrestamatto.identityhub.application.exceptions.VerificationTokenException;
+import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
+import br.dev.andrestamatto.identityhub.domain.exceptions.VerificationTokenException;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.ConfirmUserCommand;
+import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPublisher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
@@ -14,7 +15,6 @@ import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -32,7 +32,7 @@ public class ConfirmUserRegistrationUseCaseTest {
     private ConfirmUser confirmUserUseCase;
     private ConfirmUser expiredConfirmUserUseCase;
     private UserRepository mockedUserRepository;
-    private ApplicationEventPublisher mockedAppEventPublisher;
+    private DomainEventPublisher mockedDomainEventPublisher;
     private ConfirmUserCommand validConfirmUserCommand;
     private ConfirmUserCommand invalidConfirmUserCommand;
     private Clock baseClock;
@@ -40,7 +40,7 @@ public class ConfirmUserRegistrationUseCaseTest {
     @BeforeEach
     public void setup() {
         mockedUserRepository = mock(UserRepository.class);
-        mockedAppEventPublisher = mock(ApplicationEventPublisher.class);
+        mockedDomainEventPublisher = mock(DomainEventPublisher.class);
         validConfirmUserCommand = new ConfirmUserCommand(
                 UserTestData.validUsernameString,
                 UserTestData.validVerificationCode
@@ -56,13 +56,13 @@ public class ConfirmUserRegistrationUseCaseTest {
 
         confirmUserUseCase = new ConfirmUserUseCase(
               mockedUserRepository,
-              mockedAppEventPublisher,
+              mockedDomainEventPublisher,
               baseClock
         );
 
         expiredConfirmUserUseCase = new ConfirmUserUseCase(
                 mockedUserRepository,
-                mockedAppEventPublisher,
+                mockedDomainEventPublisher,
                 // simulates a code verification 30 minutes in the future.
                 Clock.fixed(baseInstant.plusSeconds(1800), ZoneOffset.UTC)
         );
@@ -83,7 +83,7 @@ public class ConfirmUserRegistrationUseCaseTest {
         assertNull(savedUser.verificationToken());
 
         var eventCaptor = org.mockito.ArgumentCaptor.forClass(UserConfirmedEvent.class);
-        verify(mockedAppEventPublisher).publishEvent(eventCaptor.capture());
+        verify(mockedDomainEventPublisher).publish(eventCaptor.capture());
         assertEquals(UserTestData.validUsernameString, eventCaptor.getValue().username().value());
     }
 
@@ -94,7 +94,7 @@ public class ConfirmUserRegistrationUseCaseTest {
         assertThrows(VerificationTokenException.class, () -> confirmUserUseCase.execute(invalidConfirmUserCommand));
 
         verify(mockedUserRepository, never()).save(any(User.class));
-        verify(mockedAppEventPublisher, never()).publishEvent(any(UserConfirmedEvent.class));
+        verify(mockedDomainEventPublisher, never()).publish(any(UserConfirmedEvent.class));
     }
 
     @Test
@@ -104,7 +104,7 @@ public class ConfirmUserRegistrationUseCaseTest {
         assertThrows(VerificationTokenException.class, () -> expiredConfirmUserUseCase.execute(validConfirmUserCommand));
 
         verify(mockedUserRepository, never()).save(any(User.class));
-        verify(mockedAppEventPublisher, never()).publishEvent(any(UserConfirmedEvent.class));
+        verify(mockedDomainEventPublisher, never()).publish(any(UserConfirmedEvent.class));
     }
 
     @Test
@@ -126,7 +126,7 @@ public class ConfirmUserRegistrationUseCaseTest {
         assertThrows(UserNotFoundException.class, () -> confirmUserUseCase.execute(validConfirmUserCommand));
 
         verify(mockedUserRepository, never()).save(any(User.class));
-        verify(mockedAppEventPublisher, never()).publishEvent(any(UserConfirmedEvent.class));
+        verify(mockedDomainEventPublisher, never()).publish(any(UserConfirmedEvent.class));
     }
 
     private void createDefaultExecuteConfirmUserUseCaseScenario() {
@@ -150,7 +150,7 @@ public class ConfirmUserRegistrationUseCaseTest {
         assertThrows(UserStatusDoesNotMatchRegistrationConfirmationException.class, () -> confirmUserUseCase.execute(validConfirmUserCommand));
 
         verify(mockedUserRepository, never()).save(any(User.class));
-        verify(mockedAppEventPublisher, never()).publishEvent(any(UserConfirmedEvent.class));
+        verify(mockedDomainEventPublisher, never()).publish(any(UserConfirmedEvent.class));
 
     }
 

@@ -3,7 +3,7 @@ package br.dev.andrestamatto.identityhub.interfaces.rest.handler;
 import br.dev.andrestamatto.identityhub.application.exceptions.EmailDeliveryException;
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
 import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundException;
-import br.dev.andrestamatto.identityhub.application.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
+import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
 import br.dev.andrestamatto.identityhub.interfaces.rest.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;

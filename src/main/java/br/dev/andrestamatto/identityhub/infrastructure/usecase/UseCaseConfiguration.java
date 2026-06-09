@@ -1,5 +1,6 @@
 package br.dev.andrestamatto.identityhub.infrastructure.usecase;
 
+import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPublisher;
 import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
@@ -9,7 +10,6 @@ import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUserUseCase;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUserUseCase;
 import jakarta.transaction.Transactional;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -20,15 +20,15 @@ public class UseCaseConfiguration {
 
     @Bean
     @Transactional
-    public ConfirmUser confirmUser(UserRepository userRepository, ApplicationEventPublisher appEventPublisher, Clock clock) {
-        return new ConfirmUserUseCase(userRepository,  appEventPublisher, clock);
+    public ConfirmUser confirmUser(UserRepository userRepository, DomainEventPublisher domainEventPublisher, Clock clock) {
+        return new ConfirmUserUseCase(userRepository,  domainEventPublisher, clock);
     }
 
     @Bean
     @Transactional
     public RegisterUser registerUser(
             UserRegistrationPolicy userRegistrationPolicy,
-            ApplicationEventPublisher appEventPublisher,
+            DomainEventPublisher domainEventPublisher,
             PasswordHasher passwordHasher,
             UserRepository userRepository,
             Clock clock,
@@ -36,7 +36,7 @@ public class UseCaseConfiguration {
     ) {
         return new RegisterUserUseCase(
                 userRegistrationPolicy,
-                appEventPublisher,
+                domainEventPublisher,
                 passwordHasher,
                 userRepository,
                 clock,

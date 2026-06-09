@@ -1,6 +1,6 @@
 package br.dev.andrestamatto.identityhub.domain.valueobjects;
 
-import br.dev.andrestamatto.identityhub.application.exceptions.VerificationTokenException;
+import br.dev.andrestamatto.identityhub.domain.exceptions.VerificationTokenException;
 
 import java.time.Instant;
 
@@ -11,8 +11,9 @@ public record VerificationToken(
 ) {
 
     public VerificationToken {
+        if (code == null || code.isBlank()) { throw new IllegalArgumentException("code must not be null or blank"); }
+        if (method == null) { throw new IllegalArgumentException("method must not be null"); }
         if (expiresAt == null) { throw new IllegalArgumentException("expiresAt must not be null"); }
-        if (expiresAt.isBefore(Instant.now())) { throw new IllegalStateException("Verification token has expired"); }
     }
 
     public boolean isExpiredAt(Instant now) {

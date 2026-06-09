@@ -11,7 +11,6 @@ import br.dev.andrestamatto.identityhub.support.UserTestData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -28,7 +27,7 @@ public class RegisterUserUseCaseTest {
     private RegisterUser registerUserUseCase;
     private UserRepository registerUserRepository;
     private UserNotifier userNotifier;
-    private ApplicationEventPublisher appPublisher;
+    private DomainEventPublisher domainEventPublisher;
     private UserRegistrationPolicy userRegistrationPolicy;
     private RegisterUserCommand validUserCommand;
     private EncodedPassword hashedPassword;
@@ -40,7 +39,7 @@ public class RegisterUserUseCaseTest {
 
         PasswordHasher passwordHasher = mock(PasswordHasher.class);
         userNotifier = mock(UserNotifier.class);
-        appPublisher = mock(ApplicationEventPublisher.class);
+        domainEventPublisher = mock(DomainEventPublisher.class);
         userRegistrationPolicy = mock(UserRegistrationPolicy.class);
         registerUserRepository = mock(UserRepository.class);
         verificationTokenGenerator = mock(VerificationTokenGenerator.class);
@@ -61,7 +60,7 @@ public class RegisterUserUseCaseTest {
 
         registerUserUseCase = new RegisterUserUseCase(
                 userRegistrationPolicy,
-                appPublisher,
+                domainEventPublisher,
                 passwordHasher,
                 registerUserRepository,
                 fixedClock,
@@ -125,14 +124,14 @@ public class RegisterUserUseCaseTest {
     @Test
     public void IH002ShouldSendConfirmationCodeOnFirstUserAccessWhenPendingVerificationStatus() {
         executeShouldCreateUserWithStatus(UserStatus.PENDING_VERIFICATION);
-        verify(appPublisher).publishEvent(any(UserRegisteredPendingVerificationEvent.class));
+        verify(domainEventPublisher).publish(any(UserRegisteredPendingVerificationEvent.class));
         verify(verificationTokenGenerator).generate(NotificationMethod.EMAIL);
     }
 
     @Test
     public void IH002ShouldNotSendConfirmationCodeOnFirstUserAccessWhenActiveStatus() {
         executeShouldCreateUserWithStatus(UserStatus.ACTIVE);
-        verify(appPublisher, never()).publishEvent(any());
+        verify(domainEventPublisher, never()).publish(any());
         verify(verificationTokenGenerator, never()).generate(any(NotificationMethod.class));
     }
 

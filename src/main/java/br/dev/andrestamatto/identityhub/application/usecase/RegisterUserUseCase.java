@@ -3,13 +3,13 @@ package br.dev.andrestamatto.identityhub.application.usecase;
 import br.dev.andrestamatto.identityhub.application.events.UserRegisteredPendingVerificationEvent;
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
+import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPublisher;
 import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
 import br.dev.andrestamatto.identityhub.application.ports.output.VerificationTokenGenerator;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -17,15 +17,15 @@ import java.time.Instant;
 public class RegisterUserUseCase implements RegisterUser {
 
     private final UserRegistrationPolicy registrationPolicy;
-    private final ApplicationEventPublisher appEventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
     private final PasswordHasher passwordHasher;
     private final UserRepository userRepository;
     private final Clock clock;
     private final VerificationTokenGenerator verificationTokenGenerator;
 
-    public RegisterUserUseCase(UserRegistrationPolicy registrationPolicy, ApplicationEventPublisher appEventPublisher, PasswordHasher passwordHasher, UserRepository userRepository, Clock clock, VerificationTokenGenerator verificationTokenGenerator) {
+    public RegisterUserUseCase(UserRegistrationPolicy registrationPolicy, DomainEventPublisher domainEventPublisher, PasswordHasher passwordHasher, UserRepository userRepository, Clock clock, VerificationTokenGenerator verificationTokenGenerator) {
         this.registrationPolicy = registrationPolicy;
-        this.appEventPublisher = appEventPublisher;
+        this.domainEventPublisher = domainEventPublisher;
         this.passwordHasher = passwordHasher;
         this.userRepository = userRepository;
         this.clock = clock;
@@ -54,7 +54,7 @@ public class RegisterUserUseCase implements RegisterUser {
         );
 
         if (UserStatus.PENDING_VERIFICATION.equals(registeredUser.status()) && registeredUser.verificationToken() != null) {
-            appEventPublisher.publishEvent(new UserRegisteredPendingVerificationEvent(
+            domainEventPublisher.publish(new UserRegisteredPendingVerificationEvent(
                     registeredUser.username(),
                     registeredUser.verificationToken()
             ));
