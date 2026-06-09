@@ -61,7 +61,8 @@ public record User(
             EncodedPassword encodedPassword,
             UserStatus status,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            VerificationToken verificationToken
     ) {
         return User.builder()
                 .uuid(id)
@@ -70,6 +71,7 @@ public record User(
                 .status(status)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
+                .verificationToken(verificationToken)
                 .build();
     }
 

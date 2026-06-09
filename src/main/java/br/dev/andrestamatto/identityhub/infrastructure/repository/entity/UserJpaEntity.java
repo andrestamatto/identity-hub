@@ -1,6 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.repository.entity;
 
 import br.dev.andrestamatto.identityhub.domain.valueobjects.UserStatus;
+import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
 import jakarta.persistence.*;
 
 import java.time.Instant;
@@ -31,6 +32,16 @@ public class UserJpaEntity {
     @Column
     Instant updatedAt;
 
+    @Column
+    String verificationTokenCode;
+
+    @Column
+    @Enumerated(EnumType.STRING)
+    NotificationMethod verificationTokenMethod;
+
+    @Column
+    Instant verificationTokenExpiresAt;
+
     protected UserJpaEntity() {
         // JPA only
     }
@@ -42,7 +53,10 @@ public class UserJpaEntity {
             String encodedPassword,
             UserStatus status,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            String verificationTokenCode,
+            NotificationMethod verificationTokenMethod,
+            Instant verificationTokenExpiresAt
     ) {
         this.id = id;
         this.username = username;
@@ -51,6 +65,9 @@ public class UserJpaEntity {
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.verificationTokenCode = verificationTokenCode;
+        this.verificationTokenMethod = verificationTokenMethod;
+        this.verificationTokenExpiresAt = verificationTokenExpiresAt;
     }
 
     public static UserJpaEntity of(
@@ -60,9 +77,23 @@ public class UserJpaEntity {
             String encodedPassword,
             UserStatus status,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            String verificationTokenCode,
+            NotificationMethod verificationTokenMethod,
+            Instant verificationTokenExpiresAt
     ) {
-        return new UserJpaEntity(id, username, usernameType, encodedPassword, status, createdAt, updatedAt);
+        return new UserJpaEntity(
+                id,
+                username,
+                usernameType,
+                encodedPassword,
+                status,
+                createdAt,
+                updatedAt,
+                verificationTokenCode,
+                verificationTokenMethod,
+                verificationTokenExpiresAt
+        );
     }
 
     public UUID getId() { return id; }
@@ -72,6 +103,9 @@ public class UserJpaEntity {
     public UserStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public String getVerificationTokenCode() { return verificationTokenCode; }
+    public NotificationMethod getVerificationTokenMethod() { return verificationTokenMethod; }
+    public Instant getVerificationTokenExpiresAt() { return verificationTokenExpiresAt; }
 
     // mudança controlada
     public void markUpdated(Instant now) {
