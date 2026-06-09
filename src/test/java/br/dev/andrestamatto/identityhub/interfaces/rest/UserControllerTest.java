@@ -1,12 +1,14 @@
 package br.dev.andrestamatto.identityhub.interfaces.rest;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
+import br.dev.andrestamatto.identityhub.application.exceptions.EmailDeliveryException;
 import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundException;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.ConfirmUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
 import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUserUseCase;
+import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
 import br.dev.andrestamatto.identityhub.interfaces.rest.handler.GlobalExceptionHandler;
 import br.dev.andrestamatto.identityhub.interfaces.rest.mapper.UserResponseMapper;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
@@ -135,6 +137,63 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.httpError").value("Not Found"))
                 .andExpect(jsonPath("$.message").value("User not found."))
                 .andExpect(jsonPath("$.path").value("/users/confirm"));
+    }
+
+    @Test
+    void IH002ShouldReturnApiErrorResponseWhenUserStatusDoesNotMatchConfirmation() throws Exception {
+        doThrow(new UserStatusDoesNotMatchRegistrationConfirmationException()).when(confirmUser).execute(any());
+
+        var confirmRequest = MockMvcRequestBuilders.get("/users/confirm")
+                .param("username", validUsernameString)
+                .param("code", UserTestData.validVerificationCode);
+
+        mockMvc.perform(confirmRequest)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.httpStatus").value(422))
+                .andExpect(jsonPath("$.httpError").value("Unprocessable Entity"))
+                .andExpect(jsonPath("$.message").value("User status doesn't match registration confirmation condition"))
+                .andExpect(jsonPath("$.path").value("/users/confirm"));
+    }
+
+    @Test
+    void IH002ShouldReturnApiErrorResponseWhenRequestArgumentIsInvalid() throws Exception {
+        doThrow(new IllegalArgumentException("Invalid confirmation request.")).when(confirmUser).execute(any());
+
+        var confirmRequest = MockMvcRequestBuilders.get("/users/confirm")
+                .param("username", validUsernameString)
+                .param("code", UserTestData.validVerificationCode);
+
+        mockMvc.perform(confirmRequest)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.httpStatus").value(400))
+                .andExpect(jsonPath("$.httpError").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Invalid confirmation request."))
+                .andExpect(jsonPath("$.path").value("/users/confirm"));
+    }
+
+    @Test
+    void IH001ShouldReturnApiErrorResponseWhenEmailDeliveryTimesOut() throws Exception {
+        when(registerUser.execute(any())).thenThrow(
+                new EmailDeliveryException("Email delivery timed out while connecting to the SMTP provider.")
+        );
+
+        var content = """
+                {
+                  "username": "user1@identityhub.com",
+                  "rawPassword": "Password@123"
+                }
+            """;
+
+        var postPerform = MockMvcRequestBuilders.post("/users/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(content);
+
+        mockMvc.perform(postPerform)
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.httpStatus").value(502))
+                .andExpect(jsonPath("$.httpError").value("Bad Gateway"))
+                .andExpect(jsonPath("$.message").value("Email delivery timed out. Please try again later."))
+                .andExpect(jsonPath("$.path").value("/users/register"));
     }
 
 
