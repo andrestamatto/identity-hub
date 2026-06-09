@@ -15,4 +15,9 @@ public class TemplateConfiguration {
     public EmailTemplate userVerificationCodeEmailTemplate(SpringTemplateEngine engine) {
         return new UserVerificationCodeEmailTemplate(engine);
     }
+
+    @Bean
+    public EmailTemplate userWelcomeTemplate(SpringTemplateEngine engine) {
+        return new UserWelcomeEmailTemplate(engine);
+    }
 }

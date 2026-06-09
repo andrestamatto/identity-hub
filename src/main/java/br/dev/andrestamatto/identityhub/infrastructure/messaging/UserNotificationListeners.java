@@ -86,8 +86,7 @@ public class UserNotificationListeners {
         var notificationMessage = NotificationMessage.create(
                 event.username().value(),
                 Map.of(
-                        "subject", "Welcome to IdentityHub",
-                        "message", "Your account has been confirmed successfully."
+                        "subject", "Welcome to IdentityHub"
                 ),
                 messageTemplates,
                 notificationChannelsFrom(notificationMethod)
