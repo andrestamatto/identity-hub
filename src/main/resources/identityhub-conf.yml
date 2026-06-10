@@ -20,3 +20,5 @@ identity-hub:
         connection-timeout: 3000
         read-timeout: 3000
         write-timeout: 3000
+        max-attempts: 3
+        retry-backoff-millis: 300

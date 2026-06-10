@@ -23,6 +23,8 @@ public record NotificationProperties(
         boolean starttls,
         int connectionTimeout,
         int readTimeout,
-        int writeTimeout
+        int writeTimeout,
+        int maxAttempts,
+        int retryBackoffMillis
     ){}
 }

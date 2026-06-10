@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 
 /**
  * SMTP implementation of EmailDelivery.
@@ -30,6 +33,11 @@ public class SmtpEmailDelivery implements EmailDelivery {
 
 
     @Override
+    @Retryable(
+            retryFor = MailException.class,
+            maxAttemptsExpression = "${identity-hub.notification.email.smtp.max-attempts:3}",
+            backoff = @Backoff(delayExpression = "${identity-hub.notification.email.smtp.retry-backoff-millis:300}")
+    )
     public void deliver(RenderedEmail email) {
         try {
             log.info(
@@ -56,17 +64,12 @@ public class SmtpEmailDelivery implements EmailDelivery {
         } catch (MessagingException exception) {
             log.error("SMTP email message preparation failed. subject={}", email.subject(), exception);
             throw new EmailDeliveryException("Email message could not be prepared for SMTP delivery.", exception);
-        } catch (MailException exception) {
-            log.error(
-                    "SMTP email delivery failed. host={} port={} subject={} reason={}",
-                    properties.email().smtp().host(),
-                    properties.email().smtp().port(),
-                    email.subject(),
-                    exception.getMessage(),
-                    exception
-            );
-            throw new EmailDeliveryException(errorMessageFrom(exception), exception);
         }
+    }
+
+    @Recover
+    public void recover(MailException exception, RenderedEmail email) {
+        throw new EmailDeliveryException(errorMessageFrom(exception), exception);
     }
 
     private String errorMessageFrom(MailException exception) {

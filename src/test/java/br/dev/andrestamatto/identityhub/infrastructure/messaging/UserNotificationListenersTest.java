@@ -18,8 +18,11 @@ import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -120,5 +123,24 @@ public class UserNotificationListenersTest {
         assertEquals(NotificationMethod.EMAIL, methodCaptor.getValue());
         assertEquals(EmailMessageTemplate.EMAIL_USER_SUCCESSFULLY_ACTIVATED, messageCaptor.getValue().messageTemplates().emailMessageTemplate());
         assertTrue(messageCaptor.getValue().notificationChannels().values().contains(NotificationChannel.EMAIL));
+    }
+
+    @Test
+    public void shouldNotPropagateNotificationFailuresFromAsyncListener() {
+        var token = new VerificationToken(
+                UserTestData.validVerificationCode,
+                NotificationMethod.EMAIL,
+                Instant.parse("2026-06-09T13:15:00Z")
+        );
+        var event = new UserRegisteredPendingVerificationEvent(
+                Username.create(UserTestData.validUsernameString),
+                token
+        );
+
+        doThrow(new RuntimeException("SMTP unavailable"))
+                .when(userNotifier)
+                .notify(any(NotificationMessage.class), any(NotificationMethod.class));
+
+        assertDoesNotThrow(() -> listeners.on(event));
     }
 }

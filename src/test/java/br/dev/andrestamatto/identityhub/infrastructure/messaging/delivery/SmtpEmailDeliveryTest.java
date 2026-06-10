@@ -16,7 +16,6 @@ import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,25 +44,28 @@ public class SmtpEmailDeliveryTest {
     }
 
     @Test
-    public void shouldMapSmtpTimeoutToEmailDeliveryException() {
+    public void shouldRecoverSmtpTimeoutAsEmailDeliveryException() {
         var javaMailSender = mock(JavaMailSender.class);
-        var mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
-        var delivery = new SmtpEmailDelivery(notificationProperties(), javaMailSender);
+        var delivery = new SmtpEmailDelivery(notificationProperties(1, 0), javaMailSender);
         var renderedEmail = new RenderedEmail(
                 UserTestData.validUsernameString,
                 "Verify your identity",
                 "<p>Code</p>"
         );
 
-        when(javaMailSender.createMimeMessage()).thenReturn(mimeMessage);
-        doThrow(new MailSendException("timeout")).when(javaMailSender).send(mimeMessage);
-
-        var exception = assertThrows(EmailDeliveryException.class, () -> delivery.deliver(renderedEmail));
+        var exception = assertThrows(
+                EmailDeliveryException.class,
+                () -> delivery.recover(new MailSendException("timeout"), renderedEmail)
+        );
 
         assertEquals("Email delivery timed out while connecting to the SMTP provider.", exception.getMessage());
     }
 
     private NotificationProperties notificationProperties() {
+        return notificationProperties(3, 300);
+    }
+
+    private NotificationProperties notificationProperties(int maxAttempts, int retryBackoffMillis) {
         return new NotificationProperties(
                 new NotificationProperties.EmailNotification(
                         true,
@@ -78,7 +80,9 @@ public class SmtpEmailDeliveryTest {
                                 false,
                                 3000,
                                 3000,
-                                3000
+                                3000,
+                                maxAttempts,
+                                retryBackoffMillis
                         )
                 )
         );

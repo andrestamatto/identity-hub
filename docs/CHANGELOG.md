@@ -79,6 +79,7 @@ All notable changes to this project will be documented in this file.
   - HTML welcome email template
 - Mailpit setup guide for local SMTP verification flows.
 - Minimal application logging for registration, confirmation, notification dispatch, SMTP delivery, and REST exception handling.
+- Configurable SMTP retry attempts and retry backoff for transient email delivery failures.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -128,6 +129,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Thymeleaf verification email template resolution by keeping template names independent from the `.html` suffix.
 - Fixed JPA user mapping to preserve verification-token state during persistence and rehydration.
 - Fixed local SMTP development config to use explicit IPv4 loopback (`127.0.0.1`) for SSH tunnel compatibility.
+- Prevented duplicate stacktraces when asynchronous notification delivery fails.
 
 ## [0.1.0] - 2026-05-12
 ### Added

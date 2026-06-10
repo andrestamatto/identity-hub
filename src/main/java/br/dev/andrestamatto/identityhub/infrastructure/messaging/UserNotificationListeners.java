@@ -74,7 +74,7 @@ public class UserNotificationListeners {
                 event.username().usernameType(),
                 notificationMessage.notificationChannels().values()
         );
-        userNotifier.notify(notificationMessage, notificationMethod);
+        notifyUser(notificationMessage, notificationMethod);
 
     }
 
@@ -115,7 +115,21 @@ public class UserNotificationListeners {
                 event.username().usernameType(),
                 notificationMessage.notificationChannels().values()
         );
-        userNotifier.notify(notificationMessage, notificationMethod);
+        notifyUser(notificationMessage, notificationMethod);
+    }
+
+    private void notifyUser(NotificationMessage notificationMessage, NotificationMethod notificationMethod) {
+        try {
+            userNotifier.notify(notificationMessage, notificationMethod);
+        } catch (RuntimeException exception) {
+            log.error(
+                    "User notification failed. notificationMethod={} channels={} reason={}",
+                    notificationMethod,
+                    notificationMessage.notificationChannels().values(),
+                    exception.getMessage(),
+                    exception
+            );
+        }
     }
 
     private NotificationChannels notificationChannelsFrom(NotificationMethod notificationMethod) {
