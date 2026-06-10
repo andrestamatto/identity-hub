@@ -26,6 +26,10 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 - `Permission`: capacidade granular (ex.: `user:read`, `user:write`).
 - `AuthSession`: sessão/autenticação ativa com ciclo de vida próprio.
 - `LoginAttempt`: evento de tentativa de login (sucesso/falha) para auditoria.
+- `VerificationToken`: código temporário usado para confirmar registro antes da ativação da conta.
+- `NotificationMethod`: meio lógico usado para enviar notificações de verificação (`EMAIL`, `SMS`, `BOTH`).
+- `NotificationChannel`: canal lógico de entrega de mensagem (`EMAIL`, `SMS`, `WHATSAPP`).
+- `Outbox`: registro persistente de mensagem/evento pendente de entrega, usado para retry e rastreabilidade.
 
 ## 4. Regras de Domínio
 
@@ -81,6 +85,31 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 2. Se o status inicial for `PENDING_VERIFICATION`, o consumidor deve prover fluxo de verificação compatível com os `UsernameType` permitidos.
 3. Se o status inicial for `ACTIVE`, o fluxo de verificação pode ser ignorado por configuração.
 
+### 4.8 Verificação de Registro (IH-002)
+1. Quando o usuário é registrado com `PENDING_VERIFICATION`, um `VerificationToken` deve ser gerado e associado ao usuário.
+2. `VerificationToken` ativo contém: `code`, `method` (`EMAIL`/`SMS`) e `expiresAt`.
+3. O endpoint de confirmação valida `username` + `verificationCode`.
+4. Na confirmação bem-sucedida:
+   - o status do usuário deve ser atualizado para `ACTIVE`;
+   - o `verificationToken` ativo deve ser removido (`null`);
+   - um evento de domínio/aplicação de confirmação deve ser publicado;
+   - a API deve retornar o usuário ativado em uma resposta `UserResponse`.
+5. Usuário inexistente, status incompatível, token expirado ou código divergente devem resultar em falha de confirmação.
+6. A geração de token não deve depender de `Instant.now()` dentro do VO; tempo e aleatoriedade devem ser fornecidos por portas/adapters para manter previsibilidade de testes.
+7. Quando o token de verificação usa `EMAIL`, o sistema deve enviar um e-mail com o código de confirmação.
+8. Após confirmação bem-sucedida, o sistema deve enviar um e-mail de boas-vindas ao usuário ativado.
+9. As notificações atuais são assíncronas e executadas após commit da transação.
+10. SMS existe como contrato/canal de domínio, mas envio real por SMS permanece fora do escopo atual do IH-002.
+11. Falhas assíncronas de notificação são registradas em log no escopo atual; retry/outbox é tratado como feature futura.
+
+### 4.9 Entrega Confiável de Notificações (Feature Futura)
+1. O sistema deve registrar notificações/eventos pendentes em uma outbox persistente antes da tentativa de entrega externa.
+2. Cada item de outbox deve conter estado de processamento (`PENDING`, `SENT`, `FAILED`, `RETRYING`), número de tentativas, próxima tentativa e última falha conhecida.
+3. Falhas temporárias de provedor (`timeout`, indisponibilidade, erro de rede) devem ser elegíveis para retry.
+4. Falhas permanentes devem ser registradas e expostas para observabilidade/administração sem bloquear a confirmação do usuário já persistida.
+5. A entrega deve ser idempotente para evitar envio duplicado quando houver retry.
+6. Essa feature deve substituir o tratamento atual baseado apenas em log de exceção assíncrona.
+
 ## 5. Invariantes do Agregado User
 - `failedLoginCount >= 0`.
 - `lockedUntil` só pode estar no futuro quando status de bloqueio estiver ativo.
@@ -94,12 +123,25 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 - Critérios:
   - rejeita email duplicado;
   - rejeita senha inválida pelo domínio.
+  - usuário registrado deve apresentar status PENDING_VERIFICATION.
 
-### IH-002 - Autenticação Base
-- Valida credenciais e status do usuário.
+### IH-002 - Confirmação de Registro por Código
+- Fluxo inicial de confirmação de registro por código.
+- Se status do usuário é `PENDING_VERIFICATION`, deve existir token válido para confirmação.
+- Registro pendente por `EMAIL` envia e-mail assíncrono com código de confirmação.
+- Confirmação válida ativa usuário, invalida token ativo e retorna `UserResponse` com status `ACTIVE`.
+- Confirmação válida publica evento de usuário confirmado.
+- Usuário confirmado recebe e-mail assíncrono de boas-vindas.
+- O envio real de SMS fica fora do escopo desta feature, apesar de o contrato de canal existir.
+- Retry/outbox para notificações assíncronas fica fora do escopo desta feature.
 - Critérios:
-  - sucesso retorna tokens;
-  - usuário inexistente ou senha inválida retorna falha genérica.
+  - confirma usuário quando código é válido e não expirado;
+  - rejeita confirmação para usuário inexistente;
+  - rejeita confirmação para status incompatível;
+  - rejeita confirmação para token expirado ou código inválido.
+  - envia código de confirmação por e-mail quando o método é `EMAIL`;
+  - envia e-mail de boas-vindas após confirmação bem-sucedida;
+  - retorna usuário ativo após confirmação bem-sucedida.
 
 ### IH-003 - Bloqueio por Tentativas
 - Aplica política de lock por falhas consecutivas na janela.
@@ -122,6 +164,14 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
   - refresh revogado/expirado falha;
   - logout invalida refresh ativo.
 
+### IH-006 - Entrega Confiável de Notificações
+- Implementa outbox/retry para notificações assíncronas.
+- Critérios:
+  - registra notificação pendente antes da entrega externa;
+  - reprocessa falhas temporárias com política de retry;
+  - marca sucesso/falha final de entrega;
+  - evita envio duplicado em reprocessamentos.
+
 ## 7. Estratégia TDD (por feature)
 1. Selecionar a feature por ID (ex.: `IH-001`).
 2. Escrever testes de domínio/caso de uso (RED).
@@ -136,6 +186,7 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 - Evitar acoplamento de domínio com anotações/frameworks do Spring.
 - Core de domínio/aplicação desacoplado de infraestrutura (ports/adapters).
 - O projeto consumidor é fonte de verdade de usuários no MVP.
+- Configuração local de SMTP/Mailpit deve seguir o guia em `docs/guides/mailpit.md`.
 
 ## 9. Evolução por Versão
 - `v0.x`: Embedded Mode com JWT, RBAC, lockout, refresh/logout e starter Spring Boot.

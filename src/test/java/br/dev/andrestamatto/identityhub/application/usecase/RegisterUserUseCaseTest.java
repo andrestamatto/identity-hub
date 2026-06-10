@@ -1,10 +1,10 @@
 package br.dev.andrestamatto.identityhub.application.usecase;
 
+import br.dev.andrestamatto.identityhub.application.events.UserRegisteredPendingVerificationEvent;
 import br.dev.andrestamatto.identityhub.application.exceptions.UserAlreadyExistsException;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.RegisterUserCommand;
-import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
-import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;
-import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
+import br.dev.andrestamatto.identityhub.application.ports.output.*;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notifiers.UserNotifier;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
@@ -26,16 +26,23 @@ public class RegisterUserUseCaseTest {
 
     private RegisterUser registerUserUseCase;
     private UserRepository registerUserRepository;
+    private UserNotifier userNotifier;
+    private DomainEventPublisher domainEventPublisher;
     private UserRegistrationPolicy userRegistrationPolicy;
     private RegisterUserCommand validUserCommand;
     private EncodedPassword hashedPassword;
+    private VerificationTokenGenerator verificationTokenGenerator;
+    private VerificationToken generatedVerificationToken;
 
     @BeforeEach
     public void setup() {
 
         PasswordHasher passwordHasher = mock(PasswordHasher.class);
+        userNotifier = mock(UserNotifier.class);
+        domainEventPublisher = mock(DomainEventPublisher.class);
         userRegistrationPolicy = mock(UserRegistrationPolicy.class);
         registerUserRepository = mock(UserRepository.class);
+        verificationTokenGenerator = mock(VerificationTokenGenerator.class);
 
         Clock fixedClock = Clock.fixed(Instant.parse("2026-05-18T10:00:00Z"), ZoneOffset.UTC);
 
@@ -44,18 +51,26 @@ public class RegisterUserUseCaseTest {
                 validRawPasswordString
         );
         hashedPassword = new EncodedPassword(UserTestData.validEncodedPasswordString);
+        generatedVerificationToken = new VerificationToken(UserTestData.validVerificationCode, NotificationMethod.EMAIL, Instant.parse("2099-01-01T00:15:00Z"));
 
 
         var validRawPassword = RawPassword.create(validRawPasswordString);
 
         when(passwordHasher.hashRawPassword(validRawPassword)).thenReturn(hashedPassword);
 
-        registerUserUseCase = new RegisterUserUseCase(userRegistrationPolicy, passwordHasher, registerUserRepository, fixedClock);
+        registerUserUseCase = new RegisterUserUseCase(
+                userRegistrationPolicy,
+                domainEventPublisher,
+                passwordHasher,
+                registerUserRepository,
+                fixedClock,
+                verificationTokenGenerator
+        );
     }
 
     @Test
     public void IH001ShouldExecuteUserWhenUsernameIsAvailable() {
-        User registeredUser = UserTestData.registered();
+        User registeredUser = UserTestData.createUser(UserTestData.registered(), UserStatus.ACTIVE);
 
         when(registerUserRepository.existsBy(Username.create(validUsernameString))).thenReturn(false);
         when(registerUserRepository.save(any(User.class))).thenReturn(registeredUser);
@@ -106,11 +121,26 @@ public class RegisterUserUseCaseTest {
         executeShouldCreateUserWithStatus(UserStatus.PENDING_VERIFICATION);
     }
 
+    @Test
+    public void IH002ShouldSendConfirmationCodeOnFirstUserAccessWhenPendingVerificationStatus() {
+        executeShouldCreateUserWithStatus(UserStatus.PENDING_VERIFICATION);
+        verify(domainEventPublisher).publish(any(UserRegisteredPendingVerificationEvent.class));
+        verify(verificationTokenGenerator).generate(NotificationMethod.EMAIL);
+    }
+
+    @Test
+    public void IH002ShouldNotSendConfirmationCodeOnFirstUserAccessWhenActiveStatus() {
+        executeShouldCreateUserWithStatus(UserStatus.ACTIVE);
+        verify(domainEventPublisher, never()).publish(any());
+        verify(verificationTokenGenerator, never()).generate(any(NotificationMethod.class));
+    }
+
     private void executeShouldCreateUserWithStatus(UserStatus userStatus) {
 
         when(registerUserRepository.existsBy(Username.create(validUsernameString))).thenReturn(false);
         when(registerUserRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0, User.class));
         when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(userStatus);
+        when(verificationTokenGenerator.generate(any(NotificationMethod.class))).thenReturn(generatedVerificationToken);
 
         User resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.execute(validUserCommand));
 

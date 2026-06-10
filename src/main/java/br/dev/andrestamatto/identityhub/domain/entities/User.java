@@ -21,7 +21,8 @@ public record User(
        Instant lockedUntil,
        Instant createdAt,
        Instant passwordChangedAt,
-       Instant updatedAt
+       Instant updatedAt,
+       VerificationToken verificationToken
 ) {
 
     public User {
@@ -30,7 +31,7 @@ public record User(
     }
 
 
-    public static User register(Username username, EncodedPassword encodedPassword, UserStatus initialStatus, Instant createdAt) {
+    public static User register(Username username, EncodedPassword encodedPassword, UserStatus initialStatus, Instant createdAt, VerificationToken verificationToken) {
 
         if (createdAt == null) throw new IllegalArgumentException("createdAt is required.");
         if (initialStatus == null) throw new IllegalArgumentException("initialStatus is required.");
@@ -42,6 +43,15 @@ public record User(
                 .encodedPassword(encodedPassword)
                 .status(initialStatus)
                 .createdAt(createdAt)
+                .verificationToken(verificationToken)
+                .build();
+    }
+
+    public static User activate(User pendingConfirmationUser){
+        return User.builder()
+                .withUser(pendingConfirmationUser)
+                .status(UserStatus.ACTIVE)
+                .verificationToken(null)
                 .build();
     }
 
@@ -51,7 +61,8 @@ public record User(
             EncodedPassword encodedPassword,
             UserStatus status,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            VerificationToken verificationToken
     ) {
         return User.builder()
                 .uuid(id)
@@ -60,6 +71,14 @@ public record User(
                 .status(status)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
+                .verificationToken(verificationToken)
+                .build();
+    }
+
+    public static User create(User withUser, UserStatus withUserStatus) {
+        return User.builder()
+                .withUser(withUser)
+                .status(withUserStatus)
                 .build();
     }
 
@@ -82,6 +101,7 @@ public record User(
         private Instant createdAt;
         private Instant passwordChangedAt;
         private Instant updatedAt;
+        private VerificationToken verificationToken;
 
         private Builder() {
         }
@@ -156,6 +176,30 @@ public record User(
             return this;
         }
 
+        public Builder verificationToken(VerificationToken verificationToken) {
+            this.verificationToken = verificationToken;
+            return this;
+        }
+
+        public Builder withUser(User user) {
+            this.uuid = user.uuid();
+            this.name = user.name();
+            this.username = user.username();
+            this.encodedPassword = user.encodedPassword();
+            this.status = user.status();
+            this.roles = user.roles();
+            this.permissions = user.permissions();
+            this.createdAt = user.createdAt();
+            this.passwordChangedAt = user.passwordChangedAt();
+            this.lastFailedLoginAt = user.lastFailedLoginAt();
+            this.lockedUntil = user.lockedUntil();
+            this.failedLoginAttempts = user.failedLoginAttempts();
+            this.failedLoginCount = user.failedLoginCount();
+            this.verificationToken = user.verificationToken();
+
+            return this;
+        }
+
         public User build() {
             return new User(
                     uuid,
@@ -171,7 +215,8 @@ public record User(
                     lockedUntil,
                     createdAt,
                     passwordChangedAt,
-                    updatedAt
+                    updatedAt,
+                    verificationToken
             );
         }
     }

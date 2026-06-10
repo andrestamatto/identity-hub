@@ -5,8 +5,8 @@ public record Username(
         UsernameType usernameType
 ) {
     public Username {
-        if (value == null || usernameType == null) { throw new IllegalArgumentException("Username value or type must not be null"); }
-        if (!usernameType.validate(value)) { throw new IllegalArgumentException("Invalid username value"); }
+        if (value == null || usernameType == null) { throw new IllegalArgumentException("Username value or type must not be null."); }
+        if (!usernameType.validate(value)) { throw new IllegalArgumentException("Invalid username value."); }
     }
 
     // Default type: EMAIL
