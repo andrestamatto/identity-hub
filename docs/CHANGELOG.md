@@ -80,6 +80,8 @@ All notable changes to this project will be documented in this file.
 - Mailpit setup guide for local SMTP verification flows.
 - Minimal application logging for registration, confirmation, notification dispatch, SMTP delivery, and REST exception handling.
 - Configurable SMTP retry attempts and retry backoff for transient email delivery failures.
+- SMS notification foundation with renderer, template, sender, delivery port, and local logging delivery adapter.
+- Reorganized messaging infrastructure packages by responsibility (`sender`, `delivery`, and `template`) and channel.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.

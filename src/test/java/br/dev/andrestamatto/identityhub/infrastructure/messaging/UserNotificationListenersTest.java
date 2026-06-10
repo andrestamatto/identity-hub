@@ -60,7 +60,7 @@ public class UserNotificationListenersTest {
         assertEquals(UserTestData.validUsernameString, message.recipient());
         assertEquals(UserTestData.validVerificationCode, message.details().get("verificationCode"));
         assertEquals(EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE, message.messageTemplates().emailMessageTemplate());
-        assertEquals(SmsMessageTemplate.UNDEFINED, message.messageTemplates().smsMessageTemplate());
+        assertEquals(SmsMessageTemplate.SMS_USER_VERIFICATION_CODE, message.messageTemplates().smsMessageTemplate());
         assertTrue(message.notificationChannels().values().contains(NotificationChannel.EMAIL));
     }
 
@@ -122,6 +122,7 @@ public class UserNotificationListenersTest {
 
         assertEquals(NotificationMethod.EMAIL, methodCaptor.getValue());
         assertEquals(EmailMessageTemplate.EMAIL_USER_SUCCESSFULLY_ACTIVATED, messageCaptor.getValue().messageTemplates().emailMessageTemplate());
+        assertEquals(SmsMessageTemplate.SMS_USER_SUCCESSFULLY_ACTIVATED, messageCaptor.getValue().messageTemplates().smsMessageTemplate());
         assertTrue(messageCaptor.getValue().notificationChannels().values().contains(NotificationChannel.EMAIL));
     }
 

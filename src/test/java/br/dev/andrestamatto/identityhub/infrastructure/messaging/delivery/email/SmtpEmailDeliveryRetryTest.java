@@ -1,8 +1,9 @@
-package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery;
+package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery.EmailDelivery;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.email.RenderedEmail;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.config.NotificationProperties;
+import br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email.SmtpEmailDelivery;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
@@ -95,6 +96,10 @@ public class SmtpEmailDeliveryRetryTest {
                                     2,
                                     0
                             )
+                    ),
+                    new NotificationProperties.SmsNotification(
+                            true,
+                            "log"
                     )
             );
         }

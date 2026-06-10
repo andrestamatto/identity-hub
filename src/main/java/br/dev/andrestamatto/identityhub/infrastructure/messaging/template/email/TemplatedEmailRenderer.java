@@ -1,4 +1,4 @@
-package br.dev.andrestamatto.identityhub.infrastructure.messaging.templates;
+package br.dev.andrestamatto.identityhub.infrastructure.messaging.template.email;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.email.RenderedEmail;

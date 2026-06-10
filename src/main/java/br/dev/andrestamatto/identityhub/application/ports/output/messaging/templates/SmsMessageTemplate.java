@@ -6,10 +6,17 @@ package br.dev.andrestamatto.identityhub.application.ports.output.messaging.temp
  */
 public enum SmsMessageTemplate {
     UNDEFINED("undefined"),
-    SMS_USER_VERIFICATION_CODE("sms-user-verification-code");
+    SMS_USER_VERIFICATION_CODE("sms-user-verification-code"),
+    SMS_USER_SUCCESSFULLY_ACTIVATED("sms-user-successfully-activated");
 
-    private String value;
+    private final String value;
 
-    SmsMessageTemplate(String value) {}
+    SmsMessageTemplate(String value) {
+        this.value = value;
+    }
+
+    public String value() {
+        return value;
+    }
 
 }

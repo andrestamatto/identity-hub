@@ -22,3 +22,6 @@ identity-hub:
         write-timeout: 3000
         max-attempts: 3
         retry-backoff-millis: 300
+    sms:
+      enabled: true
+      provider: log

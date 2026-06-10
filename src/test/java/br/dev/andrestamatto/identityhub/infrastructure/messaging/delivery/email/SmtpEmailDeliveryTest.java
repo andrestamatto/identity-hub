@@ -1,8 +1,9 @@
-package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery;
+package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.EmailDeliveryException;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.email.RenderedEmail;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.config.NotificationProperties;
+import br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email.SmtpEmailDelivery;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import jakarta.mail.Message;
 import jakarta.mail.Session;
@@ -84,6 +85,10 @@ public class SmtpEmailDeliveryTest {
                                 maxAttempts,
                                 retryBackoffMillis
                         )
+                ),
+                new NotificationProperties.SmsNotification(
+                        true,
+                        "log"
                 )
         );
     }

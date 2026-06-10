@@ -4,7 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix="identity-hub.notification")
 public record NotificationProperties(
-    EmailNotification email
+    EmailNotification email,
+    SmsNotification sms
 ) {
 
     public record EmailNotification(
@@ -12,6 +13,11 @@ public record NotificationProperties(
         String provider,
         String from,
         Smtp smtp
+    ) {}
+
+    public record SmsNotification(
+            boolean enabled,
+            String provider
     ) {}
 
     public record Smtp(

@@ -56,7 +56,7 @@ public class UserNotificationListeners {
 
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE,
-                SmsMessageTemplate.UNDEFINED
+                SmsMessageTemplate.SMS_USER_VERIFICATION_CODE
         );
 
         var notificationMessage = NotificationMessage.create(
@@ -99,7 +99,7 @@ public class UserNotificationListeners {
 
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_SUCCESSFULLY_ACTIVATED,
-                SmsMessageTemplate.UNDEFINED
+                SmsMessageTemplate.SMS_USER_SUCCESSFULLY_ACTIVATED
         );
 
         var notificationMessage = NotificationMessage.create(

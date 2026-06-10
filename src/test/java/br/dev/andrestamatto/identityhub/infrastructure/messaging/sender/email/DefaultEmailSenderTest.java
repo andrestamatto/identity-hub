@@ -1,4 +1,4 @@
-package br.dev.andrestamatto.identityhub.infrastructure.messaging.email;
+package br.dev.andrestamatto.identityhub.infrastructure.messaging.sender.email;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.channels.NotificationChannels;
@@ -8,6 +8,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.rende
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
+import br.dev.andrestamatto.identityhub.infrastructure.messaging.sender.email.DefaultEmailSender;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import org.junit.jupiter.api.Test;
 
