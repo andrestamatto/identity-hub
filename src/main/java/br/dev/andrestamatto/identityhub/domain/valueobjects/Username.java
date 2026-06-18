@@ -5,17 +5,40 @@ public record Username(
         UsernameType usernameType
 ) {
     public Username {
-        if (value == null || usernameType == null) { throw new IllegalArgumentException("Username value or type must not be null."); }
-        if (!usernameType.validate(value)) { throw new IllegalArgumentException("Invalid username value."); }
+        if (value == null || value.isBlank() || usernameType == null) {
+            throw new IllegalArgumentException("Username value or type must not be null or blank.");
+        }
     }
 
-    // Default type: EMAIL
     public static Username create(String value) {
-        return Username.create(value, UsernameType.EMAIL);
+        return email(value);
     }
 
     public static Username create(String value, UsernameType type) {
-        return new Username(value, type);
+        if (type == null) {
+            throw new IllegalArgumentException("Username type must not be null.");
+        }
+
+        return switch (type) {
+            case EMAIL -> email(value);
+            case PHONE -> phone(value);
+        };
+    }
+
+    public boolean isEmail() {
+        return UsernameType.EMAIL.equals(usernameType);
+    }
+
+    public boolean isPhone() {
+        return UsernameType.PHONE.equals(usernameType);
+    }
+
+    public static Username email(String value) {
+        return new Username(value, UsernameType.EMAIL);
+    }
+
+    public static Username phone(String value) {
+        return new Username(value, UsernameType.PHONE);
     }
 
 }

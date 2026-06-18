@@ -7,6 +7,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPubl
 import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
+import br.dev.andrestamatto.identityhub.application.ports.output.UsernameResolver;
 import br.dev.andrestamatto.identityhub.application.ports.output.VerificationTokenGenerator;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
@@ -26,20 +27,22 @@ public class RegisterUserUseCase implements RegisterUser {
     private final UserRepository userRepository;
     private final Clock clock;
     private final VerificationTokenGenerator verificationTokenGenerator;
+    private final UsernameResolver usernameResolver;
 
-    public RegisterUserUseCase(UserRegistrationPolicy registrationPolicy, DomainEventPublisher domainEventPublisher, PasswordHasher passwordHasher, UserRepository userRepository, Clock clock, VerificationTokenGenerator verificationTokenGenerator) {
+    public RegisterUserUseCase(UserRegistrationPolicy registrationPolicy, DomainEventPublisher domainEventPublisher, PasswordHasher passwordHasher, UserRepository userRepository, Clock clock, VerificationTokenGenerator verificationTokenGenerator, UsernameResolver usernameResolver) {
         this.registrationPolicy = registrationPolicy;
         this.domainEventPublisher = domainEventPublisher;
         this.passwordHasher = passwordHasher;
         this.userRepository = userRepository;
         this.clock = clock;
         this.verificationTokenGenerator = verificationTokenGenerator;
+        this.usernameResolver = usernameResolver;
     }
 
     @Override
     public User execute(RegisterUserCommand command) {
 
-        var username = Username.create(command.username());
+        var username = usernameResolver.resolve(command.username());
         log.info("Register user requested. usernameType={}", username.usernameType());
 
         if ( userRepository.existsBy(username) ) {
@@ -91,9 +94,6 @@ public class RegisterUserUseCase implements RegisterUser {
         var verificationMethod = switch (username.usernameType()) {
             case EMAIL -> NotificationMethod.EMAIL;
             case PHONE -> NotificationMethod.SMS;
-            case EMAIL_OR_PHONE -> NotificationMethod.BOTH;
-            case EXTERNAL_ID -> throw new UnsupportedOperationException("ExternalId is not supported yet.");
-            case UNKNOWN -> throw new UnsupportedOperationException("Unknown user type.");
         };
 
         log.info("Generating verification token. usernameType={} notificationMethod={}", username.usernameType(), verificationMethod);

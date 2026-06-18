@@ -31,6 +31,7 @@ dependencies {
     implementation 'org.springframework:spring-aspects'
 
     implementation "com.twilio.sdk:twilio:12.1.1"
+    implementation "com.googlecode.libphonenumber:libphonenumber:9.0.32"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

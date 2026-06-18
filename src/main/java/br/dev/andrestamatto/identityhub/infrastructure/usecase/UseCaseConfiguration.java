@@ -4,6 +4,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPubl
 import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
+import br.dev.andrestamatto.identityhub.application.ports.output.UsernameResolver;
 import br.dev.andrestamatto.identityhub.application.ports.output.VerificationTokenGenerator;
 import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUser;
 import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUserUseCase;
@@ -20,8 +21,8 @@ public class UseCaseConfiguration {
 
     @Bean
     @Transactional
-    public ConfirmUser confirmUser(UserRepository userRepository, DomainEventPublisher domainEventPublisher, Clock clock) {
-        return new ConfirmUserUseCase(userRepository,  domainEventPublisher, clock);
+    public ConfirmUser confirmUser(UserRepository userRepository, DomainEventPublisher domainEventPublisher, Clock clock, UsernameResolver usernameResolver) {
+        return new ConfirmUserUseCase(userRepository,  domainEventPublisher, clock, usernameResolver);
     }
 
     @Bean
@@ -32,7 +33,8 @@ public class UseCaseConfiguration {
             PasswordHasher passwordHasher,
             UserRepository userRepository,
             Clock clock,
-            VerificationTokenGenerator verificationTokenGenerator
+            VerificationTokenGenerator verificationTokenGenerator,
+            UsernameResolver usernameResolver
     ) {
         return new RegisterUserUseCase(
                 userRegistrationPolicy,
@@ -40,7 +42,8 @@ public class UseCaseConfiguration {
                 passwordHasher,
                 userRepository,
                 clock,
-                verificationTokenGenerator
+                verificationTokenGenerator,
+                usernameResolver
         );
     }
 }

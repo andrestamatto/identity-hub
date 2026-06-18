@@ -6,14 +6,17 @@ import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundExcep
 import br.dev.andrestamatto.identityhub.application.ports.input.command.ConfirmUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPublisher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
+import br.dev.andrestamatto.identityhub.application.ports.output.UsernameResolver;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
 import br.dev.andrestamatto.identityhub.domain.exceptions.VerificationTokenException;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.UserStatus;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
+import br.dev.andrestamatto.identityhub.domain.valueobjects.UsernameType;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -32,11 +35,13 @@ public class ConfirmUserRegistrationUseCaseTest {
     private ConfirmUserCommand validConfirmUserCommand;
     private ConfirmUserCommand invalidConfirmUserCommand;
     private Clock baseClock;
+    private UsernameResolver usernameResolver;
 
     @BeforeEach
     public void setup() {
         mockedUserRepository = mock(UserRepository.class);
         mockedDomainEventPublisher = mock(DomainEventPublisher.class);
+        usernameResolver = mock(UsernameResolver.class);
         validConfirmUserCommand = new ConfirmUserCommand(
                 UserTestData.validUsernameString,
                 UserTestData.validVerificationCode
@@ -53,15 +58,19 @@ public class ConfirmUserRegistrationUseCaseTest {
         confirmUserUseCase = new ConfirmUserUseCase(
               mockedUserRepository,
               mockedDomainEventPublisher,
-              baseClock
+              baseClock,
+              usernameResolver
         );
 
         expiredConfirmUserUseCase = new ConfirmUserUseCase(
                 mockedUserRepository,
                 mockedDomainEventPublisher,
                 // simulates a code verification 30 minutes in the future.
-                Clock.fixed(baseInstant.plusSeconds(1800), ZoneOffset.UTC)
+                Clock.fixed(baseInstant.plusSeconds(1800), ZoneOffset.UTC),
+                usernameResolver
         );
+
+        when(usernameResolver.resolve(UserTestData.validUsernameString)).thenReturn(Username.create(UserTestData.validUsernameString));
 
     }
 
@@ -125,6 +134,24 @@ public class ConfirmUserRegistrationUseCaseTest {
 
         verify(mockedUserRepository, never()).save(any(User.class));
         verify(mockedDomainEventPublisher, never()).publish(any(UserConfirmedEvent.class));
+    }
+
+    @Test
+    public void IH002ShouldNormalizePhoneUsernameBeforeConfirmationLookup() {
+        var phoneConfirmCommand = new ConfirmUserCommand(
+                "11999998888",
+                UserTestData.validVerificationCode
+        );
+
+        when(usernameResolver.resolve("11999998888")).thenReturn(Username.phone("+5511999998888"));
+        when(mockedUserRepository.findByUsername(any(Username.class))).thenReturn(null);
+
+        assertThrows(UserNotFoundException.class, () -> confirmUserUseCase.execute(phoneConfirmCommand));
+
+        var usernameCaptor = ArgumentCaptor.forClass(Username.class);
+        verify(mockedUserRepository).findByUsername(usernameCaptor.capture());
+        assertEquals("+5511999998888", usernameCaptor.getValue().value());
+        assertEquals(UsernameType.PHONE, usernameCaptor.getValue().usernameType());
     }
 
     private void createDefaultExecuteConfirmUserUseCaseScenario() {

@@ -1,6 +1,8 @@
 package br.dev.andrestamatto.identityhub.infrastructure.support;
 
+import br.dev.andrestamatto.identityhub.application.ports.output.UsernameResolver;
 import br.dev.andrestamatto.identityhub.application.ports.output.VerificationTokenGenerator;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -25,6 +27,16 @@ public class SupportConfiguration {
     @Bean
     public VerificationTokenGenerator RandomVerificationTokenGenerator(Clock clock,  Random random,  Duration fifteenMinutes) {
         return new RandomVerificationTokenGenerator(clock, random, fifteenMinutes);
+    }
+
+    @Bean
+    public PhoneNumberUtil phoneNumberUtil() {
+        return PhoneNumberUtil.getInstance();
+    }
+
+    @Bean
+    public UsernameResolver usernameResolver(PhoneNumberUtil phoneNumberUtil) {
+        return new LibPhoneNumberUsernameResolver(phoneNumberUtil, "BR");
     }
 
 }

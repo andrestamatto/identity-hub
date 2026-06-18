@@ -127,6 +127,21 @@ public class UserNotificationListenersTest {
     }
 
     @Test
+    public void shouldNotifyUserConfirmedBySmsWhenUsernameIsPhone() {
+        var event = new UserConfirmedEvent(Username.phone("+5511999998888"));
+
+        listeners.on(event);
+
+        var messageCaptor = ArgumentCaptor.forClass(NotificationMessage.class);
+        var methodCaptor = ArgumentCaptor.forClass(NotificationMethod.class);
+        verify(userNotifier).notify(messageCaptor.capture(), methodCaptor.capture());
+
+        assertEquals(NotificationMethod.SMS, methodCaptor.getValue());
+        assertEquals("+5511999998888", messageCaptor.getValue().recipient());
+        assertTrue(messageCaptor.getValue().notificationChannels().values().contains(NotificationChannel.SMS));
+    }
+
+    @Test
     public void shouldNotPropagateNotificationFailuresFromAsyncListener() {
         var token = new VerificationToken(
                 UserTestData.validVerificationCode,

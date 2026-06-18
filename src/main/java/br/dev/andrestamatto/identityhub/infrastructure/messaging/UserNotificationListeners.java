@@ -88,8 +88,6 @@ public class UserNotificationListeners {
         var notificationMethod = switch (event.username().usernameType()) {
             case EMAIL -> NotificationMethod.EMAIL;
             case PHONE -> NotificationMethod.SMS;
-            case EMAIL_OR_PHONE -> NotificationMethod.BOTH;
-            case EXTERNAL_ID, UNKNOWN -> NotificationMethod.EMAIL;
         };
         log.info(
                 "Handling user confirmed notification event. usernameType={} notificationMethod={}",
