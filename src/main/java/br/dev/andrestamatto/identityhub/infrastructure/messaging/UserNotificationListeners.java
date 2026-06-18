@@ -54,6 +54,7 @@ public class UserNotificationListeners {
                 notificationMethod
         );
 
+        //TODO: In the future, we want to verify which contacts are authorized to receive notifications.
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE,
                 SmsMessageTemplate.SMS_USER_VERIFICATION_CODE

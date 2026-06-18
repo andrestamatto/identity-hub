@@ -8,14 +8,14 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-public class LibPhoneNumberUsernameResolver implements UsernameResolver {
+public class PhoneEmailUsernameResolver implements UsernameResolver {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.-]+@([\\w-]+\\.)+[\\w-]{2,}$");
 
     private final PhoneNumberUtil phoneNumberUtil;
     private final String defaultPhoneRegion;
 
-    public LibPhoneNumberUsernameResolver(PhoneNumberUtil phoneNumberUtil, String defaultPhoneRegion) {
+    public PhoneEmailUsernameResolver(PhoneNumberUtil phoneNumberUtil, String defaultPhoneRegion) {
         this.phoneNumberUtil = phoneNumberUtil;
         this.defaultPhoneRegion = defaultPhoneRegion;
     }

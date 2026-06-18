@@ -35,8 +35,8 @@ public class SupportConfiguration {
     }
 
     @Bean
-    public UsernameResolver usernameResolver(PhoneNumberUtil phoneNumberUtil) {
-        return new LibPhoneNumberUsernameResolver(phoneNumberUtil, "BR");
+    public UsernameResolver defaultUsernameResolver(PhoneNumberUtil phoneNumberUtil) {
+        return new PhoneEmailUsernameResolver(phoneNumberUtil, "BR");
     }
 
 }

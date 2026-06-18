@@ -90,6 +90,9 @@ All notable changes to this project will be documented in this file.
   - `UsernameResolver` application output port
   - `LibPhoneNumberUsernameResolver` adapter for email detection and E.164 phone normalization
   - `libphonenumber` dependency isolated in infrastructure
+- Environment property binding tests for local secrets and provider credentials:
+  - `IDENTITY_HUB_API_SECRET`
+  - Twilio SMS and WhatsApp provider variables
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -135,6 +138,8 @@ All notable changes to this project will be documented in this file.
 - `RegisterUserUseCase` and `ConfirmUserUseCase` now resolve raw usernames through `UsernameResolver` before repository interaction.
 - Welcome notifications now derive the delivery method from the resolved username type.
 - `Username` no longer depends on external phone parsing libraries and now remains a pure domain value object.
+- Renamed the infrastructure username resolver to `PhoneEmailUsernameResolver` to describe its responsibility instead of its implementation detail.
+- Updated the project specification to include SMS confirmation delivery when the resolved username type is `PHONE`.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
@@ -146,6 +151,8 @@ All notable changes to this project will be documented in this file.
 - Prevented duplicate stacktraces when asynchronous notification delivery fails.
 - Fixed SMS provider bean wiring by binding nested notification provider properties through `NotificationProperties`.
 - Removed hardcoded Twilio recipient and credential defaults from SMS delivery/configuration.
+- Removed the default fallback value for `IDENTITY_HUB_API_SECRET`, requiring it to be supplied explicitly by the environment.
+- Fixed application context tests to provide an explicit fake API secret during test bootstrap.
 
 ## [0.1.0] - 2026-05-12
 ### Added

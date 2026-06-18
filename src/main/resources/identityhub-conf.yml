@@ -1,6 +1,6 @@
 identity-hub:
   security:
-    api-secret: ${IDENTITY_HUB_API_SECRET:temporaryUltraSecretValueForIdentityHubAPI}
+    api-secret: ${IDENTITY_HUB_API_SECRET:}
   policies:
     user-registration:
       username-type-policy:

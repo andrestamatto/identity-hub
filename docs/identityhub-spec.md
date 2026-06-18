@@ -155,6 +155,7 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
   - rejeita confirmação para status incompatível;
   - rejeita confirmação para token expirado ou código inválido.
   - envia código de confirmação por e-mail quando o método é `EMAIL`;
+  - envia código de confirmação por SMS quando método é `PHONE`;
   - envia e-mail de boas-vindas após confirmação bem-sucedida;
   - retorna usuário ativo após confirmação bem-sucedida.
 

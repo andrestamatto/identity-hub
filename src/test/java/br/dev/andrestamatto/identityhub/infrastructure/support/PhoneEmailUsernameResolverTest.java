@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class LibPhoneNumberUsernameResolverTest {
+public class PhoneEmailUsernameResolverTest {
 
-    private LibPhoneNumberUsernameResolver resolver;
+    private PhoneEmailUsernameResolver resolver;
 
     @BeforeEach
     public void setup() {
-        resolver = new LibPhoneNumberUsernameResolver(PhoneNumberUtil.getInstance(), "BR");
+        resolver = new PhoneEmailUsernameResolver(PhoneNumberUtil.getInstance(), "BR");
     }
 
     @Test
