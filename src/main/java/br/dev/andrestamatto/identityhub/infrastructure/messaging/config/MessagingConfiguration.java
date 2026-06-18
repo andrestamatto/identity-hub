@@ -8,6 +8,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.sende
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.SmsSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notifiers.UserNotifier;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.UserVerificationNotifier;
+import br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.sms.TwilioSmsDelivery;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.sender.email.DefaultEmailSender;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.sms.LoggingSmsDelivery;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email.SmtpEmailDelivery;
@@ -68,6 +69,13 @@ public class MessagingConfiguration {
     @ConditionalOnProperty(prefix = "identity-hub.notification.sms", name = "provider", havingValue = "log", matchIfMissing = true)
     public SmsDelivery loggingSmsDelivery() {
         return new LoggingSmsDelivery();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(SmsDelivery.class)
+    @ConditionalOnProperty(prefix = "identity-hub.notification.sms", name = "provider", havingValue = "twilio")
+    public SmsDelivery twilioSmsDelivery(NotificationProperties properties) {
+        return new TwilioSmsDelivery(properties.sms().providers());
     }
 
     @Bean

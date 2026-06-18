@@ -24,4 +24,18 @@ identity-hub:
         retry-backoff-millis: 300
     sms:
       enabled: true
-      provider: log
+      provider: twilio
+      providers:
+        log:
+        twilio:
+          account-sid: ${TWILIO_ACCOUNT_SID:}
+          auth-token: ${TWILIO_AUTH_TOKEN:}
+          from: ${TWILIO_SMS_FROM:}
+    whatsapp:
+      enabled: true
+      providers:
+        twilio:
+          account-sid: ${TWILIO_ACCOUNT_SID:}
+          auth-token: ${TWILIO_AUTH_TOKEN:}
+          from: ${TWILIO_WHATSAPP_FROM:}
+

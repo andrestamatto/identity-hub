@@ -5,7 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix="identity-hub.notification")
 public record NotificationProperties(
     EmailNotification email,
-    SmsNotification sms
+    SmsNotification sms,
+    WhatsAppNotification whatsapp
 ) {
 
     public record EmailNotification(
@@ -13,11 +14,6 @@ public record NotificationProperties(
         String provider,
         String from,
         Smtp smtp
-    ) {}
-
-    public record SmsNotification(
-            boolean enabled,
-            String provider
     ) {}
 
     public record Smtp(
@@ -33,4 +29,28 @@ public record NotificationProperties(
         int maxAttempts,
         int retryBackoffMillis
     ){}
+
+    public record SmsNotification(
+            boolean enabled,
+            String provider,
+            Providers providers
+    ) {}
+
+    public record WhatsAppNotification(
+            boolean enabled,
+            Providers providers
+    ){}
+
+    public record Providers(
+            String log,
+            TwilioProvider twilio
+    ){}
+
+    public record TwilioProvider(
+            String accountSid,
+            String authToken,
+            String from
+    ) {}
+
+
 }

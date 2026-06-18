@@ -88,7 +88,20 @@ public class SmtpEmailDeliveryTest {
                 ),
                 new NotificationProperties.SmsNotification(
                         true,
-                        "log"
+                        "log",
+                        new NotificationProperties.Providers(
+                                "log",
+                                new NotificationProperties.TwilioProvider(
+                                        "accountSid", "authToken", "from")
+                        )
+                ),
+                new NotificationProperties.WhatsAppNotification(
+                        true,
+                        new NotificationProperties.Providers(
+                                "log",
+                                new NotificationProperties.TwilioProvider(
+                                        "accountSid", "authToken", "from")
+                        )
                 )
         );
     }
