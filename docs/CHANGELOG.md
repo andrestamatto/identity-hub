@@ -82,6 +82,14 @@ All notable changes to this project will be documented in this file.
 - Configurable SMTP retry attempts and retry backoff for transient email delivery failures.
 - SMS notification foundation with renderer, template, sender, delivery port, and local logging delivery adapter.
 - Reorganized messaging infrastructure packages by responsibility (`sender`, `delivery`, and `template`) and channel.
+- Real Twilio SMS delivery support:
+  - `TwilioSmsDelivery` adapter
+  - Twilio SDK dependency
+  - configurable SMS provider credentials via environment variables
+- Username resolution port and infrastructure adapter:
+  - `UsernameResolver` application output port
+  - `LibPhoneNumberUsernameResolver` adapter for email detection and E.164 phone normalization
+  - `libphonenumber` dependency isolated in infrastructure
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -123,6 +131,10 @@ All notable changes to this project will be documented in this file.
 - Domain exceptions for verification-token validation and registration-confirmation status moved to the domain layer.
 - Renamed REST user response model from `RegisteredUserResponse` to `UserResponse` so registration and confirmation can share the same response contract.
 - Updated `identityhub-spec.md` to reflect the implemented IH-002 scope and document `IH-006` as the future outbox/retry notification feature.
+- Simplified `UsernameType` to represent only real persisted username types (`EMAIL` and `PHONE`).
+- `RegisterUserUseCase` and `ConfirmUserUseCase` now resolve raw usernames through `UsernameResolver` before repository interaction.
+- Welcome notifications now derive the delivery method from the resolved username type.
+- `Username` no longer depends on external phone parsing libraries and now remains a pure domain value object.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
@@ -132,6 +144,8 @@ All notable changes to this project will be documented in this file.
 - Fixed JPA user mapping to preserve verification-token state during persistence and rehydration.
 - Fixed local SMTP development config to use explicit IPv4 loopback (`127.0.0.1`) for SSH tunnel compatibility.
 - Prevented duplicate stacktraces when asynchronous notification delivery fails.
+- Fixed SMS provider bean wiring by binding nested notification provider properties through `NotificationProperties`.
+- Removed hardcoded Twilio recipient and credential defaults from SMS delivery/configuration.
 
 ## [0.1.0] - 2026-05-12
 ### Added
