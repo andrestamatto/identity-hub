@@ -2,7 +2,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.template.sms;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.SmsRenderer;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.sms.RenderedSms;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.RenderedSms;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
 
 import java.util.List;

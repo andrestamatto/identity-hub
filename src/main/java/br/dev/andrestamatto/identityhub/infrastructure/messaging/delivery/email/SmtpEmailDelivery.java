@@ -2,7 +2,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email
 
 import br.dev.andrestamatto.identityhub.application.exceptions.EmailDeliveryException;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery.EmailDelivery;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.email.RenderedEmail;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.RenderedEmail;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.config.NotificationProperties;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;

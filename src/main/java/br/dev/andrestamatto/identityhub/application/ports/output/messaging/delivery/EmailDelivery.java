@@ -1,6 +1,6 @@
 package br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery;
 
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.email.RenderedEmail;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.RenderedEmail;
 
 /**
  * Low-level email delivery port for an already rendered email.

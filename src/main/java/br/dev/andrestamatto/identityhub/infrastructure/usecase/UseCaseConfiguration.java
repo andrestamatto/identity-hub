@@ -1,11 +1,6 @@
 package br.dev.andrestamatto.identityhub.infrastructure.usecase;
 
-import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPublisher;
-import br.dev.andrestamatto.identityhub.application.ports.output.PasswordHasher;
-import br.dev.andrestamatto.identityhub.application.ports.output.UserRegistrationPolicy;
-import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
-import br.dev.andrestamatto.identityhub.application.ports.output.UsernameResolver;
-import br.dev.andrestamatto.identityhub.application.ports.output.VerificationTokenGenerator;
+import br.dev.andrestamatto.identityhub.application.ports.output.*;
 import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUser;
 import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUserUseCase;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUser;

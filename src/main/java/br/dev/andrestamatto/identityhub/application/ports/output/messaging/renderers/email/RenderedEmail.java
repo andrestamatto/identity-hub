@@ -1,4 +1,4 @@
-package br.dev.andrestamatto.identityhub.application.ports.output.messaging.email;
+package br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email;
 
 /**
  * Rendered email ready for provider delivery.

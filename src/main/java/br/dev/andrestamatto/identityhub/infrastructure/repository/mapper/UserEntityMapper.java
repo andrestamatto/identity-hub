@@ -1,11 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.repository.mapper;
 
 import br.dev.andrestamatto.identityhub.domain.entities.User;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.EncodedPassword;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.VerificationToken;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.UsernameType;
+import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
 import br.dev.andrestamatto.identityhub.infrastructure.repository.entity.UserJpaEntity;
 
 import java.util.Optional;

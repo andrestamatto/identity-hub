@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.sms.RenderedSms;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.RenderedSms;
 
 /**
  * Renders a NotificationMessage into plain-text SMS content.

@@ -1,10 +1,10 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging;
 
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.EmailSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.channels.NotificationChannel;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.SmsSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notifiers.UserNotifier;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.EmailSender;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.SmsSender;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
 
 /**

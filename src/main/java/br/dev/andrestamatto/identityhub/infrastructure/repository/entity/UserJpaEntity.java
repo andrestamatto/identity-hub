@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.repository.entity;
 
-import br.dev.andrestamatto.identityhub.domain.valueobjects.UserStatus;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
+import br.dev.andrestamatto.identityhub.domain.valueobjects.UserStatus;
 import jakarta.persistence.*;
 
 import java.time.Instant;

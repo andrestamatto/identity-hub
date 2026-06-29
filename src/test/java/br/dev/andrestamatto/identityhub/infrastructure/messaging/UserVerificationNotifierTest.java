@@ -81,13 +81,13 @@ public class UserVerificationNotifierTest {
                 UserNotifierTestData.validWhoBoth,
                 Map.of("subject", UserNotifierTestData.verifyYourIdentitySubject, "message", UserNotifierTestData.validWhat),
                 verificationCodeTemplates(),
-                NotificationChannels.emailAndSms()
+                NotificationChannels.all()
         );
 
         assertDoesNotThrow(
                 () -> userVerificationNotifier.notify(
                         notificationMessage,
-                        NotificationMethod.BOTH
+                        NotificationMethod.ALL
                 )
         );
 

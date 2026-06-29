@@ -1,4 +1,4 @@
-package br.dev.andrestamatto.identityhub.application.ports.output.messaging.sms;
+package br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms;
 
 /**
  * Provider-ready SMS content produced after template rendering.

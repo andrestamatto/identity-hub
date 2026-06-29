@@ -90,7 +90,7 @@ public class UserNotificationListenersTest {
     public void shouldNotifyByEmailAndSmsWhenUserIsRegisteredPendingBothVerificationMethods() {
         var token = new VerificationToken(
                 UserTestData.validVerificationCode,
-                NotificationMethod.BOTH,
+                NotificationMethod.ALL,
                 Instant.parse("2026-06-09T13:15:00Z")
         );
         var event = new UserRegisteredPendingVerificationEvent(
@@ -105,7 +105,7 @@ public class UserNotificationListenersTest {
         verify(userNotifier).notify(messageCaptor.capture(), methodCaptor.capture());
 
         var channels = messageCaptor.getValue().notificationChannels().values();
-        assertEquals(NotificationMethod.BOTH, methodCaptor.getValue());
+        assertEquals(NotificationMethod.ALL, methodCaptor.getValue());
         assertTrue(channels.contains(NotificationChannel.EMAIL));
         assertTrue(channels.contains(NotificationChannel.SMS));
     }

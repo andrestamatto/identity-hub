@@ -8,6 +8,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notif
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.WhatsappMessageTemplate;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,10 +55,11 @@ public class UserNotificationListeners {
                 notificationMethod
         );
 
-        //TODO: In the future, we want to verify which contacts are authorized to receive notifications.
+        // TODO: In the future, verify which contacts are authorized to receive notifications.
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE,
-                SmsMessageTemplate.SMS_USER_VERIFICATION_CODE
+                SmsMessageTemplate.SMS_USER_VERIFICATION_CODE,
+                WhatsappMessageTemplate.WHATSAPP_USER_VERIFICATION_CODE
         );
 
         var notificationMessage = NotificationMessage.create(
@@ -98,7 +100,8 @@ public class UserNotificationListeners {
 
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_SUCCESSFULLY_ACTIVATED,
-                SmsMessageTemplate.SMS_USER_SUCCESSFULLY_ACTIVATED
+                SmsMessageTemplate.SMS_USER_SUCCESSFULLY_ACTIVATED,
+                WhatsappMessageTemplate.WHATSAPP_USER_SUCCESSFULLY_ACTIVATED
         );
 
         var notificationMessage = NotificationMessage.create(
@@ -135,7 +138,8 @@ public class UserNotificationListeners {
         return switch (notificationMethod) {
             case EMAIL -> NotificationChannels.email();
             case SMS -> NotificationChannels.sms();
-            case BOTH -> NotificationChannels.emailAndSms();
+            case WHATSAPP -> NotificationChannels.whatsapp();
+            case ALL -> NotificationChannels.all();
         };
     }
 

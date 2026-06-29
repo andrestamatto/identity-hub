@@ -2,12 +2,12 @@ package br.dev.andrestamatto.identityhub.application.usecase;
 
 import br.dev.andrestamatto.identityhub.application.events.UserConfirmedEvent;
 import br.dev.andrestamatto.identityhub.application.exceptions.UserNotFoundException;
-import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
 import br.dev.andrestamatto.identityhub.application.ports.input.command.ConfirmUserCommand;
 import br.dev.andrestamatto.identityhub.application.ports.output.DomainEventPublisher;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
 import br.dev.andrestamatto.identityhub.application.ports.output.UsernameResolver;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
+import br.dev.andrestamatto.identityhub.domain.exceptions.UserStatusDoesNotMatchRegistrationConfirmationException;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.UserStatus;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.VerificationToken;

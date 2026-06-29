@@ -2,10 +2,14 @@ package br.dev.andrestamatto.identityhub.application.ports.output.messaging.temp
 
 /**
  * Template selection for each supported channel in a notification.
- * A message can carry different template identifiers for email and SMS.
+ * A message can carry different template identifiers for email, SMS, and WhatsApp.
  */
 public record MessageTemplates(
         EmailMessageTemplate emailMessageTemplate,
-        SmsMessageTemplate smsMessageTemplate
+        SmsMessageTemplate smsMessageTemplate,
+        WhatsappMessageTemplate whatsappMessageTemplate
 ) {
+    public MessageTemplates(EmailMessageTemplate emailMessageTemplate, SmsMessageTemplate smsMessageTemplate) {
+        this(emailMessageTemplate, smsMessageTemplate, WhatsappMessageTemplate.UNDEFINED);
+    }
 }
