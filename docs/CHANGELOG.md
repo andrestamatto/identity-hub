@@ -93,6 +93,15 @@ All notable changes to this project will be documented in this file.
 - Environment property binding tests for local secrets and provider credentials:
   - `IDENTITY_HUB_API_SECRET`
   - Twilio SMS and WhatsApp provider variables
+- WhatsApp notification rendering foundation:
+  - `WhatsappDelivery` output port
+  - `WhatsappRenderer` output port
+  - `RenderedWhatsapp` rendered message value
+  - `WhatsappMessageTemplate` template identifiers
+  - `TemplatedWhatsappRenderer`
+  - `UserVerificationCodeWhatsappTemplate`
+  - WhatsApp template image asset
+- Explicit WhatsApp channel selection support through `NotificationMethod.WHATSAPP` and `NotificationChannels.whatsapp()`.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -140,6 +149,10 @@ All notable changes to this project will be documented in this file.
 - `Username` no longer depends on external phone parsing libraries and now remains a pure domain value object.
 - Renamed the infrastructure username resolver to `PhoneEmailUsernameResolver` to describe its responsibility instead of its implementation detail.
 - Updated the project specification to include SMS confirmation delivery when the resolved username type is `PHONE`.
+- `MessageTemplates` now carries email, SMS, and WhatsApp template identifiers while preserving the email/SMS constructor for existing callers.
+- Renamed the multi-channel notification option from `BOTH` to `ALL`.
+- Moved rendered email and SMS message values under `application.ports.output.messaging.renderers.*`.
+- Kept `NotificationChannels.all()` limited to currently wired email and SMS delivery; WhatsApp remains an explicit channel until the sender/delivery adapter is implemented.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
@@ -153,6 +166,9 @@ All notable changes to this project will be documented in this file.
 - Removed hardcoded Twilio recipient and credential defaults from SMS delivery/configuration.
 - Removed the default fallback value for `IDENTITY_HUB_API_SECRET`, requiring it to be supplied explicitly by the environment.
 - Fixed application context tests to provide an explicit fake API secret during test bootstrap.
+- Fixed stale/corrupted notification text that had replaced connective words with `recipientNumber` in comments, messages, and tests.
+- Fixed WhatsApp renderer template resolution error message to report the missing WhatsApp template.
+- Fixed test compatibility after adding WhatsApp template selection to `MessageTemplates`.
 
 ## [0.1.0] - 2026-05-12
 ### Added
