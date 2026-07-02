@@ -169,6 +169,7 @@ All notable changes to this project will be documented in this file.
 - Fixed stale/corrupted notification text that had replaced connective words with `recipientNumber` in comments, messages, and tests.
 - Fixed WhatsApp renderer template resolution error message to report the missing WhatsApp template.
 - Fixed test compatibility after adding WhatsApp template selection to `MessageTemplates`.
+- Fixed Flyway dependency alignment for Spring Boot 3.3.11 and PostgreSQL 17 compatibility.
 
 ## [0.1.0] - 2026-05-12
 ### Added
