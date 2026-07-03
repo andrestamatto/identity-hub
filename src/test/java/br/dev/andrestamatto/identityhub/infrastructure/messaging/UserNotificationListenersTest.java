@@ -7,6 +7,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.chann
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notifiers.UserNotifier;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.WhatsappMessageTemplate;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.UsernameType;
@@ -61,6 +62,7 @@ public class UserNotificationListenersTest {
         assertEquals(UserTestData.validVerificationCode, message.details().get("verificationCode"));
         assertEquals(EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE, message.messageTemplates().emailMessageTemplate());
         assertEquals(SmsMessageTemplate.SMS_USER_VERIFICATION_CODE, message.messageTemplates().smsMessageTemplate());
+        assertEquals(WhatsappMessageTemplate.WHATSAPP_USER_VERIFICATION_CODE, message.messageTemplates().whatsappMessageTemplate());
         assertTrue(message.notificationChannels().values().contains(NotificationChannel.EMAIL));
     }
 
@@ -108,6 +110,31 @@ public class UserNotificationListenersTest {
         assertEquals(NotificationMethod.ALL, methodCaptor.getValue());
         assertTrue(channels.contains(NotificationChannel.EMAIL));
         assertTrue(channels.contains(NotificationChannel.SMS));
+    }
+
+    @Test
+    public void shouldNotifyByWhatsappWhenUserIsRegisteredPendingWhatsappVerification() {
+        var token = new VerificationToken(
+                UserTestData.validVerificationCode,
+                NotificationMethod.WHATSAPP,
+                Instant.parse("2026-06-09T13:15:00Z")
+        );
+        var event = new UserRegisteredPendingVerificationEvent(
+                Username.phone("+5511999998888"),
+                token
+        );
+
+        listeners.on(event);
+
+        var messageCaptor = ArgumentCaptor.forClass(NotificationMessage.class);
+        var methodCaptor = ArgumentCaptor.forClass(NotificationMethod.class);
+        verify(userNotifier).notify(messageCaptor.capture(), methodCaptor.capture());
+
+        var message = messageCaptor.getValue();
+        assertEquals(NotificationMethod.WHATSAPP, methodCaptor.getValue());
+        assertEquals("+5511999998888", message.recipient());
+        assertEquals(WhatsappMessageTemplate.WHATSAPP_USER_VERIFICATION_CODE, message.messageTemplates().whatsappMessageTemplate());
+        assertTrue(message.notificationChannels().values().contains(NotificationChannel.WHATSAPP));
     }
 
     @Test

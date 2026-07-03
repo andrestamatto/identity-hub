@@ -5,15 +5,25 @@ package br.dev.andrestamatto.identityhub.application.ports.output.messaging.rend
  */
 public record RenderedWhatsapp(
         String recipientNumber,
-        String body
+        WhatsappMediaType mediaType,
+        String mediaUrl,
+        String caption
 ) {
     public RenderedWhatsapp {
         if (recipientNumber == null || recipientNumber.isBlank()) {
-            throw new IllegalArgumentException("Whatsapp recipient number is required.");
+            throw new IllegalArgumentException("WhatsApp recipient number is required.");
         }
 
-        if (body == null || body.isBlank()) {
-            throw new IllegalArgumentException("Whatsapp body is required.");
+        if (mediaType == null) {
+            throw new IllegalArgumentException("WhatsApp media type is required.");
+        }
+
+        if (mediaType != WhatsappMediaType.TEXT && (mediaUrl == null || mediaUrl.isBlank())) {
+            throw new IllegalArgumentException("WhatsApp media URL is required for media messages.");
+        }
+
+        if (caption == null || caption.isBlank()) {
+            throw new IllegalArgumentException("WhatsApp caption is required.");
         }
     }
 }

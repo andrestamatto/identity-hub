@@ -6,5 +6,5 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.rende
  * Output port for delivering already rendered WhatsApp messages.
  */
 public interface WhatsappDelivery {
-    void deliver(RenderedWhatsapp whatsapp);
+    void deliver(RenderedWhatsapp whatsappContent);
 }

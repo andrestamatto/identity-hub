@@ -38,7 +38,7 @@ public record NotificationProperties(
 
     public record WhatsAppNotification(
             boolean enabled,
-            Providers providers
+            String apiUrl
     ){}
 
     public record Providers(

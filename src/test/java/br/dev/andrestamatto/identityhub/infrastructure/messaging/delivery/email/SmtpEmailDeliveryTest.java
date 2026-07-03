@@ -96,11 +96,7 @@ public class SmtpEmailDeliveryTest {
                 ),
                 new NotificationProperties.WhatsAppNotification(
                         true,
-                        new NotificationProperties.Providers(
-                                "log",
-                                new NotificationProperties.TwilioProvider(
-                                        "accountSid", "authToken", "from")
-                        )
+                        "http://localhost:3000"
                 )
         );
     }

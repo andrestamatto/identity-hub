@@ -1,9 +1,18 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging.template.whatsapp;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.RenderedWhatsapp;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaType;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.WhatsappMessageTemplate;
+import br.dev.andrestamatto.identityhub.infrastructure.media.MediaProperties;
 
 public class UserVerificationCodeWhatsappTemplate implements WhatsappTemplate {
+
+    private final MediaProperties mediaProperties;
+
+    public UserVerificationCodeWhatsappTemplate(MediaProperties mediaProperties) {
+        this.mediaProperties = mediaProperties;
+    }
 
     @Override
     public WhatsappMessageTemplate supports() {
@@ -11,20 +20,27 @@ public class UserVerificationCodeWhatsappTemplate implements WhatsappTemplate {
     }
 
     @Override
-    public String render(NotificationMessage notificationMessage) {
+    public RenderedWhatsapp render(NotificationMessage notificationMessage) {
         var details = notificationMessage.details();
 
-        return """
-                {
-                    "number":"%s",
-                    "mediaType": "image",
-                    "mediaUrl": "",
-                    "caption":"%s"
-                }
+        var formattedCaption = """
+                    Hello, thank you for join us!\\n
+                    Here is your IdentityHub verification code:\\n
+                    \\n---------------\\n
+                    *%s.*
+                    \\n---------------\\n\\n
+                    Be aware this code expires at _*%s.*_
                 """
                 .formatted(
-                        notificationMessage.recipient(),
-                        "IdentityHub code: " + details.get("verificationCode") + ". Expires at " + details.get("expiresAt") + "."
+                        details.get("verificationCode"),
+                        details.get("expiresAt")
                 );
+
+        return new RenderedWhatsapp(
+                notificationMessage.recipient(),
+                WhatsappMediaType.IMAGE,
+                mediaProperties.baseUrl() + "/whatsapp/identityhub.logo.png",
+                formattedCaption
+        );
     }
 }

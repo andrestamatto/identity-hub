@@ -33,9 +33,7 @@ identity-hub:
           from: ${TWILIO_SMS_FROM:}
     whatsapp:
       enabled: true
-      providers:
-        twilio:
-          account-sid: ${TWILIO_ACCOUNT_SID:}
-          auth-token: ${TWILIO_AUTH_TOKEN:}
-          from: ${TWILIO_WHATSAPP_FROM:}
+      api-url: ${IDENTITY_HUB_WHATSAPP_API_URL:}
+  media:
+    base-url: ${IDENTITY_HUB_MEDIA_BASE_URL:}
 

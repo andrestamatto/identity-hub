@@ -24,7 +24,9 @@ public record NotificationChannels(Set<NotificationChannel> values) {
         return new NotificationChannels(Set.of(NotificationChannel.SMS));
     }
 
-    public static NotificationChannels whatsapp() { return new NotificationChannels(Set.of(NotificationChannel.WHATSAPP)); }
+    public static NotificationChannels whatsapp() {
+        return new NotificationChannels(Set.of(NotificationChannel.WHATSAPP));
+    }
 
     public static NotificationChannels all() {
         return new NotificationChannels(Set.of(

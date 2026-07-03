@@ -9,6 +9,10 @@ version = '0.0.1-SNAPSHOT'
 
 ext['flyway.version'] = '10.20.1'
 
+ext {
+    set('springCloudVersion', '2023.0.6')
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -17,6 +21,12 @@ java {
 
 repositories {
     mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
 }
 
 dependencies {
@@ -33,6 +43,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.retry:spring-retry'
     implementation 'org.springframework:spring-aspects'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
     implementation "com.twilio.sdk:twilio:12.1.1"
     implementation "com.googlecode.libphonenumber:libphonenumber:9.0.32"

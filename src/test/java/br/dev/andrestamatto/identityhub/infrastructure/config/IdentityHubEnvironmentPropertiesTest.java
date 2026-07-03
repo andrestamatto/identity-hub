@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
         "TWILIO_ACCOUNT_SID=test-twilio-account-sid",
         "TWILIO_AUTH_TOKEN=test-twilio-auth-token",
         "TWILIO_SMS_FROM=+15550000001",
-        "TWILIO_WHATSAPP_FROM=whatsapp:+15550000002"
+        "IDENTITY_HUB_WHATSAPP_API_URL=http://localhost:3000"
 })
 @ActiveProfiles("test")
 public class IdentityHubEnvironmentPropertiesTest {
@@ -33,13 +33,11 @@ public class IdentityHubEnvironmentPropertiesTest {
     @Test
     public void shouldReadTwilioAccountSidFromEnvironment() {
         assertEquals("test-twilio-account-sid", notificationProperties.sms().providers().twilio().accountSid());
-        assertEquals("test-twilio-account-sid", notificationProperties.whatsapp().providers().twilio().accountSid());
     }
 
     @Test
     public void shouldReadTwilioAuthTokenFromEnvironment() {
         assertEquals("test-twilio-auth-token", notificationProperties.sms().providers().twilio().authToken());
-        assertEquals("test-twilio-auth-token", notificationProperties.whatsapp().providers().twilio().authToken());
     }
 
     @Test
@@ -48,7 +46,7 @@ public class IdentityHubEnvironmentPropertiesTest {
     }
 
     @Test
-    public void shouldReadTwilioWhatsappFromFromEnvironment() {
-        assertEquals("whatsapp:+15550000002", notificationProperties.whatsapp().providers().twilio().from());
+    public void shouldReadWhatsappApiUrlFromEnvironment() {
+        assertEquals("http://localhost:3000", notificationProperties.whatsapp().apiUrl());
     }
 }

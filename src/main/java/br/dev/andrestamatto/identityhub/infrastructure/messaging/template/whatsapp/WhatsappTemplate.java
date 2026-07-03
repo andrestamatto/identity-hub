@@ -1,6 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging.template.whatsapp;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.RenderedWhatsapp;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.WhatsappMessageTemplate;
 
 /**
@@ -9,5 +10,5 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templ
  */
 public interface WhatsappTemplate {
     WhatsappMessageTemplate supports();
-    String render(NotificationMessage notificationMessage);
+    RenderedWhatsapp render(NotificationMessage notificationMessage);
 }

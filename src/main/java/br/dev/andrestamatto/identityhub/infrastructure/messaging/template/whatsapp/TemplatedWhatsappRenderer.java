@@ -23,9 +23,7 @@ public class TemplatedWhatsappRenderer implements WhatsappRenderer {
     @Override
     public RenderedWhatsapp render(NotificationMessage notificationMessage) {
         var template = resolveWhatsappTemplate(notificationMessage);
-        var body = template.render(notificationMessage);
-
-        return new RenderedWhatsapp(notificationMessage.recipient(), body);
+        return template.render(notificationMessage);
     }
 
     private WhatsappTemplate resolveWhatsappTemplate(NotificationMessage notificationMessage) {
