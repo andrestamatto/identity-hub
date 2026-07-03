@@ -1,10 +1,11 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging;
 
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.EmailSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.channels.NotificationChannel;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.SmsSender;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notifiers.UserNotifier;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.EmailSender;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.SmsSender;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.senders.WhatsappSender;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
 
 /**
@@ -16,10 +17,12 @@ public class UserVerificationNotifier implements UserNotifier {
 
     private final EmailSender emailSender;
     private final SmsSender smsSender;
+    private final WhatsappSender whatsappSender;
 
-    public UserVerificationNotifier(EmailSender emailSender, SmsSender smsSender) {
+    public UserVerificationNotifier(EmailSender emailSender, SmsSender smsSender, WhatsappSender whatsappSender) {
         this.emailSender = emailSender;
         this.smsSender = smsSender;
+        this.whatsappSender = whatsappSender;
     }
 
     @Override
@@ -33,7 +36,7 @@ public class UserVerificationNotifier implements UserNotifier {
         switch (channel) {
             case EMAIL -> emailSender.send(notificationMessage);
             case SMS -> smsSender.send(notificationMessage);
-            case WHATSAPP -> throw new UnsupportedOperationException("WhatsApp notification is not implemented yet.");
+            case WHATSAPP -> whatsappSender.send(notificationMessage);
         }
     }
 }

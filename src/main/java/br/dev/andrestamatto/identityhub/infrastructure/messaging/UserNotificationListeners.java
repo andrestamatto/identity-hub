@@ -8,6 +8,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.notif
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.WhatsappMessageTemplate;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +55,11 @@ public class UserNotificationListeners {
                 notificationMethod
         );
 
+        // TODO: In the future, verify which contacts are authorized to receive notifications.
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE,
-                SmsMessageTemplate.UNDEFINED
+                SmsMessageTemplate.SMS_USER_VERIFICATION_CODE,
+                WhatsappMessageTemplate.WHATSAPP_USER_VERIFICATION_CODE
         );
 
         var notificationMessage = NotificationMessage.create(
@@ -74,7 +77,7 @@ public class UserNotificationListeners {
                 event.username().usernameType(),
                 notificationMessage.notificationChannels().values()
         );
-        userNotifier.notify(notificationMessage, notificationMethod);
+        notifyUser(notificationMessage, notificationMethod);
 
     }
 
@@ -88,8 +91,6 @@ public class UserNotificationListeners {
         var notificationMethod = switch (event.username().usernameType()) {
             case EMAIL -> NotificationMethod.EMAIL;
             case PHONE -> NotificationMethod.SMS;
-            case EMAIL_OR_PHONE -> NotificationMethod.BOTH;
-            case EXTERNAL_ID, UNKNOWN -> NotificationMethod.EMAIL;
         };
         log.info(
                 "Handling user confirmed notification event. usernameType={} notificationMethod={}",
@@ -99,7 +100,8 @@ public class UserNotificationListeners {
 
         var messageTemplates = new MessageTemplates(
                 EmailMessageTemplate.EMAIL_USER_SUCCESSFULLY_ACTIVATED,
-                SmsMessageTemplate.UNDEFINED
+                SmsMessageTemplate.SMS_USER_SUCCESSFULLY_ACTIVATED,
+                WhatsappMessageTemplate.WHATSAPP_USER_SUCCESSFULLY_ACTIVATED
         );
 
         var notificationMessage = NotificationMessage.create(
@@ -115,14 +117,29 @@ public class UserNotificationListeners {
                 event.username().usernameType(),
                 notificationMessage.notificationChannels().values()
         );
-        userNotifier.notify(notificationMessage, notificationMethod);
+        notifyUser(notificationMessage, notificationMethod);
+    }
+
+    private void notifyUser(NotificationMessage notificationMessage, NotificationMethod notificationMethod) {
+        try {
+            userNotifier.notify(notificationMessage, notificationMethod);
+        } catch (RuntimeException exception) {
+            log.error(
+                    "User notification failed. notificationMethod={} channels={} reason={}",
+                    notificationMethod,
+                    notificationMessage.notificationChannels().values(),
+                    exception.getMessage(),
+                    exception
+            );
+        }
     }
 
     private NotificationChannels notificationChannelsFrom(NotificationMethod notificationMethod) {
         return switch (notificationMethod) {
             case EMAIL -> NotificationChannels.email();
             case SMS -> NotificationChannels.sms();
-            case BOTH -> NotificationChannels.emailAndSms();
+            case WHATSAPP -> NotificationChannels.whatsapp();
+            case ALL -> NotificationChannels.all();
         };
     }
 

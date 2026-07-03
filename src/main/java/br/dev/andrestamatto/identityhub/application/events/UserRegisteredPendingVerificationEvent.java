@@ -12,4 +12,6 @@ public record UserRegisteredPendingVerificationEvent(
         if ( username == null ) {throw new IllegalArgumentException("username cannot be null");}
         if ( verificationToken == null ) { throw new IllegalArgumentException("verificationToken cannot be null"); }
     }
+
+
 }

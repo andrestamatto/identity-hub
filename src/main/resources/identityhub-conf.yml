@@ -1,6 +1,6 @@
 identity-hub:
   security:
-    api-secret: ${IDENTITY_HUB_API_SECRET:temporaryUltraSecretValueForIdentityHubAPI}
+    api-secret: ${IDENTITY_HUB_API_SECRET:}
   policies:
     user-registration:
       username-type-policy:
@@ -20,3 +20,20 @@ identity-hub:
         connection-timeout: 3000
         read-timeout: 3000
         write-timeout: 3000
+        max-attempts: 3
+        retry-backoff-millis: 300
+    sms:
+      enabled: true
+      provider: twilio
+      providers:
+        log:
+        twilio:
+          account-sid: ${TWILIO_ACCOUNT_SID:}
+          auth-token: ${TWILIO_AUTH_TOKEN:}
+          from: ${TWILIO_SMS_FROM:}
+    whatsapp:
+      enabled: true
+      api-url: ${IDENTITY_HUB_WHATSAPP_API_URL:}
+  media:
+    base-url: ${IDENTITY_HUB_MEDIA_BASE_URL:}
+

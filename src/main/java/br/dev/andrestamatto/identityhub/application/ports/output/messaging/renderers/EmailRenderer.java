@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.email.RenderedEmail;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.RenderedEmail;
 
 /**
  * Email rendering port.

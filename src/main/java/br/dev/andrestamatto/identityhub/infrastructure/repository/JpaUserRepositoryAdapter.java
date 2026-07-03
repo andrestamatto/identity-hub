@@ -3,7 +3,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.repository;
 import br.dev.andrestamatto.identityhub.application.ports.output.UserRepository;
 import br.dev.andrestamatto.identityhub.domain.entities.User;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
-import br.dev.andrestamatto.identityhub.infrastructure.repository.entity.UserJpaEntity;
+import br.dev.andrestamatto.identityhub.infrastructure.repository.entity.UserEntity;
 import br.dev.andrestamatto.identityhub.infrastructure.repository.mapper.UserEntityMapper;
 import br.dev.andrestamatto.identityhub.infrastructure.repository.ports.SpringDataUserRepository;
 
@@ -21,8 +21,8 @@ public class JpaUserRepositoryAdapter implements UserRepository {
 
     @Override
     public User save(User user) {
-        UserJpaEntity entity = UserEntityMapper.jpaEntityFrom(user);
-        UserJpaEntity saved = repository.save(entity);
+        UserEntity entity = UserEntityMapper.jpaEntityFrom(user);
+        UserEntity saved = repository.save(entity);
         return UserEntityMapper.toDomain(saved);
     }
 

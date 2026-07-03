@@ -3,3 +3,10 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+
+identity-hub:
+  notification:
+    whatsapp:
+      api-url: http://localhost:3000
+  media:
+    base-url: http://localhost:8080/media

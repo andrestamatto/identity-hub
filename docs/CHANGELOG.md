@@ -79,6 +79,44 @@ All notable changes to this project will be documented in this file.
   - HTML welcome email template
 - Mailpit setup guide for local SMTP verification flows.
 - Minimal application logging for registration, confirmation, notification dispatch, SMTP delivery, and REST exception handling.
+- Configurable SMTP retry attempts and retry backoff for transient email delivery failures.
+- SMS notification foundation with renderer, template, sender, delivery port, and local logging delivery adapter.
+- Reorganized messaging infrastructure packages by responsibility (`sender`, `delivery`, and `template`) and channel.
+- Real Twilio SMS delivery support:
+  - `TwilioSmsDelivery` adapter
+  - Twilio SDK dependency
+  - configurable SMS provider credentials via environment variables
+- Username resolution port and infrastructure adapter:
+  - `UsernameResolver` application output port
+  - `LibPhoneNumberUsernameResolver` adapter for email detection and E.164 phone normalization
+  - `libphonenumber` dependency isolated in infrastructure
+- Environment property binding tests for local secrets and provider credentials:
+  - `IDENTITY_HUB_API_SECRET`
+  - Twilio SMS and WhatsApp provider variables
+- WhatsApp notification rendering foundation:
+  - `WhatsappDelivery` output port
+  - `WhatsappRenderer` output port
+  - `RenderedWhatsapp` rendered message value
+  - `WhatsappMessageTemplate` template identifiers
+  - `TemplatedWhatsappRenderer`
+  - `UserVerificationCodeWhatsappTemplate`
+  - WhatsApp template image asset
+- Explicit WhatsApp channel selection support through `NotificationMethod.WHATSAPP` and `NotificationChannels.whatsapp()`.
+- PostgreSQL-backed JPA persistence setup:
+  - PostgreSQL JDBC driver
+  - Flyway PostgreSQL support
+  - default `jpa` profile configuration
+  - initial `users` table migration
+- Real WhatsApp verification-code delivery foundation:
+  - OpenFeign client for WhatsApp API integration
+  - `WhatsappSender` output port
+  - `DefaultWhatsappSender`
+  - `DefaultWhatsappDelivery`
+  - configurable WhatsApp API URL
+  - configurable media base URL for WhatsApp message assets
+- Unit test coverage for WhatsApp verification-code notification rendering, routing, sender orchestration, and delivery endpoint selection.
+- Transactional use case decorators for registration and confirmation flows so domain events can be published inside an active transaction.
+- WhatsApp provider request DTO to isolate the external HTTP contract from the internal rendered message model.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -120,6 +158,21 @@ All notable changes to this project will be documented in this file.
 - Domain exceptions for verification-token validation and registration-confirmation status moved to the domain layer.
 - Renamed REST user response model from `RegisteredUserResponse` to `UserResponse` so registration and confirmation can share the same response contract.
 - Updated `identityhub-spec.md` to reflect the implemented IH-002 scope and document `IH-006` as the future outbox/retry notification feature.
+- Simplified `UsernameType` to represent only real persisted username types (`EMAIL` and `PHONE`).
+- `RegisterUserUseCase` and `ConfirmUserUseCase` now resolve raw usernames through `UsernameResolver` before repository interaction.
+- Welcome notifications now derive the delivery method from the resolved username type.
+- `Username` no longer depends on external phone parsing libraries and now remains a pure domain value object.
+- Renamed the infrastructure username resolver to `PhoneEmailUsernameResolver` to describe its responsibility instead of its implementation detail.
+- Updated the project specification to include SMS confirmation delivery when the resolved username type is `PHONE`.
+- `MessageTemplates` now carries email, SMS, and WhatsApp template identifiers while preserving the email/SMS constructor for existing callers.
+- Renamed the multi-channel notification option from `BOTH` to `ALL`.
+- Moved rendered email and SMS message values under `application.ports.output.messaging.renderers.*`.
+- Kept `NotificationChannels.all()` limited to currently wired email and SMS delivery; WhatsApp remains an explicit channel until the sender/delivery adapter is implemented.
+- `RenderedWhatsapp` now carries structured provider-ready content (`recipientNumber`, media type, media URL, and caption) instead of a raw JSON string.
+- WhatsApp media type moved to the application messaging model so output ports no longer depend on infrastructure template classes.
+- JPA user persistence mapping now uses `UserEntity` and the `users` table naming expected by the PostgreSQL migration.
+- Flyway migration location now points to the shared `classpath:db/migration` folder.
+- Phone-based registration now generates WhatsApp verification tokens for the current verification-code delivery flow.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
@@ -128,6 +181,20 @@ All notable changes to this project will be documented in this file.
 - Fixed Thymeleaf verification email template resolution by keeping template names independent from the `.html` suffix.
 - Fixed JPA user mapping to preserve verification-token state during persistence and rehydration.
 - Fixed local SMTP development config to use explicit IPv4 loopback (`127.0.0.1`) for SSH tunnel compatibility.
+- Prevented duplicate stacktraces when asynchronous notification delivery fails.
+- Fixed SMS provider bean wiring by binding nested notification provider properties through `NotificationProperties`.
+- Removed hardcoded Twilio recipient and credential defaults from SMS delivery/configuration.
+- Removed the default fallback value for `IDENTITY_HUB_API_SECRET`, requiring it to be supplied explicitly by the environment.
+- Fixed application context tests to provide an explicit fake API secret during test bootstrap.
+- Fixed stale/corrupted notification text that had replaced connective words with `recipientNumber` in comments, messages, and tests.
+- Fixed WhatsApp renderer template resolution error message to report the missing WhatsApp template.
+- Fixed test compatibility after adding WhatsApp template selection to `MessageTemplates`.
+- Fixed Flyway dependency alignment for Spring Boot 3.3.11 and PostgreSQL 17 compatibility.
+- Fixed application context bootstrap for WhatsApp Feign client tests by providing a test API URL.
+- Fixed WhatsApp notification architecture so application output ports do not depend on infrastructure-owned media types.
+- Fixed WhatsApp media message validation to require media URLs for non-text messages.
+- Fixed transactional event listener execution by moving transaction boundaries from `@Bean` factory methods to use case execution decorators.
+- Fixed WhatsApp media request serialization to send `number`, lowercase `mediaType`, `mediaUrl`, and `caption` as expected by the external API.
 
 ## [0.1.0] - 2026-05-12
 ### Added

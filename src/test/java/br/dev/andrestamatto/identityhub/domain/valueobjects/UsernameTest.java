@@ -4,6 +4,7 @@ package br.dev.andrestamatto.identityhub.domain.valueobjects;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class UsernameTest {
@@ -12,7 +13,22 @@ public class UsernameTest {
     public void shouldCreateUsernameSuccessfully() {
         assertDoesNotThrow(() -> Username.create("test@test.com"));
         assertDoesNotThrow(() -> Username.create("+5511999998888", UsernameType.PHONE));
-        assertDoesNotThrow(() -> Username.create("nonNullAndNonBlankText", UsernameType.EXTERNAL_ID));
+    }
+
+    @Test
+    public void shouldCreateEmailUsername() {
+        var username = Username.email("test@test.com");
+
+        assertEquals("test@test.com", username.value());
+        assertEquals(UsernameType.EMAIL, username.usernameType());
+    }
+
+    @Test
+    public void shouldCreatePhoneUsername() {
+        var username = Username.phone("+5511999998888");
+
+        assertEquals("+5511999998888", username.value());
+        assertEquals(UsernameType.PHONE, username.usernameType());
     }
 
     @Test
@@ -22,13 +38,14 @@ public class UsernameTest {
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenValueIsNull() {
-        assertThrows(IllegalArgumentException.class, () -> Username.create(null, UsernameType.EXTERNAL_ID));
+        assertThrows(IllegalArgumentException.class, () -> Username.create(null));
+        assertThrows(IllegalArgumentException.class, () -> Username.create(null, UsernameType.EMAIL));
     }
 
     @Test
-    public void shouldThrowIllegalArgumentExceptionWhenIdValueIsBlank() {
-        assertThrows(IllegalArgumentException.class, () -> Username.create("", UsernameType.EXTERNAL_ID));
-        assertThrows(IllegalArgumentException.class, () -> Username.create(" ", UsernameType.EXTERNAL_ID));
+    public void shouldThrowIllegalArgumentExceptionWhenValueIsBlank() {
+        assertThrows(IllegalArgumentException.class, () -> Username.create(""));
+        assertThrows(IllegalArgumentException.class, () -> Username.create(" "));
     }
 
     @Test
@@ -38,13 +55,13 @@ public class UsernameTest {
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenEmailIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidEmail"));
-        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidEmail", UsernameType.EMAIL));
+        assertThrows(IllegalArgumentException.class, () -> Username.email(null));
+        assertThrows(IllegalArgumentException.class, () -> Username.email(""));
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenPhoneIsInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> Username.create("invalidPhone", UsernameType.PHONE));
-        assertThrows(IllegalArgumentException.class, () -> Username.create("0123456789", UsernameType.PHONE));
+        assertThrows(IllegalArgumentException.class, () -> Username.phone(null));
+        assertThrows(IllegalArgumentException.class, () -> Username.phone(""));
     }
 }

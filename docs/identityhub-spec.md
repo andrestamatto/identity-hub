@@ -19,7 +19,10 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 ## 3. Linguagem Ubíqua
 - `User`: conta autenticável do sistema.
 - `Credentials`: dados de login (identificador + segredo em claro no input).
-- `UsernameType`: tipo de identificador de login suportado pelo core (`EMAIL`, `PHONE`, `EXTERNAL_ID`).
+- `Username`: identificador principal usado para autenticação/login.
+- `UsernameType`: tipo real do identificador principal de login suportado pelo core (`EMAIL`, `PHONE`).
+- `Contact`: meio de contato associado ao usuário para notificações e recuperação de conta, distinto do `Username`.
+- `ContactType`: tipo de contato (`EMAIL`, `PHONE`).
 - `PasswordHash`: senha armazenada somente em formato seguro.
 - `UserStatus`: estado da conta (`ACTIVE`, `LOCKED`, `DISABLED`, `PENDING_VERIFICATION`).
 - `Role`: papel de acesso (ex.: `ADMIN`, `USER`).
@@ -41,10 +44,22 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 5. `DISABLED` nunca autentica até reativação explícita.
 
 ### 4.1.1 Regras de Identificador (`UsernameType`)
-1. O core suporta nativamente `EMAIL`, `PHONE` e `EXTERNAL_ID`.
-2. O projeto consumidor deve configurar quais `UsernameType` são permitidos na aplicação.
-3. A validação de formato do identificador é responsabilidade de domínio e atualmente está encapsulada em `UsernameType`.
-4. `EXTERNAL_ID` representa identificadores externos/custom do consumidor, com validação mínima de não nulo e não vazio.
+1. O core suporta nativamente `EMAIL` e `PHONE` como tipos reais de `Username`.
+2. `UsernameType` representa o tipo identificado e persistido do `Username`, não uma política de aceite.
+3. A resolução de input bruto para `Username` ocorre por porta de aplicação (`UsernameResolver`) e adapters de infraestrutura.
+4. O domínio não deve depender de bibliotecas externas de parsing/normalização de email ou telefone.
+5. Identificadores externos/federados devem ser modelados futuramente como conceito próprio (ex.: `ExternalIdentity`), não como `UsernameType`.
+
+### 4.1.2 Contatos do Usuário (Feature Futura)
+1. `Username` e `Contact` são conceitos distintos:
+   - `Username` identifica o usuário para autenticação/login;
+   - `Contact` representa meios pelos quais o usuário pode ser contactado/notificado.
+2. Um `User` pode ter zero ou mais contatos adicionais além do `Username`.
+3. Contatos sensíveis devem possuir estado de verificação antes de serem usados para notificações de segurança.
+4. Deve ser possível registrar, no futuro, mais de um contato por tipo (ex.: email principal/secundário, telefone para SMS/WhatsApp).
+5. O `Username` usado no registro inicial pode originar um `Contact` verificado ou pendente de verificação, conforme o fluxo de confirmação aplicável.
+6. Notificações futuras devem poder selecionar canal e contato de destino com base em contatos cadastrados, verificados e preferenciais.
+7. Essa feature não faz parte do escopo atual de `IH-001`/`IH-002`.
 
 ### 4.2 Senha
 1. Hash deve usar algoritmo forte (BCrypt ou equivalente).
@@ -82,7 +97,7 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 
 ### 4.7 Política de Ativação Inicial
 1. O status inicial de registro deve ser configurável pelo projeto consumidor.
-2. Se o status inicial for `PENDING_VERIFICATION`, o consumidor deve prover fluxo de verificação compatível com os `UsernameType` permitidos.
+2. Se o status inicial for `PENDING_VERIFICATION`, o consumidor deve prover fluxo de verificação compatível com o `UsernameType` resolvido.
 3. Se o status inicial for `ACTIVE`, o fluxo de verificação pode ser ignorado por configuração.
 
 ### 4.8 Verificação de Registro (IH-002)
@@ -140,6 +155,7 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
   - rejeita confirmação para status incompatível;
   - rejeita confirmação para token expirado ou código inválido.
   - envia código de confirmação por e-mail quando o método é `EMAIL`;
+  - envia código de confirmação por SMS quando método é `PHONE`;
   - envia e-mail de boas-vindas após confirmação bem-sucedida;
   - retorna usuário ativo após confirmação bem-sucedida.
 
@@ -171,6 +187,15 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
   - reprocessa falhas temporárias com política de retry;
   - marca sucesso/falha final de entrega;
   - evita envio duplicado em reprocessamentos.
+
+### IH-007 - Contatos do Usuário
+- Introduz contatos verificáveis associados ao usuário, separados do identificador principal de login.
+- Critérios:
+  - permite cadastrar contatos do tipo `EMAIL` e `PHONE`;
+  - impede uso de contatos não verificados para notificações sensíveis;
+  - permite marcar contato principal/preferencial por tipo ou canal;
+  - permite notificar por SMS/WhatsApp usuários cujo `Username` seja email, desde que exista telefone verificado;
+  - mantém `Username` como identificador principal de autenticação, sem transformá-lo em lista genérica de contatos.
 
 ## 7. Estratégia TDD (por feature)
 1. Selecionar a feature por ID (ex.: `IH-001`).

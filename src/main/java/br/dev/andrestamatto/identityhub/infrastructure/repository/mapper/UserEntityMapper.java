@@ -1,21 +1,17 @@
 package br.dev.andrestamatto.identityhub.infrastructure.repository.mapper;
 
 import br.dev.andrestamatto.identityhub.domain.entities.User;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.EncodedPassword;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.VerificationToken;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
-import br.dev.andrestamatto.identityhub.domain.valueobjects.UsernameType;
-import br.dev.andrestamatto.identityhub.infrastructure.repository.entity.UserJpaEntity;
+import br.dev.andrestamatto.identityhub.domain.valueobjects.*;
+import br.dev.andrestamatto.identityhub.infrastructure.repository.entity.UserEntity;
 
 import java.util.Optional;
 
 public final class UserEntityMapper {
 
-    public static UserJpaEntity jpaEntityFrom(User user) {
+    public static UserEntity jpaEntityFrom(User user) {
         return Optional.ofNullable(user)
                 .map((validUser) -> {
-                    return UserJpaEntity.of(
+                    return UserEntity.of(
                         validUser.uuid(),
                         validUser.username().value(),
                         validUser.username().usernameType().name(),
@@ -31,7 +27,7 @@ public final class UserEntityMapper {
                 .orElseThrow();
     }
 
-    public static User toDomain(UserJpaEntity jpaUserEntity) {
+    public static User toDomain(UserEntity jpaUserEntity) {
         return Optional.ofNullable(jpaUserEntity)
                 .map( (validJpaUserEntity) -> {
                     return User.fromPersistence(
@@ -68,15 +64,15 @@ public final class UserEntityMapper {
                 .orElse(null);
     }
 
-    private static VerificationToken verificationTokenFrom(UserJpaEntity userJpaEntity) {
-        if (userJpaEntity.getVerificationTokenCode() == null) {
+    private static VerificationToken verificationTokenFrom(UserEntity userEntity) {
+        if (userEntity.getVerificationTokenCode() == null) {
             return null;
         }
 
         return new VerificationToken(
-                userJpaEntity.getVerificationTokenCode(),
-                userJpaEntity.getVerificationTokenMethod(),
-                userJpaEntity.getVerificationTokenExpiresAt()
+                userEntity.getVerificationTokenCode(),
+                userEntity.getVerificationTokenMethod(),
+                userEntity.getVerificationTokenExpiresAt()
         );
     }
 

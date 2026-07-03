@@ -33,6 +33,7 @@ public class RegisterUserUseCaseTest {
     private EncodedPassword hashedPassword;
     private VerificationTokenGenerator verificationTokenGenerator;
     private VerificationToken generatedVerificationToken;
+    private UsernameResolver usernameResolver;
 
     @BeforeEach
     public void setup() {
@@ -43,6 +44,7 @@ public class RegisterUserUseCaseTest {
         userRegistrationPolicy = mock(UserRegistrationPolicy.class);
         registerUserRepository = mock(UserRepository.class);
         verificationTokenGenerator = mock(VerificationTokenGenerator.class);
+        usernameResolver = mock(UsernameResolver.class);
 
         Clock fixedClock = Clock.fixed(Instant.parse("2026-05-18T10:00:00Z"), ZoneOffset.UTC);
 
@@ -57,6 +59,7 @@ public class RegisterUserUseCaseTest {
         var validRawPassword = RawPassword.create(validRawPasswordString);
 
         when(passwordHasher.hashRawPassword(validRawPassword)).thenReturn(hashedPassword);
+        when(usernameResolver.resolve(validUsernameString)).thenReturn(Username.create(validUsernameString));
 
         registerUserUseCase = new RegisterUserUseCase(
                 userRegistrationPolicy,
@@ -64,7 +67,8 @@ public class RegisterUserUseCaseTest {
                 passwordHasher,
                 registerUserRepository,
                 fixedClock,
-                verificationTokenGenerator
+                verificationTokenGenerator,
+                usernameResolver
         );
     }
 
@@ -126,6 +130,30 @@ public class RegisterUserUseCaseTest {
         executeShouldCreateUserWithStatus(UserStatus.PENDING_VERIFICATION);
         verify(domainEventPublisher).publish(any(UserRegisteredPendingVerificationEvent.class));
         verify(verificationTokenGenerator).generate(NotificationMethod.EMAIL);
+    }
+
+    @Test
+    public void IH002ShouldGenerateWhatsappVerificationTokenWhenUsernameIsPhone() {
+        var phoneUserCommand = new RegisterUserCommand(
+                "11999998888",
+                validRawPasswordString
+        );
+
+        when(registerUserRepository.existsBy(Username.create("11999998888"))).thenReturn(false);
+        when(usernameResolver.resolve("11999998888")).thenReturn(Username.phone("+5511999998888"));
+        when(registerUserRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0, User.class));
+        when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(UserStatus.PENDING_VERIFICATION);
+        when(verificationTokenGenerator.generate(NotificationMethod.WHATSAPP)).thenReturn(
+                new VerificationToken(UserTestData.validVerificationCode, NotificationMethod.WHATSAPP, Instant.parse("2099-01-01T00:15:00Z"))
+        );
+
+        var resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.execute(phoneUserCommand));
+
+        assertEquals(UsernameType.PHONE, resultTestUser.username().usernameType());
+        assertEquals("+5511999998888", resultTestUser.username().value());
+        verify(userRegistrationPolicy).initialStatusFor(UsernameType.PHONE);
+        verify(verificationTokenGenerator).generate(NotificationMethod.WHATSAPP);
+        verify(domainEventPublisher).publish(any(UserRegisteredPendingVerificationEvent.class));
     }
 
     @Test
