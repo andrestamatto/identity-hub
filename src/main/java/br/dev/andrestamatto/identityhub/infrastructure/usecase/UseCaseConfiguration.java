@@ -5,7 +5,8 @@ import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUser;
 import br.dev.andrestamatto.identityhub.application.usecase.ConfirmUserUseCase;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUser;
 import br.dev.andrestamatto.identityhub.application.usecase.RegisterUserUseCase;
-import jakarta.transaction.Transactional;
+import br.dev.andrestamatto.identityhub.infrastructure.decorator.TransactionalConfirmUser;
+import br.dev.andrestamatto.identityhub.infrastructure.decorator.TransactionalRegisterUser;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,13 +16,12 @@ import java.time.Clock;
 public class UseCaseConfiguration {
 
     @Bean
-    @Transactional
     public ConfirmUser confirmUser(UserRepository userRepository, DomainEventPublisher domainEventPublisher, Clock clock, UsernameResolver usernameResolver) {
-        return new ConfirmUserUseCase(userRepository,  domainEventPublisher, clock, usernameResolver);
+        var confirmUserUseCase = new ConfirmUserUseCase(userRepository,  domainEventPublisher, clock, usernameResolver);
+        return new TransactionalConfirmUser(confirmUserUseCase);
     }
 
     @Bean
-    @Transactional
     public RegisterUser registerUser(
             UserRegistrationPolicy userRegistrationPolicy,
             DomainEventPublisher domainEventPublisher,
@@ -31,7 +31,7 @@ public class UseCaseConfiguration {
             VerificationTokenGenerator verificationTokenGenerator,
             UsernameResolver usernameResolver
     ) {
-        return new RegisterUserUseCase(
+        var registerUserUseCase = new RegisterUserUseCase(
                 userRegistrationPolicy,
                 domainEventPublisher,
                 passwordHasher,
@@ -40,5 +40,7 @@ public class UseCaseConfiguration {
                 verificationTokenGenerator,
                 usernameResolver
         );
+
+        return new TransactionalRegisterUser(registerUserUseCase);
     }
 }
