@@ -115,6 +115,8 @@ All notable changes to this project will be documented in this file.
   - configurable WhatsApp API URL
   - configurable media base URL for WhatsApp message assets
 - Unit test coverage for WhatsApp verification-code notification rendering, routing, sender orchestration, and delivery endpoint selection.
+- Transactional use case decorators for registration and confirmation flows so domain events can be published inside an active transaction.
+- WhatsApp provider request DTO to isolate the external HTTP contract from the internal rendered message model.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -170,6 +172,7 @@ All notable changes to this project will be documented in this file.
 - WhatsApp media type moved to the application messaging model so output ports no longer depend on infrastructure template classes.
 - JPA user persistence mapping now uses `UserEntity` and the `users` table naming expected by the PostgreSQL migration.
 - Flyway migration location now points to the shared `classpath:db/migration` folder.
+- Phone-based registration now generates WhatsApp verification tokens for the current verification-code delivery flow.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
@@ -190,6 +193,8 @@ All notable changes to this project will be documented in this file.
 - Fixed application context bootstrap for WhatsApp Feign client tests by providing a test API URL.
 - Fixed WhatsApp notification architecture so application output ports do not depend on infrastructure-owned media types.
 - Fixed WhatsApp media message validation to require media URLs for non-text messages.
+- Fixed transactional event listener execution by moving transaction boundaries from `@Bean` factory methods to use case execution decorators.
+- Fixed WhatsApp media request serialization to send `number`, lowercase `mediaType`, `mediaUrl`, and `caption` as expected by the external API.
 
 ## [0.1.0] - 2026-05-12
 ### Added
