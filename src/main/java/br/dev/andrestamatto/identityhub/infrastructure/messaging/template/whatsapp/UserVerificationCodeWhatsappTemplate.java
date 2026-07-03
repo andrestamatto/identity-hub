@@ -24,12 +24,15 @@ public class UserVerificationCodeWhatsappTemplate implements WhatsappTemplate {
         var details = notificationMessage.details();
 
         var formattedCaption = """
-                    Hello, thank you for join us!\\n
-                    Here is your IdentityHub verification code:\\n
-                    \\n---------------\\n
-                    *%s.*
-                    \\n---------------\\n\\n
-                    Be aware this code expires at _*%s.*_
+                Hello, thank you for joining us!
+                Your _*IdentityHub verification code*_ is:
+                
+                ━━━━━━
+                %s
+                ━━━━━━
+                
+                This code expires in:
+                _%s_
                 """
                 .formatted(
                         details.get("verificationCode"),
