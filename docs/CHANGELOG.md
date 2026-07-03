@@ -102,6 +102,19 @@ All notable changes to this project will be documented in this file.
   - `UserVerificationCodeWhatsappTemplate`
   - WhatsApp template image asset
 - Explicit WhatsApp channel selection support through `NotificationMethod.WHATSAPP` and `NotificationChannels.whatsapp()`.
+- PostgreSQL-backed JPA persistence setup:
+  - PostgreSQL JDBC driver
+  - Flyway PostgreSQL support
+  - default `jpa` profile configuration
+  - initial `users` table migration
+- Real WhatsApp verification-code delivery foundation:
+  - OpenFeign client for WhatsApp API integration
+  - `WhatsappSender` output port
+  - `DefaultWhatsappSender`
+  - `DefaultWhatsappDelivery`
+  - configurable WhatsApp API URL
+  - configurable media base URL for WhatsApp message assets
+- Unit test coverage for WhatsApp verification-code notification rendering, routing, sender orchestration, and delivery endpoint selection.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -153,6 +166,10 @@ All notable changes to this project will be documented in this file.
 - Renamed the multi-channel notification option from `BOTH` to `ALL`.
 - Moved rendered email and SMS message values under `application.ports.output.messaging.renderers.*`.
 - Kept `NotificationChannels.all()` limited to currently wired email and SMS delivery; WhatsApp remains an explicit channel until the sender/delivery adapter is implemented.
+- `RenderedWhatsapp` now carries structured provider-ready content (`recipientNumber`, media type, media URL, and caption) instead of a raw JSON string.
+- WhatsApp media type moved to the application messaging model so output ports no longer depend on infrastructure template classes.
+- JPA user persistence mapping now uses `UserEntity` and the `users` table naming expected by the PostgreSQL migration.
+- Flyway migration location now points to the shared `classpath:db/migration` folder.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
@@ -170,6 +187,9 @@ All notable changes to this project will be documented in this file.
 - Fixed WhatsApp renderer template resolution error message to report the missing WhatsApp template.
 - Fixed test compatibility after adding WhatsApp template selection to `MessageTemplates`.
 - Fixed Flyway dependency alignment for Spring Boot 3.3.11 and PostgreSQL 17 compatibility.
+- Fixed application context bootstrap for WhatsApp Feign client tests by providing a test API URL.
+- Fixed WhatsApp notification architecture so application output ports do not depend on infrastructure-owned media types.
+- Fixed WhatsApp media message validation to require media URLs for non-text messages.
 
 ## [0.1.0] - 2026-05-12
 ### Added
