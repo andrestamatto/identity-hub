@@ -88,7 +88,8 @@ public class RegisterUserUseCase implements RegisterUser {
 
         var verificationMethod = switch (username.usernameType()) {
             case EMAIL -> NotificationMethod.EMAIL;
-            case PHONE -> NotificationMethod.SMS;
+            //TODO: We need to enhance this selection: when PHONE, both: SMS and/or WHATSAPP would be choosed.
+            case PHONE -> NotificationMethod.WHATSAPP;
         };
 
         log.info("Generating verification token. usernameType={} notificationMethod={}", username.usernameType(), verificationMethod);

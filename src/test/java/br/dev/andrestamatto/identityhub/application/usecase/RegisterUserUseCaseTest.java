@@ -133,7 +133,7 @@ public class RegisterUserUseCaseTest {
     }
 
     @Test
-    public void IH002ShouldGenerateSmsVerificationTokenWhenUsernameIsPhone() {
+    public void IH002ShouldGenerateWhatsappVerificationTokenWhenUsernameIsPhone() {
         var phoneUserCommand = new RegisterUserCommand(
                 "11999998888",
                 validRawPasswordString
@@ -143,8 +143,8 @@ public class RegisterUserUseCaseTest {
         when(usernameResolver.resolve("11999998888")).thenReturn(Username.phone("+5511999998888"));
         when(registerUserRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0, User.class));
         when(userRegistrationPolicy.initialStatusFor(any(UsernameType.class))).thenReturn(UserStatus.PENDING_VERIFICATION);
-        when(verificationTokenGenerator.generate(NotificationMethod.SMS)).thenReturn(
-                new VerificationToken(UserTestData.validVerificationCode, NotificationMethod.SMS, Instant.parse("2099-01-01T00:15:00Z"))
+        when(verificationTokenGenerator.generate(NotificationMethod.WHATSAPP)).thenReturn(
+                new VerificationToken(UserTestData.validVerificationCode, NotificationMethod.WHATSAPP, Instant.parse("2099-01-01T00:15:00Z"))
         );
 
         var resultTestUser = assertDoesNotThrow(() -> registerUserUseCase.execute(phoneUserCommand));
@@ -152,7 +152,7 @@ public class RegisterUserUseCaseTest {
         assertEquals(UsernameType.PHONE, resultTestUser.username().usernameType());
         assertEquals("+5511999998888", resultTestUser.username().value());
         verify(userRegistrationPolicy).initialStatusFor(UsernameType.PHONE);
-        verify(verificationTokenGenerator).generate(NotificationMethod.SMS);
+        verify(verificationTokenGenerator).generate(NotificationMethod.WHATSAPP);
         verify(domainEventPublisher).publish(any(UserRegisteredPendingVerificationEvent.class));
     }
 
