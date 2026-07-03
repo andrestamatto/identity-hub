@@ -4,6 +4,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.deliv
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.RenderedWhatsapp;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaType;
 import br.dev.andrestamatto.identityhub.infrastructure.apis.WhatsappApiClient;
+import br.dev.andrestamatto.identityhub.infrastructure.apis.WhatsappRequest;
 
 public class DefaultWhatsappDelivery implements WhatsappDelivery {
 
@@ -15,10 +16,11 @@ public class DefaultWhatsappDelivery implements WhatsappDelivery {
 
     @Override
     public void deliver(RenderedWhatsapp whatsappContent) {
+        var request = WhatsappRequest.from(whatsappContent);
         if (whatsappContent.mediaType() == WhatsappMediaType.TEXT) {
-            whatsappApiClient.send(whatsappContent);
+            whatsappApiClient.send(request);
         } else {
-            whatsappApiClient.sendMedia(whatsappContent);
+            whatsappApiClient.sendMedia(request);
         }
     }
 }

@@ -1,7 +1,6 @@
 package br.dev.andrestamatto.identityhub.infrastructure.apis;
 
 
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.RenderedWhatsapp;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,13 +12,13 @@ public interface WhatsappApiClient {
     @PostMapping("/send")
     ResponseEntity<WhatsappResponse> send(
             //@RequestHeader("Authorization") String token,
-            @RequestBody RenderedWhatsapp requestContent
+            @RequestBody WhatsappRequest requestContent
     );
 
     @PostMapping("/send-media")
     ResponseEntity<WhatsappResponse> sendMedia(
             //@RequestHeader("Authorization") String token,
-            @RequestBody RenderedWhatsapp requestContent
+            @RequestBody WhatsappRequest requestContent
     );
 
 }

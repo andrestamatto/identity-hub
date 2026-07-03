@@ -3,7 +3,9 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.whats
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.RenderedWhatsapp;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaType;
 import br.dev.andrestamatto.identityhub.infrastructure.apis.WhatsappApiClient;
+import br.dev.andrestamatto.identityhub.infrastructure.apis.WhatsappRequest;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,8 +28,14 @@ public class DefaultWhatsappDeliveryTest {
 
         delivery.deliver(rendered);
 
-        verify(apiClient).send(rendered);
-        verify(apiClient, never()).sendMedia(rendered);
+        var requestCaptor = ArgumentCaptor.forClass(WhatsappRequest.class);
+        verify(apiClient).send(requestCaptor.capture());
+        verify(apiClient, never()).sendMedia(org.mockito.ArgumentMatchers.any());
+
+        var request = requestCaptor.getValue();
+        assertEquals("+5511999998888", request.number());
+        assertEquals("text", request.mediaType());
+        assertEquals("IdentityHub code: 123456", request.caption());
     }
 
     @Test
@@ -43,8 +51,15 @@ public class DefaultWhatsappDeliveryTest {
 
         delivery.deliver(rendered);
 
-        verify(apiClient).sendMedia(rendered);
-        verify(apiClient, never()).send(rendered);
+        var requestCaptor = ArgumentCaptor.forClass(WhatsappRequest.class);
+        verify(apiClient).sendMedia(requestCaptor.capture());
+        verify(apiClient, never()).send(org.mockito.ArgumentMatchers.any());
+
+        var request = requestCaptor.getValue();
+        assertEquals("+5511999998888", request.number());
+        assertEquals("image", request.mediaType());
+        assertEquals("https://identityhub.dev/media/whatsapp/identityhub.logo.png", request.mediaUrl());
+        assertEquals("IdentityHub code: 123456", request.caption());
     }
 
     @Test
