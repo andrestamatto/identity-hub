@@ -8,9 +8,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "identityhub_users")
-public class UserJpaEntity {
+@Table(name = "users")
+public class UserEntity {
     @Id
+    @Column(name="user_id")
     UUID id;
 
     @Column(nullable = false, unique = true)
@@ -42,11 +43,11 @@ public class UserJpaEntity {
     @Column
     Instant verificationTokenExpiresAt;
 
-    protected UserJpaEntity() {
+    protected UserEntity() {
         // JPA only
     }
 
-    private UserJpaEntity(
+    private UserEntity(
             UUID id,
             String username,
             String usernameType,
@@ -70,7 +71,7 @@ public class UserJpaEntity {
         this.verificationTokenExpiresAt = verificationTokenExpiresAt;
     }
 
-    public static UserJpaEntity of(
+    public static UserEntity of(
             UUID id,
             String username,
             String usernameType,
@@ -82,7 +83,7 @@ public class UserJpaEntity {
             NotificationMethod verificationTokenMethod,
             Instant verificationTokenExpiresAt
     ) {
-        return new UserJpaEntity(
+        return new UserEntity(
                 id,
                 username,
                 usernameType,

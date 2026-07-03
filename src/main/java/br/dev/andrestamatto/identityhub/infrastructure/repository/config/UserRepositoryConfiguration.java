@@ -22,7 +22,7 @@ public class UserRepositoryConfiguration {
     @Bean
     @ConditionalOnProperty(prefix = "identity-hub.repository", name = "type", havingValue = "jpa")
     @ConditionalOnClass(JpaRepository.class)
-    UserRepository jpaUserRepository(SpringDataUserRepository repository) {
+    public UserRepository jpaUserRepository(SpringDataUserRepository repository) {
         return new JpaUserRepositoryAdapter(repository);
     }
 
