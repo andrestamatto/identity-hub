@@ -2,7 +2,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.sms;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.SmsDeliveryException;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery.SmsDelivery;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.RenderedSms;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.SmsContent;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.config.NotificationProperties;
 import com.twilio.Twilio;
 import com.twilio.exception.ApiException;
@@ -18,7 +18,7 @@ public class TwilioSmsDelivery implements SmsDelivery {
     }
 
     @Override
-    public void deliver(RenderedSms sms) {
+    public void deliver(SmsContent sms) {
         try {
             var twilio = smsProviders.twilio();
             Twilio.init(twilio.accountSid(), twilio.authToken());

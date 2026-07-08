@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery.EmailDelivery;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.RenderedEmail;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.EmailContent;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.config.NotificationProperties;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import jakarta.mail.Session;
@@ -49,7 +49,7 @@ public class SmtpEmailDeliveryRetryTest {
     public void shouldRetrySmtpDeliveryWhenFirstAttemptFails() {
         var firstMessage = new MimeMessage(Session.getInstance(new Properties()));
         var secondMessage = new MimeMessage(Session.getInstance(new Properties()));
-        var renderedEmail = new RenderedEmail(
+        var renderedEmail = new EmailContent(
                 UserTestData.validUsernameString,
                 "Verify your identity",
                 "<p>Code</p>"

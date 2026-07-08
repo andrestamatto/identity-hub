@@ -2,7 +2,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email
 
 import br.dev.andrestamatto.identityhub.application.exceptions.EmailDeliveryException;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery.EmailDelivery;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.RenderedEmail;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.EmailContent;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.config.NotificationProperties;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
@@ -38,7 +38,7 @@ public class SmtpEmailDelivery implements EmailDelivery {
             maxAttemptsExpression = "${identity-hub.notification.email.smtp.max-attempts:3}",
             backoff = @Backoff(delayExpression = "${identity-hub.notification.email.smtp.retry-backoff-millis:300}")
     )
-    public void deliver(RenderedEmail email) {
+    public void deliver(EmailContent email) {
         try {
             log.info(
                     "SMTP email delivery started. host={} port={} subject={}",
@@ -68,7 +68,7 @@ public class SmtpEmailDelivery implements EmailDelivery {
     }
 
     @Recover
-    public void recover(MailException exception, RenderedEmail email) {
+    public void recover(MailException exception, EmailContent email) {
         throw new EmailDeliveryException(errorMessageFrom(exception), exception);
     }
 

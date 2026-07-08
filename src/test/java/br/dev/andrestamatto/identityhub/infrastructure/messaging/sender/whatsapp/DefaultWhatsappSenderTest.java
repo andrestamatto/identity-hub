@@ -4,7 +4,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.Notif
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.channels.NotificationChannels;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery.WhatsappDelivery;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.WhatsappRenderer;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.RenderedWhatsapp;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaContent;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaType;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
@@ -32,11 +32,11 @@ public class DefaultWhatsappSenderTest {
                 ),
                 NotificationChannels.whatsapp()
         );
-        var rendered = new RenderedWhatsapp(
+        var rendered = new WhatsappMediaContent(
                 "+5511999998888",
-                WhatsappMediaType.IMAGE,
+                "IdentityHub code: 123456",
                 "https://identityhub.dev/media/whatsapp/identityhub.logo.png",
-                "IdentityHub code: 123456"
+                WhatsappMediaType.IMAGE
         );
         when(renderer.render(notificationMessage)).thenReturn(rendered);
 

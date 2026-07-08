@@ -2,7 +2,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.template.sms;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.SmsRenderer;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.RenderedSms;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.SmsContent;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
 
 import java.util.List;
@@ -25,11 +25,11 @@ public class TemplatedSmsRenderer implements SmsRenderer {
     }
 
     @Override
-    public RenderedSms render(NotificationMessage notificationMessage) {
+    public SmsContent render(NotificationMessage notificationMessage) {
         var template = resolveSmsTemplate(notificationMessage);
         var body = template.render(notificationMessage);
 
-        return new RenderedSms(notificationMessage.recipient(), body);
+        return new SmsContent(notificationMessage.recipient(), body);
     }
 
     public SmsTemplate resolveSmsTemplate(NotificationMessage notificationMessage) {

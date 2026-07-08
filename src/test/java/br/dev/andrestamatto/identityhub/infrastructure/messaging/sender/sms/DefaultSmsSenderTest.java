@@ -4,7 +4,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.Notif
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.channels.NotificationChannels;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery.SmsDelivery;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.SmsRenderer;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.RenderedSms;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.SmsContent;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
@@ -35,7 +35,7 @@ public class DefaultSmsSenderTest {
                 ),
                 NotificationChannels.sms()
         );
-        var renderedSms = new RenderedSms(VALID_PHONE_NUMBER, "IdentityHub code: 123456.");
+        var renderedSms = new SmsContent(VALID_PHONE_NUMBER, "IdentityHub code: 123456.");
 
         when(smsRenderer.render(notificationMessage)).thenReturn(renderedSms);
 

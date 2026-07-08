@@ -12,6 +12,7 @@ import br.dev.andrestamatto.identityhub.domain.valueobjects.NotificationMethod;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.Username;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.UsernameType;
 import br.dev.andrestamatto.identityhub.domain.valueobjects.VerificationToken;
+import br.dev.andrestamatto.identityhub.infrastructure.events.UserNotificationListeners;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -154,7 +155,7 @@ public class UserNotificationListenersTest {
     }
 
     @Test
-    public void shouldNotifyUserConfirmedBySmsWhenUsernameIsPhone() {
+    public void shouldNotifyUserConfirmedByWhatsappWhenUsernameIsPhone() {
         var event = new UserConfirmedEvent(Username.phone("+5511999998888"));
 
         listeners.on(event);
@@ -163,9 +164,9 @@ public class UserNotificationListenersTest {
         var methodCaptor = ArgumentCaptor.forClass(NotificationMethod.class);
         verify(userNotifier).notify(messageCaptor.capture(), methodCaptor.capture());
 
-        assertEquals(NotificationMethod.SMS, methodCaptor.getValue());
+        assertEquals(NotificationMethod.WHATSAPP, methodCaptor.getValue());
         assertEquals("+5511999998888", messageCaptor.getValue().recipient());
-        assertTrue(messageCaptor.getValue().notificationChannels().values().contains(NotificationChannel.SMS));
+        assertTrue(messageCaptor.getValue().notificationChannels().values().contains(NotificationChannel.WHATSAPP));
     }
 
     @Test

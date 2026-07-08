@@ -3,13 +3,13 @@ package br.dev.andrestamatto.identityhub.application.ports.output.messaging.rend
 /**
  * Provider-ready WhatsApp content produced after template rendering.
  */
-public record RenderedWhatsapp(
+public record WhatsappMediaContent(
         String recipientNumber,
-        WhatsappMediaType mediaType,
+        String caption,
         String mediaUrl,
-        String caption
-) {
-    public RenderedWhatsapp {
+        WhatsappMediaType mediaType
+) implements WhatsappContent {
+    public WhatsappMediaContent {
         if (recipientNumber == null || recipientNumber.isBlank()) {
             throw new IllegalArgumentException("WhatsApp recipient number is required.");
         }

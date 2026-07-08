@@ -4,11 +4,11 @@ package br.dev.andrestamatto.identityhub.application.ports.output.messaging.rend
  * Provider-ready SMS content produced after template rendering.
  * It contains only the destination number and final plain-text body.
  */
-public record RenderedSms(
+public record SmsContent(
         String to,
         String body
 ) {
-    public RenderedSms {
+    public SmsContent {
         if (to == null || to.isBlank()) {
             throw new IllegalArgumentException("SMS destination is required.");
         }

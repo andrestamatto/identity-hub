@@ -6,6 +6,7 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templ
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.SmsMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.WhatsappMessageTemplate;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaContent;
 import br.dev.andrestamatto.identityhub.infrastructure.media.MediaProperties;
 import org.junit.jupiter.api.Test;
 
@@ -25,8 +26,9 @@ public class TemplatedWhatsappRendererTest {
 
         var rendered = renderer.render(verificationNotification(WhatsappMessageTemplate.WHATSAPP_USER_VERIFICATION_CODE));
 
-        assertEquals("+5511999998888", rendered.recipientNumber());
-        assertEquals("https://identityhub.dev/media/whatsapp/identityhub.logo.png", rendered.mediaUrl());
+        var mediaContent = (WhatsappMediaContent) rendered;
+        assertEquals("+5511999998888", mediaContent.recipientNumber());
+        assertEquals("https://identityhub.dev/media/whatsapp/identityhub.logo.png", mediaContent.mediaUrl());
     }
 
     @Test

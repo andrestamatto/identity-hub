@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging.delivery.email;
 
 import br.dev.andrestamatto.identityhub.application.exceptions.EmailDeliveryException;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.RenderedEmail;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.EmailContent;
 import br.dev.andrestamatto.identityhub.infrastructure.messaging.config.NotificationProperties;
 import br.dev.andrestamatto.identityhub.support.UserTestData;
 import jakarta.mail.Message;
@@ -27,7 +27,7 @@ public class SmtpEmailDeliveryTest {
         var javaMailSender = mock(JavaMailSender.class);
         var mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
         var delivery = new SmtpEmailDelivery(notificationProperties(), javaMailSender);
-        var renderedEmail = new RenderedEmail(
+        var renderedEmail = new EmailContent(
                 UserTestData.validUsernameString,
                 "Verify your identity",
                 "<p>Code</p>"
@@ -47,7 +47,7 @@ public class SmtpEmailDeliveryTest {
     public void shouldRecoverSmtpTimeoutAsEmailDeliveryException() {
         var javaMailSender = mock(JavaMailSender.class);
         var delivery = new SmtpEmailDelivery(notificationProperties(1, 0), javaMailSender);
-        var renderedEmail = new RenderedEmail(
+        var renderedEmail = new EmailContent(
                 UserTestData.validUsernameString,
                 "Verify your identity",
                 "<p>Code</p>"

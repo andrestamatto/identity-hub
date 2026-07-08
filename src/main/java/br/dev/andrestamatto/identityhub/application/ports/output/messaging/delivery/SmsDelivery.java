@@ -1,6 +1,6 @@
 package br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery;
 
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.RenderedSms;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.sms.SmsContent;
 
 /**
  * Output port for delivering already rendered SMS messages.
@@ -8,5 +8,5 @@ import br.dev.andrestamatto.identityhub.application.ports.output.messaging.rende
  * AWS SNS, or a local logging adapter.
  */
 public interface SmsDelivery {
-    void deliver(RenderedSms sms);
+    void deliver(SmsContent sms);
 }

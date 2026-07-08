@@ -2,7 +2,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.template.email
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.EmailRenderer;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.RenderedEmail;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.EmailContent;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 
 import java.util.List;
@@ -25,12 +25,12 @@ public class TemplatedEmailRenderer implements EmailRenderer {
     }
 
     @Override
-    public RenderedEmail render(NotificationMessage notificationMessage) {
+    public EmailContent render(NotificationMessage notificationMessage) {
         var template = resolveEmailtemplate(notificationMessage);
         var subject = notificationMessage.details().getOrDefault("subject", "IdentityHub notification");
         var body = template.render(notificationMessage);
 
-        return new RenderedEmail(notificationMessage.recipient(), subject, body);
+        return new EmailContent(notificationMessage.recipient(), subject, body);
     }
 
     public EmailTemplate resolveEmailtemplate(NotificationMessage notificationMessage) {

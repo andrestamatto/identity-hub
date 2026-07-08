@@ -1,4 +1,4 @@
-package br.dev.andrestamatto.identityhub.infrastructure.messaging;
+package br.dev.andrestamatto.identityhub.infrastructure.events;
 
 import br.dev.andrestamatto.identityhub.application.events.UserConfirmedEvent;
 import br.dev.andrestamatto.identityhub.application.events.UserRegisteredPendingVerificationEvent;
@@ -88,10 +88,13 @@ public class UserNotificationListeners {
     @Async("notificationTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(UserConfirmedEvent event) {
+
         var notificationMethod = switch (event.username().usernameType()) {
             case EMAIL -> NotificationMethod.EMAIL;
-            case PHONE -> NotificationMethod.SMS;
+            //TODO: We need to enhance this selection: when PHONE, both: SMS and/or WHATSAPP would be choosed.
+            case PHONE -> NotificationMethod.WHATSAPP;
         };
+
         log.info(
                 "Handling user confirmed notification event. usernameType={} notificationMethod={}",
                 event.username().usernameType(),

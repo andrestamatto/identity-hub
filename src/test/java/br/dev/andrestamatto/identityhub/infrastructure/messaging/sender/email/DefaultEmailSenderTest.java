@@ -3,7 +3,7 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.sender.email;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.channels.NotificationChannels;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.delivery.EmailDelivery;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.RenderedEmail;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.email.EmailContent;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.EmailRenderer;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.EmailMessageTemplate;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.MessageTemplates;
@@ -27,7 +27,7 @@ public class DefaultEmailSenderTest {
                 new MessageTemplates(EmailMessageTemplate.EMAIL_USER_VERIFICATION_CODE, SmsMessageTemplate.UNDEFINED),
                 NotificationChannels.email()
         );
-        var renderedEmail = new RenderedEmail(UserTestData.validUsernameString, "Verify your identity", "<p>Code</p>");
+        var renderedEmail = new EmailContent(UserTestData.validUsernameString, "Verify your identity", "<p>Code</p>");
 
         when(emailRenderer.render(notificationMessage)).thenReturn(renderedEmail);
 

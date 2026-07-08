@@ -1,7 +1,7 @@
 package br.dev.andrestamatto.identityhub.infrastructure.messaging.template.whatsapp;
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.RenderedWhatsapp;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaContent;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaType;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.WhatsappMessageTemplate;
 import br.dev.andrestamatto.identityhub.infrastructure.media.MediaProperties;
@@ -20,7 +20,7 @@ public class UserVerificationCodeWhatsappTemplate implements WhatsappTemplate {
     }
 
     @Override
-    public RenderedWhatsapp render(NotificationMessage notificationMessage) {
+    public WhatsappMediaContent render(NotificationMessage notificationMessage) {
         var details = notificationMessage.details();
 
         var formattedCaption = """
@@ -39,11 +39,11 @@ public class UserVerificationCodeWhatsappTemplate implements WhatsappTemplate {
                         details.get("expiresAt")
                 );
 
-        return new RenderedWhatsapp(
+        return new WhatsappMediaContent(
                 notificationMessage.recipient(),
-                WhatsappMediaType.IMAGE,
+                formattedCaption,
                 mediaProperties.baseUrl() + "/whatsapp/identityhub.logo.png",
-                formattedCaption
+                WhatsappMediaType.IMAGE
         );
     }
 }

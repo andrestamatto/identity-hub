@@ -2,7 +2,8 @@ package br.dev.andrestamatto.identityhub.infrastructure.messaging.template.whats
 
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.NotificationMessage;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.WhatsappRenderer;
-import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.RenderedWhatsapp;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappContent;
+import br.dev.andrestamatto.identityhub.application.ports.output.messaging.renderers.whatsapp.WhatsappMediaContent;
 import br.dev.andrestamatto.identityhub.application.ports.output.messaging.templates.WhatsappMessageTemplate;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public class TemplatedWhatsappRenderer implements WhatsappRenderer {
     }
 
     @Override
-    public RenderedWhatsapp render(NotificationMessage notificationMessage) {
+    public WhatsappContent render(NotificationMessage notificationMessage) {
         var template = resolveWhatsappTemplate(notificationMessage);
         return template.render(notificationMessage);
     }
