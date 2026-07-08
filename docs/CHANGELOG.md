@@ -117,6 +117,12 @@ All notable changes to this project will be documented in this file.
 - Unit test coverage for WhatsApp verification-code notification rendering, routing, sender orchestration, and delivery endpoint selection.
 - Transactional use case decorators for registration and confirmation flows so domain events can be published inside an active transaction.
 - WhatsApp provider request DTO to isolate the external HTTP contract from the internal rendered message model.
+- WhatsApp text/media content model:
+  - `WhatsappContent` sealed interface
+  - `WhatsappTextContent`
+  - `WhatsappMediaContent`
+- Provider-specific WhatsApp request DTOs for text and media payloads.
+- WhatsApp welcome template for successfully activated users.
 
 ### Changed
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
@@ -173,6 +179,9 @@ All notable changes to this project will be documented in this file.
 - JPA user persistence mapping now uses `UserEntity` and the `users` table naming expected by the PostgreSQL migration.
 - Flyway migration location now points to the shared `classpath:db/migration` folder.
 - Phone-based registration now generates WhatsApp verification tokens for the current verification-code delivery flow.
+- Rendered message value objects were renamed from `RenderedEmail`, `RenderedSms`, and `RenderedWhatsapp` to `EmailContent`, `SmsContent`, and WhatsApp-specific content records.
+- WhatsApp delivery now dispatches text and media content through distinct provider request payloads and endpoints.
+- User notification listener moved from `infrastructure.messaging` to `infrastructure.events`.
 
 ### Fixed
 - Normalized password validation error message in `RawPassword`.
@@ -195,6 +204,7 @@ All notable changes to this project will be documented in this file.
 - Fixed WhatsApp media message validation to require media URLs for non-text messages.
 - Fixed transactional event listener execution by moving transaction boundaries from `@Bean` factory methods to use case execution decorators.
 - Fixed WhatsApp media request serialization to send `number`, lowercase `mediaType`, `mediaUrl`, and `caption` as expected by the external API.
+- Fixed WhatsApp delivery tests to cover text/media request mapping and non-null provider responses.
 
 ## [0.1.0] - 2026-05-12
 ### Added
