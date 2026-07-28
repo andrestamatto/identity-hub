@@ -1,5 +1,7 @@
 # Guia: Mailpit para Notificações SMTP Locais
 
+> Guia histórico da baseline `v0.3.0`. Não representa a configuração vigente.
+
 Este guia descreve como usar o Mailpit para testar o envio real de e-mails do IdentityHub em ambiente local ou por túnel SSH.
 
 ## Objetivo
