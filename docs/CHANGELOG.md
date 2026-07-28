@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Integration Mode contract covering the Spring Boot starter, runtime and declarative configuration, token validation, typed client, local console, diagnostics, compatibility, and tests.
 - Security model covering trust boundaries, threats, OAuth/OIDC profiles, tokens, sessions, credentials, MFA, browser and infrastructure controls, verification, release gates, and incident response.
 - Target architecture defining IdentityHub distribution modes, runtime planes, modular monolith boundaries, data ownership, integration flows, consistency strategy, deployment, observability, and testing.
 - MVP behavioral specification covering application isolation, identity lifecycle, authentication, authorization flows, tokens, sessions, platform administration, branding, integration, notifications, auditing, and acceptance scenarios.
