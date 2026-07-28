@@ -22,7 +22,7 @@ Ele descreve:
 - consistência entre componentes;
 - estratégia inicial de implantação, teste e evolução.
 
-Parâmetros criptográficos, ameaças e políticas detalhadas pertencem a `security-model.md`. Contratos e experiência local do starter pertencem a `integration-mode.md`. Decisões arquiteturais estáveis serão formalizadas também em ADRs.
+Parâmetros criptográficos, ameaças e políticas detalhadas pertencem a `security-model.md`. Contratos e experiência local do starter pertencem a `integration-mode.md`. Decisões arquiteturais estáveis são registradas em `adr/`.
 
 ## 2. Direcionadores
 
@@ -901,23 +901,20 @@ Rejeitado porque viola propriedade dos dados, dificulta upgrades e acopla o Iden
 
 Rejeitado porque aquisição e autorização de domínio pertencem ao SaaS consumidor.
 
-## 24. Decisões a detalhar nos próximos documentos
+## 24. Decisões detalhadas e pendentes
 
-- ameaças e controles por fronteira;
-- tempos de vida de tokens, provas e sessões;
-- algoritmo e rotação de chaves;
-- política de senha e MFA;
-- formato público de claims;
-- contrato detalhado do `OnboardingIdentityProof`;
-- autenticação das APIs de integração e administração;
-- formato do arquivo declarativo;
-- comportamento do console local;
-- estratégia concreta de storage;
-- retenção de auditoria e idempotência;
-- escopos e permissões administrativas;
-- critérios de sizing e recuperação.
+Os documentos complementares registram:
 
-Esses detalhes devem respeitar os limites definidos aqui e serão validados incrementalmente.
+- ameaças, tokens, sessões, chaves, senhas, MFA e políticas em `security-model.md`;
+- claims públicos, configuração declarativa, starter e console em
+  `integration-mode.md`;
+- sequência, gates e decisões futuras em `roadmap.md`;
+- decisões arquiteturais aceitas e pendentes em `adr/`.
+
+Estratégia concreta de storage, retenções, sizing e outros parâmetros dependentes da
+implementação continuam sujeitos a ADR ou spike antes da fatia que os utilizar.
+Esses detalhes devem respeitar os limites definidos aqui e ser validados
+incrementalmente.
 
 ## 25. Critérios de conformidade arquitetural
 
