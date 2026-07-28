@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Security model covering trust boundaries, threats, OAuth/OIDC profiles, tokens, sessions, credentials, MFA, browser and infrastructure controls, verification, release gates, and incident response.
 - Target architecture defining IdentityHub distribution modes, runtime planes, modular monolith boundaries, data ownership, integration flows, consistency strategy, deployment, observability, and testing.
 - MVP behavioral specification covering application isolation, identity lifecycle, authentication, authorization flows, tokens, sessions, platform administration, branding, integration, notifications, auditing, and acceptance scenarios.
 - Initial product vision defining the IdentityHub purpose, audiences, value proposition, product principles, MVP direction, and intended outcomes.
