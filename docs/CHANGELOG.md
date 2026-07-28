@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Target architecture defining IdentityHub distribution modes, runtime planes, modular monolith boundaries, data ownership, integration flows, consistency strategy, deployment, observability, and testing.
 - MVP behavioral specification covering application isolation, identity lifecycle, authentication, authorization flows, tokens, sessions, platform administration, branding, integration, notifications, auditing, and acceptance scenarios.
 - Initial product vision defining the IdentityHub purpose, audiences, value proposition, product principles, MVP direction, and intended outcomes.
 - Versioned archive under `docs/archive/v0.3.0/` for the superseded specification, ADRs, and implementation guides, preserving the abandoned baseline while the new product documentation is defined.
