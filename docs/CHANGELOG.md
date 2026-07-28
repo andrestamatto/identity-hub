@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Initial product vision defining the IdentityHub purpose, audiences, value proposition, product principles, MVP direction, and intended outcomes.
 - Versioned archive under `docs/archive/v0.3.0/` for the superseded specification, ADRs, and implementation guides, preserving the abandoned baseline while the new product documentation is defined.
 - Initial domain modeling for authentication core:
   - `Username` and `UsernameType`
