@@ -1,5 +1,7 @@
 # ADR-0002: Fonte de Verdade de Usuários e Autorizações
 
+> Decisão histórica da baseline `v0.3.0`. Não representa a arquitetura vigente.
+
 - Status: accepted
 - Data: 2026-05-14
 

@@ -1,5 +1,7 @@
 # IdentityHub - Especificação de Domínio e Regras de Negócio
 
+> Documento histórico da baseline `v0.3.0`. Não representa a especificação vigente.
+
 ## 1. Objetivo
 IdentityHub é um sistema de autenticação e autorização para APIs, com foco em segurança, rastreabilidade e evolução incremental guiada por TDD.
 
@@ -211,7 +213,7 @@ IdentityHub é um sistema de autenticação e autorização para APIs, com foco 
 - Evitar acoplamento de domínio com anotações/frameworks do Spring.
 - Core de domínio/aplicação desacoplado de infraestrutura (ports/adapters).
 - O projeto consumidor é fonte de verdade de usuários no MVP.
-- Configuração local de SMTP/Mailpit deve seguir o guia em `docs/guides/mailpit.md`.
+- Configuração local de SMTP/Mailpit deve seguir o guia em `guides/mailpit.md`.
 
 ## 9. Evolução por Versão
 - `v0.x`: Embedded Mode com JWT, RBAC, lockout, refresh/logout e starter Spring Boot.
