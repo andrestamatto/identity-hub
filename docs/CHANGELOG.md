@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Product marketing context distinguishing approved positioning, target audiences, pain points, differentiation hypotheses, objections, voice, proof gaps, and stage-based goals.
 - ADR catalog recording the accepted engine, identity, distribution, realm, modularity, outbox, token claims, local console, branding, and data-ownership decisions.
 - Outcome-driven roadmap covering the MVP delivery sequence, product horizons, future security, B2B, ecosystem, commercialization, messaging, and evidence-based scaling.
 - Integration Mode contract covering the Spring Boot starter, runtime and declarative configuration, token validation, typed client, local console, diagnostics, compatibility, and tests.
