@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Approved MIG-002 platform compatibility assessment with supported toolchain evidence, production-mode Keycloak and PostgreSQL probes, Testcontainers validation, least-privilege administration, hosted TOTP verification, and the Auto Radar integration decision.
+- ADR accepting Java 21, Spring Boot 4.1, Gradle 9.6.1, Keycloak 26.7, PostgreSQL 17, managed framework dependencies, and a single Spring Boot 4.1 line for the MVP Integration Mode.
 - Explicit Gradle test-count gate for the 91-test legacy baseline, making accidental omissions visible in the canonical build.
 - Approved migration strategy defining controlled legacy replacement, preparatory increments, vertical MVP slices, testing and security gates, data handling, Keycloak boundaries, outbox entry, rollback, and human approval workflow.
 - ADR establishing `communication` as the canonical capability name and partially superseding the former `notification` module name.
