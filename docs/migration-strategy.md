@@ -279,16 +279,16 @@ Fazer o comando padrão descobrir intencionalmente todo teste elegível.
 
 #### Escopo
 
-- reproduzir a omissão das oito classes;
-- determinar a causa;
-- corrigir somente build ou testes necessários;
+- reproduzir a aparente omissão das oito classes;
+- determinar se a causa está na descoberta ou na medição;
+- corrigir somente o harness ou a documentação necessários;
 - adicionar verificação que torne nova omissão visível;
 - documentar o comando canônico.
 
 #### Verificação
 
 - os 91 testes da baseline são executados ou cada exclusão é justificada;
-- a classe antes omitida aparece no relatório padrão;
+- uma das classes antes considerada omitida aparece no relatório padrão;
 - introduzir falha controlada em teste de prova torna o comando vermelho;
 - reverter a falha devolve o build verde;
 - nenhuma lógica de produção é refatorada.
@@ -302,7 +302,7 @@ Fazer o comando padrão descobrir intencionalmente todo teste elegível.
 
 #### Rollback
 
-Reverter a alteração de harness restaura a baseline documentada sem afetar dados.
+Reverter a alteração de harness remove o gate explícito sem afetar dados.
 
 ### 8.2 MIG-002 — Toolchain e ADR de compatibilidade
 

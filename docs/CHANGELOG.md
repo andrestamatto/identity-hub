@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Explicit Gradle test-count gate for the 91-test legacy baseline, making accidental omissions visible in the canonical build.
 - Approved migration strategy defining controlled legacy replacement, preparatory increments, vertical MVP slices, testing and security gates, data handling, Keycloak boundaries, outbox entry, rollback, and human approval workflow.
 - ADR establishing `communication` as the canonical capability name and partially superseding the former `notification` module name.
 - Approved pre-refactor technical baseline covering the current build, tests, architecture, security, event reliability, guardrails, target gaps, and migration classification.
@@ -131,6 +132,7 @@ All notable changes to this project will be documented in this file.
 - WhatsApp provider request DTO to isolate the external HTTP contract from the internal rendered message model.
 
 ### Changed
+- Corrected the pre-refactor test assessment: all 30 suites and 91 tests were already executed; eight Windows-shortened XML report names were excluded by the original `TEST-*.xml` measurement.
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
 - Simplified `UsernameType` support to `EMAIL`, `PHONE`, and `EXTERNAL_ID` (removed regional document-specific types from core).
 - Refactored `IH-001` orchestration:
