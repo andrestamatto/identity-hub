@@ -1,1 +1,3 @@
 rootProject.name = 'identity-hub'
+
+include 'identityhub-service'
