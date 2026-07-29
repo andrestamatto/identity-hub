@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Data:** 2026-07-28
+- **Parcialmente superseded por:** [ADR-0011](0011-communication-capability-name.md),
+  somente quanto ao nome do módulo `notification`
 
 ## Contexto
 
