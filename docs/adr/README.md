@@ -34,6 +34,7 @@ feitas no documento original.
 | [ADR-0009](0009-projected-branding-snapshot.md) | Accepted | Snapshot de branding projetado no runtime |
 | [ADR-0010](0010-data-ownership-and-runtime-projections.md) | Accepted | Propriedade de dados e projeções operacionais |
 | [ADR-0011](0011-communication-capability-name.md) | Accepted | `communication` como nome canônico da capacidade |
+| [ADR-0012](0012-supported-platform-baseline.md) | Accepted | Baseline suportada da plataforma |
 
 ## Decisões pendentes
 
