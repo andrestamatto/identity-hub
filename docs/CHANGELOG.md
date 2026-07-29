@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Approved MIG-003 controlled reset assessment with TDD evidence, negative guardrail proofs, residue verification, historical secret baseline, and rollback strategy.
+- Initial `identityhub-service` Spring Boot 4 foundation with typed runtime environment, injectable UTC clock, fail-closed stateless security, minimal health probes, and sanitized request correlation.
+- Repository engineering guardrails with project-specific `AGENTS.md`, ArchUnit, Checkstyle, JaCoCo, pinned GitHub Actions, Gradle Wrapper validation, Gitleaks, and dependency review.
 - Approved MIG-002 platform compatibility assessment with supported toolchain evidence, production-mode Keycloak and PostgreSQL probes, Testcontainers validation, least-privilege administration, hosted TOTP verification, and the Auto Radar integration decision.
 - ADR accepting Java 21, Spring Boot 4.1, Gradle 9.6.1, Keycloak 26.7, PostgreSQL 17, managed framework dependencies, and a single Spring Boot 4.1 line for the MVP Integration Mode.
 - Explicit Gradle test-count gate for the 91-test legacy baseline, making accidental omissions visible in the canonical build.
@@ -134,6 +137,8 @@ All notable changes to this project will be documented in this file.
 - WhatsApp provider request DTO to isolate the external HTTP contract from the internal rendered message model.
 
 ### Changed
+- Established `0.4.0-SNAPSHOT` as the post-abandonment development line and upgraded the wrapper to Gradle 9.6.1.
+- Reorganized the build as a multi-project foundation with `identityhub-service` as the first deployable unit.
 - Corrected the pre-refactor test assessment: all 30 suites and 91 tests were already executed; eight Windows-shortened XML report names were excluded by the original `TEST-*.xml` measurement.
 - Renamed `LoginData` to `Credentials` and aligned semantics for authentication input.
 - Simplified `UsernameType` support to `EMAIL`, `PHONE`, and `EXTERNAL_ID` (removed regional document-specific types from core).
@@ -211,6 +216,9 @@ All notable changes to this project will be documented in this file.
 - Fixed WhatsApp media message validation to require media URLs for non-text messages.
 - Fixed transactional event listener execution by moving transaction boundaries from `@Bean` factory methods to use case execution decorators.
 - Fixed WhatsApp media request serialization to send `number`, lowercase `mediaType`, `mediaUrl`, and `caption` as expected by the external API.
+
+### Removed
+- Removed the abandoned active implementation, including proprietary registration and confirmation, local credential hashing, legacy user persistence, messaging providers, templates, profiles, migrations, and their exclusive tests. The historical state remains available through Git history, tag `v0.3.0`, and `docs/archive/v0.3.0/`.
 
 ## [0.1.0] - 2026-05-12
 ### Added
