@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Approved pre-refactor technical baseline covering the current build, tests, architecture, security, event reliability, guardrails, target gaps, and migration classification.
 - Product marketing context distinguishing approved positioning, target audiences, pain points, differentiation hypotheses, objections, voice, proof gaps, and stage-based goals.
 - ADR catalog recording the accepted engine, identity, distribution, realm, modularity, outbox, token claims, local console, branding, and data-ownership decisions.
 - Outcome-driven roadmap covering the MVP delivery sequence, product horizons, future security, B2B, ecosystem, commercialization, messaging, and evidence-based scaling.
