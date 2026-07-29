@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Approved migration strategy defining controlled legacy replacement, preparatory increments, vertical MVP slices, testing and security gates, data handling, Keycloak boundaries, outbox entry, rollback, and human approval workflow.
+- ADR establishing `communication` as the canonical capability name and partially superseding the former `notification` module name.
 - Approved pre-refactor technical baseline covering the current build, tests, architecture, security, event reliability, guardrails, target gaps, and migration classification.
 - Product marketing context distinguishing approved positioning, target audiences, pain points, differentiation hypotheses, objections, voice, proof gaps, and stage-based goals.
 - ADR catalog recording the accepted engine, identity, distribution, realm, modularity, outbox, token claims, local console, branding, and data-ownership decisions.

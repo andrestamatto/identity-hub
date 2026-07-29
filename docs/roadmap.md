@@ -2,9 +2,9 @@
 
 > **Status:** aprovado
 >
-> **Versão do documento:** 1.0
+> **Versão do documento:** 1.1
 >
-> **Última atualização:** 2026-07-28
+> **Última atualização:** 2026-07-29
 
 ## 1. Finalidade
 
@@ -111,8 +111,10 @@ incremental e impedir retorno acidental à arquitetura abandonada.
 - este `roadmap.md`;
 - ADRs das decisões estruturais;
 - contexto de posicionamento em `.agents/product-marketing.md`;
-- estratégia de decomposição e migração da implementação atual;
-- baseline verde de build, testes e análise estática antes da refatoração.
+- [estratégia de migração](migration-strategy.md) da implementação atual;
+- [baseline técnica anterior à refatoração](assessments/pre-refactor-baseline.md);
+- correção dos bloqueadores da baseline para obter build, testes e análise
+  estática verdes antes da refatoração.
 
 ### 6.3 ADRs mínimos
 
