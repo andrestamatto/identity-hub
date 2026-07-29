@@ -56,4 +56,23 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    def isFullSuite = {
+        filter.includePatterns.empty &&
+            filter.commandLineIncludePatterns.empty &&
+            filter.excludePatterns.empty
+    }
+
+    afterSuite { descriptor, result ->
+        if (descriptor.parent == null) {
+            logger.lifecycle("Test gate: ${result.testCount} tests executed")
+
+            if (isFullSuite() && result.testCount != 91) {
+                throw new GradleException(
+                    "Expected 91 tests, but ${result.testCount} were executed. " +
+                        "Update this gate only when the test baseline changes intentionally."
+                )
+            }
+        }
+    }
 }

@@ -7,6 +7,9 @@
 > **Data da avaliação:** 2026-07-29
 >
 > **Commit avaliado:** `cd6b8bd4fd58cb93e76ca4947b1833e70966a715`
+>
+> **Errata:** ver seção 20; a suíte executava 91 testes, embora a medição
+> original tenha contabilizado somente 78.
 
 ## 1. Finalidade
 
@@ -745,3 +748,36 @@ Esta baseline estará aprovada quando:
 Após aprovação, o documento deve ser marcado como `approved`. Seus resultados não
 devem ser reescritos para acompanhar o código futuro; novas medições devem ser
 comparadas com esta fotografia.
+
+## 20. Errata identificada no MIG-001
+
+Esta seção corrige uma interpretação da avaliação original sem substituir seus
+registros históricos.
+
+O comando `clean test` já executava as 30 classes e os 91 métodos de teste no
+commit avaliado. A contagem original considerou somente arquivos de relatório
+compatíveis com `TEST-*.xml`.
+
+No Windows, o Gradle encurtou o nome de oito relatórios XML para manter seus
+caminhos dentro do limite aceito pelo sistema de arquivos. Esses arquivos passaram
+a começar com `__` e ficaram fora do filtro, embora suas suites tivessem sido
+executadas normalmente.
+
+A medição correta usa todos os arquivos `*.xml` de
+`build/test-results/test/`. Ela encontrou:
+
+| Métrica corrigida | Valor |
+|---|---:|
+| Suites executadas | 30 |
+| Testes executados | 91 |
+| Relatórios com nome encurtado | 8 |
+| Falhas, erros ou ignorados | 0 |
+
+Consequências:
+
+- não havia defeito de descoberta no JUnit;
+- as oito classes listadas na seção 9.2 não estavam omitidas;
+- o risco real era a ausência de um gate explícito e a medição dependente do nome
+  físico dos relatórios;
+- o MIG-001 deve fortalecer o harness e documentar a medição correta, sem alterar
+  testes ou dependências.
