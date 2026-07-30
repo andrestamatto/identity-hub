@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Approved SLICE-000 administrative boundary with real Keycloak 26.7 hosted TOTP login, isolated PostgreSQL 17 databases, exact environment and audience validation, role-based access, readiness, correlation, Flyway-owned append-only access auditing, and Testcontainers contract evidence.
 - Approved MIG-003 controlled reset assessment with TDD evidence, negative guardrail proofs, residue verification, historical secret baseline, and rollback strategy.
 - Initial `identityhub-service` Spring Boot 4 foundation with typed runtime environment, injectable UTC clock, fail-closed stateless security, minimal health probes, and sanitized request correlation.
 - Repository engineering guardrails with project-specific `AGENTS.md`, ArchUnit, Checkstyle, JaCoCo, pinned GitHub Actions, Gradle Wrapper validation, Gitleaks, and dependency review.
