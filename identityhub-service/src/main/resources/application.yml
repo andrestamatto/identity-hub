@@ -1,14 +1,30 @@
 spring:
   application:
     name: identityhub-service
+  datasource:
+    url: ${IDENTITYHUB_DATABASE_URL}
+    username: ${IDENTITYHUB_DATABASE_USERNAME}
+    password: ${IDENTITYHUB_DATABASE_PASSWORD}
+  flyway:
+    enabled: true
 
 identityhub:
   runtime:
     environment: ${IDENTITYHUB_ENVIRONMENT:development}
+  security:
+    admin:
+      issuer-uri: ${IDENTITYHUB_ADMIN_ISSUER_URI}
+      jwk-set-uri: ${IDENTITYHUB_ADMIN_JWK_SET_URI}
+      audience: ${IDENTITYHUB_ADMIN_AUDIENCE}
 
 management:
   endpoint:
     health:
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,keycloak
       probes:
         enabled: true
       show-details: never

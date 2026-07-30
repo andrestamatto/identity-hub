@@ -12,7 +12,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude="
+            + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
+            + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
+    "management.endpoint.health.group.readiness.include=readinessState,keycloak",
+    "identityhub.security.admin.issuer-uri=https://auth.dev.example/realms/identityhub",
+    "identityhub.security.admin.jwk-set-uri=https://auth.dev.example/realms/identityhub/certs",
+    "identityhub.security.admin.audience=identityhub-admin-api"
+})
 class IdentityHubApplicationTest {
 
     @Autowired
@@ -23,6 +31,10 @@ class IdentityHubApplicationTest {
 
     @Autowired
     private ApplicationContext applicationContext;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEventRepository
+            administrativeAccessEventRepository;
 
     @Test
     void startsWithDevelopmentEnvironmentAndUtcClock() {
