@@ -18,9 +18,23 @@ class FoundationArchitectureTest {
             .importPackages(BASE_PACKAGE);
 
     @Test
-    void foundationContainsOnlyBootstrapCode() {
+    void foundationContainsOnlyBootstrapAndAuditCode() {
         classes()
-                .should().resideInAPackage(BASE_PACKAGE + ".bootstrap..")
+                .should().resideInAnyPackage(
+                        BASE_PACKAGE + ".bootstrap..",
+                        BASE_PACKAGE + ".audit..")
+                .check(PRODUCTION_CLASSES);
+    }
+
+    @Test
+    void auditApplicationDoesNotDependOnFrameworksOrAdapters() {
+        noClasses()
+                .that().resideInAPackage("..audit.application..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta..",
+                        "..adapter..")
                 .check(PRODUCTION_CLASSES);
     }
 

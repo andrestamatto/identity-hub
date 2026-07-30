@@ -31,7 +31,7 @@ class CorrelationIdFilterTest {
         var response = new MockHttpServletResponse();
 
         filter.doFilter(request, response, (ignoredRequest, ignoredResponse) ->
-                assertThat(MDC.get(CorrelationIdFilter.MDC_KEY))
+                assertThat(request.getAttribute(CorrelationIdFilter.REQUEST_ATTRIBUTE))
                         .isEqualTo("consumer-request_123"));
 
         assertThat(response.getHeader(CorrelationIdFilter.HEADER_NAME))

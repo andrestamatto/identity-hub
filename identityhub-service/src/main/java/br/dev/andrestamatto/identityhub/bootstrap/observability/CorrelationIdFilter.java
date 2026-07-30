@@ -16,10 +16,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-final class CorrelationIdFilter extends OncePerRequestFilter {
+public final class CorrelationIdFilter extends OncePerRequestFilter {
 
     static final String HEADER_NAME = "X-Correlation-ID";
     static final String MDC_KEY = "correlationId";
+    public static final String REQUEST_ATTRIBUTE =
+            CorrelationIdFilter.class.getName() + ".correlationId";
 
     private static final Pattern ALLOWED_VALUE = Pattern.compile("[A-Za-z0-9._-]{1,64}");
 
@@ -38,6 +40,7 @@ final class CorrelationIdFilter extends OncePerRequestFilter {
         var previousCorrelationId = MDC.get(MDC_KEY);
 
         MDC.put(MDC_KEY, correlationId);
+        request.setAttribute(REQUEST_ATTRIBUTE, correlationId);
         response.setHeader(HEADER_NAME, correlationId);
         try {
             filterChain.doFilter(request, response);
