@@ -37,7 +37,8 @@ class ApplicationClientTest {
         assertThat(client.applicationId()).isEqualTo(APPLICATION_ID);
         assertThat(client.key()).isEqualTo(new ApplicationClientKey("social-catalog-api"));
         assertThat(client.type()).isEqualTo(ApplicationClientType.API);
-        assertThat(client.audience()).isEqualTo(new TokenAudience("social-catalog-api"));
+        assertThat(client.settings())
+                .isEqualTo(new ProtectedApiSettings(new TokenAudience("social-catalog-api")));
         assertThat(client.enabled()).isTrue();
         assertThat(client.configuredAt())
                 .isEqualTo(Instant.parse("2026-07-31T14:00:00.123456Z"));

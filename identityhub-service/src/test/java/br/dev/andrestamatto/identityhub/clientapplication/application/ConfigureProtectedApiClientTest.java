@@ -10,6 +10,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicati
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -186,7 +187,8 @@ class ConfigureProtectedApiClientTest {
         @Override
         public Optional<ApplicationClientConfiguration> findByAudience(TokenAudience audience) {
             return configurations.values().stream()
-                    .filter(configuration -> configuration.client().audience().equals(audience))
+                    .filter(configuration -> configuration.client().settings()
+                            .equals(new ProtectedApiSettings(audience)))
                     .findFirst();
         }
 

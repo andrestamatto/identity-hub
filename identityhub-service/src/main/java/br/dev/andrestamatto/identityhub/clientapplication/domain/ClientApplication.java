@@ -59,8 +59,22 @@ public final class ClientApplication {
                 clientId,
                 id,
                 key,
-                ApplicationClientType.API,
-                audience,
+                new ProtectedApiSettings(audience),
+                true,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
+    }
+
+    public ApplicationClient configureSpa(
+            ApplicationClientId clientId,
+            ApplicationClientKey key,
+            SpaSettings settings,
+            Clock clock) {
+        Objects.requireNonNull(clock);
+        return new ApplicationClient(
+                clientId,
+                id,
+                key,
+                settings,
                 true,
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
     }

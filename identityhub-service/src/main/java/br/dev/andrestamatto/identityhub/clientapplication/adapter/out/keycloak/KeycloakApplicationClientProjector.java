@@ -26,7 +26,9 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
 
     static final String MANAGED_ATTRIBUTE = "identityhub.managed";
     static final String CLIENT_ID_ATTRIBUTE = "identityhub.application-client-id";
+    static final String CLIENT_TYPE_ATTRIBUTE = "identityhub.application-client-type";
     static final String AUDIENCE_ATTRIBUTE = "identityhub.audience";
+    static final String PKCE_METHOD_ATTRIBUTE = "pkce.code.challenge.method";
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -174,20 +176,21 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
             representation.put("id", keycloakId);
         }
         representation.put("clientId", keycloakClientId(client));
-        representation.put("name", "IdentityHub API " + client.key());
-        representation.put("description", "Managed protected API projection");
+        var spa = client.type().equals("SPA");
+        representation.put("name", "IdentityHub " + client.type() + " " + client.key());
+        representation.put("description", "Managed " + client.type() + " projection");
         representation.put("protocol", "openid-connect");
         representation.put("enabled", client.enabled());
-        representation.put("bearerOnly", true);
-        representation.put("publicClient", false);
-        representation.put("standardFlowEnabled", false);
+        representation.put("bearerOnly", !spa);
+        representation.put("publicClient", spa);
+        representation.put("standardFlowEnabled", spa);
         representation.put("implicitFlowEnabled", false);
         representation.put("directAccessGrantsEnabled", false);
         representation.put("serviceAccountsEnabled", false);
         representation.put("authorizationServicesEnabled", false);
         representation.put("fullScopeAllowed", false);
-        representation.put("redirectUris", List.of());
-        representation.put("webOrigins", List.of());
+        representation.put("redirectUris", client.redirectUris());
+        representation.put("webOrigins", client.webOrigins());
         representation.put("attributes", managedAttributes(client));
         return objectMapper.writeValueAsString(representation);
     }
@@ -205,21 +208,50 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
     private boolean matches(JsonNode existing, ApplicationClientSnapshot client) {
         var attributes = existing.path("attributes");
         return existing.path("enabled").asBoolean() == client.enabled()
-                && existing.path("bearerOnly").asBoolean()
-                && !existing.path("standardFlowEnabled").asBoolean()
+                && existing.path("bearerOnly").asBoolean() == client.type().equals("API")
+                && existing.path("publicClient").asBoolean() == client.type().equals("SPA")
+                && existing.path("standardFlowEnabled").asBoolean()
+                        == client.type().equals("SPA")
                 && !existing.path("implicitFlowEnabled").asBoolean()
                 && !existing.path("directAccessGrantsEnabled").asBoolean()
                 && !existing.path("serviceAccountsEnabled").asBoolean()
                 && !existing.path("authorizationServicesEnabled").asBoolean()
                 && !existing.path("fullScopeAllowed").asBoolean()
-                && client.audience().equals(attributes.path(AUDIENCE_ATTRIBUTE).asString());
+                && client.type().equals(attributes.path(CLIENT_TYPE_ATTRIBUTE).asString())
+                && typeSpecificSettingsMatch(existing, attributes, client);
     }
 
     private Map<String, String> managedAttributes(ApplicationClientSnapshot client) {
-        return Map.of(
-                MANAGED_ATTRIBUTE, "true",
-                CLIENT_ID_ATTRIBUTE, client.applicationClientId().toString(),
-                AUDIENCE_ATTRIBUTE, client.audience());
+        var attributes = new java.util.LinkedHashMap<String, String>();
+        attributes.put(MANAGED_ATTRIBUTE, "true");
+        attributes.put(CLIENT_ID_ATTRIBUTE, client.applicationClientId().toString());
+        attributes.put(CLIENT_TYPE_ATTRIBUTE, client.type());
+        if (client.type().equals("API")) {
+            attributes.put(AUDIENCE_ATTRIBUTE, client.audience());
+        } else {
+            attributes.put(PKCE_METHOD_ATTRIBUTE, "S256");
+        }
+        return Map.copyOf(attributes);
+    }
+
+    private boolean typeSpecificSettingsMatch(
+            JsonNode existing,
+            JsonNode attributes,
+            ApplicationClientSnapshot client) {
+        if (client.type().equals("API")) {
+            return client.audience().equals(attributes.path(AUDIENCE_ATTRIBUTE).asString())
+                    && existing.path("redirectUris").isEmpty()
+                    && existing.path("webOrigins").isEmpty();
+        }
+        return "S256".equals(attributes.path(PKCE_METHOD_ATTRIBUTE).asString())
+                && jsonStrings(existing.path("redirectUris")).equals(client.redirectUris())
+                && jsonStrings(existing.path("webOrigins")).equals(client.webOrigins());
+    }
+
+    private List<String> jsonStrings(JsonNode array) {
+        var values = new java.util.ArrayList<String>();
+        array.forEach(node -> values.add(node.asString()));
+        return List.copyOf(values);
     }
 
     private URI tokenUri() {
@@ -238,7 +270,8 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
     }
 
     private String keycloakClientId(ApplicationClientSnapshot client) {
-        return "ih-api-" + client.applicationClientId();
+        return "ih-" + client.type().toLowerCase(java.util.Locale.ROOT)
+                + "-" + client.applicationClientId();
     }
 
     private static void ensureSuccess(

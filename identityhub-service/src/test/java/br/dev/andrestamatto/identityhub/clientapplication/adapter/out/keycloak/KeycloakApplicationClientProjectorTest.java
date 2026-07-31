@@ -133,6 +133,27 @@ class KeycloakApplicationClientProjectorTest {
         assertThat(updates).hasValue(0);
     }
 
+    @Test
+    void createsPublicSpaWithAuthorizationCodeAndPkceS256() {
+        projector().project(spaSnapshot());
+
+        assertThat(storedClient.path("clientId").asString())
+                .isEqualTo("ih-spa-ff7c4748-f053-4fb6-91be-d34cf0015834");
+        assertThat(storedClient.path("publicClient").asBoolean()).isTrue();
+        assertThat(storedClient.path("bearerOnly").asBoolean()).isFalse();
+        assertThat(storedClient.path("standardFlowEnabled").asBoolean()).isTrue();
+        assertThat(storedClient.path("implicitFlowEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("directAccessGrantsEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("serviceAccountsEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("redirectUris"))
+                .containsExactly(JSON.valueToTree("https://app.example.com/auth/callback"));
+        assertThat(storedClient.path("webOrigins"))
+                .containsExactly(JSON.valueToTree("https://app.example.com"));
+        assertThat(storedClient.path("attributes").path("pkce.code.challenge.method").asString())
+                .isEqualTo("S256");
+        assertThat(storedClient.path("secret").isMissingNode()).isTrue();
+    }
+
     private KeycloakApplicationClientProjector projector() {
         return new KeycloakApplicationClientProjector(
                 HttpClient.newHttpClient(),
@@ -150,11 +171,33 @@ class KeycloakApplicationClientProjectorTest {
                 "catalog-api",
                 "API",
                 "catalog-api",
+                java.util.List.of(),
+                java.util.List.of(),
                 true,
                 Instant.parse("2026-07-31T16:00:00Z"),
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
                 1,
                 "keycloak-adapter-test",
+                ApplicationClientProjectionState.PENDING,
+                0,
+                Instant.parse("2026-07-31T16:00:00Z"),
+                null);
+    }
+
+    private ApplicationClientSnapshot spaSnapshot() {
+        return new ApplicationClientSnapshot(
+                UUID.fromString("ff7c4748-f053-4fb6-91be-d34cf0015834"),
+                UUID.fromString("184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0"),
+                "catalog-web",
+                "SPA",
+                null,
+                java.util.List.of("https://app.example.com/auth/callback"),
+                java.util.List.of("https://app.example.com"),
+                true,
+                Instant.parse("2026-07-31T16:00:00Z"),
+                UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
+                1,
+                "keycloak-spa-test",
                 ApplicationClientProjectionState.PENDING,
                 0,
                 Instant.parse("2026-07-31T16:00:00Z"),

@@ -15,6 +15,8 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicati
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaTransportPolicy;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -198,6 +200,22 @@ class JdbcApplicationClientConfigurationRepositoryTest {
         assertThat(reconciled.projection().nextAttemptAt()).isEqualTo(NOW.plusSeconds(2));
     }
 
+    @Test
+    void atomicallyRoundTripsSpaEndpointsInDeclaredOrder() {
+        var configuration = spaConfiguration();
+
+        repository.add(configuration);
+
+        var stored = repository.findById(new ApplicationClientId(CLIENT_ID)).orElseThrow();
+        assertThat(ApplicationClientSnapshot.from(stored).redirectUris()).containsExactly(
+                "http://127.0.0.1:5173/auth/callback",
+                "http://127.0.0.1:5173/auth/silent-callback");
+        assertThat(ApplicationClientSnapshot.from(stored).webOrigins())
+                .containsExactly("http://127.0.0.1:5173");
+        assertThat(ApplicationClientSnapshot.from(stored).audience()).isNull();
+        assertThat(numberOfOperations()).isOne();
+    }
+
     private ApplicationClientConfiguration configuration(
             UUID clientId,
             UUID operationId,
@@ -214,6 +232,26 @@ class JdbcApplicationClientConfigurationRepositoryTest {
                         operationId,
                         client.id(),
                         "jdbc-projection-test",
+                        NOW));
+    }
+
+    private ApplicationClientConfiguration spaConfiguration() {
+        var client = application().configureSpa(
+                new ApplicationClientId(CLIENT_ID),
+                new ApplicationClientKey("catalog-web"),
+                SpaSettings.create(
+                        java.util.List.of(
+                                "http://127.0.0.1:5173/auth/callback",
+                                "http://127.0.0.1:5173/auth/silent-callback"),
+                        java.util.List.of("http://127.0.0.1:5173"),
+                        SpaTransportPolicy.DEVELOPMENT),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        return new ApplicationClientConfiguration(
+                client,
+                ApplicationClientProjection.pending(
+                        OPERATION_ID,
+                        client.id(),
+                        "jdbc-spa-projection",
                         NOW));
     }
 

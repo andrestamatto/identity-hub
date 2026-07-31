@@ -243,6 +243,75 @@ class ClientApplicationAdminHttpTest {
         verify(clientRepository, never()).requeue(any(), any());
     }
 
+    @Test
+    void adminConfiguresPublicSpaThroughTypedContract() throws Exception {
+        when(repository.findById(any())).thenReturn(Optional.of(application()));
+        when(clientRepository.findById(any())).thenReturn(Optional.empty());
+        when(clientRepository.findByKey(any(), any())).thenReturn(Optional.empty());
+
+        mvc.perform(put(CLIENT_PATH)
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "SPA",
+                                  "key": "auto-radar-web",
+                                  "redirectUris": [
+                                    "http://127.0.0.1:5173/auth/callback"
+                                  ],
+                                  "webOrigins": ["http://127.0.0.1:5173"]
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("SPA"))
+                .andExpect(jsonPath("$.audience").doesNotExist())
+                .andExpect(jsonPath("$.redirectUris[0]")
+                        .value("http://127.0.0.1:5173/auth/callback"))
+                .andExpect(jsonPath("$.webOrigins[0]")
+                        .value("http://127.0.0.1:5173"))
+                .andExpect(jsonPath("$.projectionState").value("PENDING"));
+    }
+
+    @Test
+    void rejectsFieldsIncompatibleWithDeclaredClientType() throws Exception {
+        mvc.perform(put(CLIENT_PATH)
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "SPA",
+                                  "key": "auto-radar-web",
+                                  "audience": "must-not-exist",
+                                  "redirectUris": ["http://127.0.0.1:5173/callback"],
+                                  "webOrigins": ["http://127.0.0.1:5173"]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid client application"));
+
+        verify(clientRepository, never()).add(any());
+    }
+
+    @Test
+    void rejectsSpaFieldsEvenWhenEmptyForDeclaredApiType() throws Exception {
+        mvc.perform(put(CLIENT_PATH)
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "API",
+                                  "key": "auto-radar-api",
+                                  "audience": "auto-radar-api",
+                                  "redirectUris": [],
+                                  "webOrigins": []
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid client application"));
+
+        verify(clientRepository, never()).add(any());
+    }
+
     private RequestPostProcessor adminWithTotp() {
         return jwt().authorities(
                 new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"),
@@ -267,6 +336,7 @@ class ClientApplicationAdminHttpTest {
     private String protectedApiBody() {
         return """
                 {
+                  "type": "API",
                   "key": "auto-radar-api",
                   "audience": "auto-radar-api"
                 }

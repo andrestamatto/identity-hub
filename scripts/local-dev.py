@@ -454,7 +454,11 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
     client_id = uuid.uuid4()
     client_endpoint = f"{endpoint}/clients/{client_id}"
     client_body = json.dumps(
-        {"key": "local-smoke-api", "audience": f"local-smoke-{client_id}"}
+        {
+            "type": "API",
+            "key": "local-smoke-api",
+            "audience": f"local-smoke-{client_id}",
+        }
     ).encode()
     client_status, configured = put_application(client_endpoint, headers, client_body)
     if client_status != 201 or configured.get("projectionState") != "PENDING":
@@ -471,9 +475,24 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
         if response.status != 202 or reconciled.get("projectionState") != "PENDING":
             raise RuntimeError("A reconciliação da projeção não foi aceita.")
     wait_for_projection(client_endpoint, token, "APPLIED")
+    spa_id = uuid.uuid4()
+    spa_endpoint = f"{endpoint}/clients/{spa_id}"
+    spa_body = json.dumps(
+        {
+            "type": "SPA",
+            "key": "local-smoke-web",
+            "redirectUris": ["http://127.0.0.1:5173/auth/callback"],
+            "webOrigins": ["http://127.0.0.1:5173"],
+        }
+    ).encode()
+    spa_status, spa_configured = put_application(spa_endpoint, headers, spa_body)
+    if spa_status != 201 or spa_configured.get("projectionState") != "PENDING":
+        raise RuntimeError("A configuração inicial da SPA pública não foi aceita.")
+    projected_spa = wait_for_projection(spa_endpoint, token, "APPLIED")
     print(
         "Smoke test aprovado: aplicação idempotente, API protegida projetada "
-        f"e reconciliada no Keycloak; estado {projected['projectionState']}."
+        "e reconciliada, e SPA pública projetada com PKCE no Keycloak; estados "
+        f"{projected['projectionState']} e {projected_spa['projectionState']}."
     )
 
 
@@ -489,11 +508,11 @@ def wait_for_projection(endpoint: str, token: str, expected_state: str) -> dict:
             return projection
         if projection.get("projectionState") == "FAILED":
             raise RuntimeError(
-                "A projeção da API protegida falhou: "
+                "A projeção do cliente da aplicação falhou: "
                 f"{projection.get('lastProjectionFailureCode', 'UNKNOWN')}"
             )
         time.sleep(1)
-    raise RuntimeError("A projeção da API protegida não concluiu em 30 segundos.")
+    raise RuntimeError("A projeção do cliente da aplicação não concluiu em 30 segundos.")
 
 
 def put_application(

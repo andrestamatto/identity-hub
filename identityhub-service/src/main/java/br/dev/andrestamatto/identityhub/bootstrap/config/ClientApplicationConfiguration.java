@@ -6,10 +6,12 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.Applicatio
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureProtectedApiClient;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSpaClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.RegisterClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ReconcileApplicationClientProjection;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaTransportPolicy;
 import java.time.Clock;
 import java.util.UUID;
 import org.springframework.context.annotation.Bean;
@@ -40,6 +42,24 @@ class ClientApplicationConfiguration {
         return new ConfigureProtectedApiClient(
                 applicationRepository,
                 clientRepository,
+                clock,
+                UUID::randomUUID);
+    }
+
+    @Bean
+    ConfigureSpaClient configureSpaClient(
+            ClientApplicationRepository applicationRepository,
+            ApplicationClientConfigurationRepository clientRepository,
+            IdentityHubRuntimeProperties runtimeProperties,
+            Clock clock) {
+        var transportPolicy = runtimeProperties.environment()
+                        == IdentityHubRuntimeProperties.DeploymentEnvironment.PRODUCTION
+                ? SpaTransportPolicy.PRODUCTION
+                : SpaTransportPolicy.DEVELOPMENT;
+        return new ConfigureSpaClient(
+                applicationRepository,
+                clientRepository,
+                transportPolicy,
                 clock,
                 UUID::randomUUID);
     }

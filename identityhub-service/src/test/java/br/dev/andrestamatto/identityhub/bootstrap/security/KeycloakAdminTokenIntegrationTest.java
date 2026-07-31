@@ -223,6 +223,8 @@ class KeycloakAdminTokenIntegrationTest {
                 "catalog-api",
                 "API",
                 "catalog-api",
+                List.of(),
+                List.of(),
                 true,
                 Instant.parse("2026-07-31T16:00:00Z"),
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
@@ -260,6 +262,71 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(projected.path("redirectUris")).isEmpty();
         assertThat(projected.path("attributes").path("identityhub.audience").asString())
                 .isEqualTo("catalog-api");
+    }
+
+    @Test
+    void projectsPublicSpaWithAuthorizationCodeAndPkceS256() throws Exception {
+        var clientId = UUID.fromString("b4f65b7d-25ab-46ce-a44a-63ebca01d810");
+        var redirectUri = "http://127.0.0.1:5173/auth/callback";
+        var webOrigin = "http://127.0.0.1:5173";
+        var snapshot = new ApplicationClientSnapshot(
+                clientId,
+                UUID.fromString("184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0"),
+                "catalog-web",
+                "SPA",
+                null,
+                List.of(redirectUri),
+                List.of(webOrigin),
+                true,
+                Instant.parse("2026-08-01T12:00:00Z"),
+                UUID.fromString("4fef31b8-17db-40d8-af99-e2899b7db57c"),
+                1,
+                "keycloak-spa-integration-test",
+                ApplicationClientProjectionState.PENDING,
+                0,
+                Instant.parse("2026-08-01T12:00:00Z"),
+                null);
+        var projector = new KeycloakApplicationClientProjector(
+                HttpClient.newHttpClient(),
+                JSON,
+                keycloakBaseUri,
+                REALM,
+                MANAGEMENT_CLIENT_ID,
+                MANAGEMENT_CLIENT_SECRET);
+
+        projector.project(snapshot);
+        projector.project(snapshot);
+
+        var projected = findKeycloakClient("ih-spa-" + clientId);
+        assertThat(projected.path("publicClient").asBoolean()).isTrue();
+        assertThat(projected.path("bearerOnly").asBoolean()).isFalse();
+        assertThat(projected.path("standardFlowEnabled").asBoolean()).isTrue();
+        assertThat(projected.path("implicitFlowEnabled").asBoolean()).isFalse();
+        assertThat(projected.path("directAccessGrantsEnabled").asBoolean()).isFalse();
+        assertThat(projected.path("serviceAccountsEnabled").asBoolean()).isFalse();
+        assertThat(projected.path("authorizationServicesEnabled").asBoolean()).isFalse();
+        assertThat(projected.path("redirectUris"))
+                .containsExactly(JSON.valueToTree(redirectUri));
+        assertThat(projected.path("webOrigins"))
+                .containsExactly(JSON.valueToTree(webOrigin));
+        assertThat(projected.path("attributes").path("pkce.code.challenge.method").asString())
+                .isEqualTo("S256");
+        assertThat(projected.path("attributes").path("identityhub.audience").isMissingNode())
+                .isTrue();
+    }
+
+    private static JsonNode findKeycloakClient(String clientId) throws Exception {
+        var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM + "/clients?clientId="
+                                        + clientId + "&exact=true"),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        var clients = JSON.readTree(response.body());
+        assertThat(clients).hasSize(1);
+        return clients.required(0);
     }
 
     private void assertClientApplicationAdministration(String accessToken)
@@ -309,6 +376,7 @@ class KeycloakAdminTokenIntegrationTest {
                 .isEqualTo("ALLOWED");
 
         assertProtectedApiProjection(accessToken, applicationUri, applicationId);
+        assertSpaProjection(accessToken, applicationUri, applicationId);
     }
 
     private void assertProtectedApiProjection(
@@ -324,6 +392,7 @@ class KeycloakAdminTokenIntegrationTest {
                         "configure-real-protected-api",
                         """
                                 {
+                                  "type": "API",
                                   "key": "real-protected-api",
                                   "audience": "real-protected-api"
                                 }
@@ -334,6 +403,58 @@ class KeycloakAdminTokenIntegrationTest {
                 "\"applicationId\":\"" + applicationId + "\"",
                 "\"projectionState\":\"PENDING\"");
 
+        awaitAppliedProjection(clientId);
+
+        var lookup = HttpClient.newHttpClient().send(
+                authorizedGetRequest(clientUri, accessToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(lookup.statusCode()).isEqualTo(200);
+        assertThat(lookup.body()).contains("\"projectionState\":\"APPLIED\"");
+    }
+
+    private void assertSpaProjection(
+            String accessToken,
+            URI applicationUri,
+            UUID applicationId) throws Exception {
+        var clientId = UUID.fromString("72c43df3-9f34-4dc6-85cc-5d323762f299");
+        var clientUri = URI.create(applicationUri + "/clients/" + clientId);
+        var response = HttpClient.newHttpClient().send(
+                authorizedPutJsonRequest(
+                        clientUri,
+                        accessToken,
+                        "configure-real-spa",
+                        """
+                                {
+                                  "type": "SPA",
+                                  "key": "real-public-spa",
+                                  "redirectUris": [
+                                    "http://127.0.0.1:5173/auth/callback"
+                                  ],
+                                  "webOrigins": ["http://127.0.0.1:5173"]
+                                }
+                                """),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(response.body()).contains(
+                "\"applicationId\":\"" + applicationId + "\"",
+                "\"type\":\"SPA\"",
+                "\"projectionState\":\"PENDING\"");
+
+        awaitAppliedProjection(clientId);
+
+        var lookup = HttpClient.newHttpClient().send(
+                authorizedGetRequest(clientUri, accessToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(lookup.statusCode()).isEqualTo(200);
+        assertThat(lookup.body()).contains("\"projectionState\":\"APPLIED\"");
+        var projected = findKeycloakClient("ih-spa-" + clientId);
+        assertThat(projected.path("publicClient").asBoolean()).isTrue();
+        assertThat(projected.path("standardFlowEnabled").asBoolean()).isTrue();
+        assertThat(projected.path("attributes").path("pkce.code.challenge.method").asString())
+                .isEqualTo("S256");
+    }
+
+    private void awaitAppliedProjection(UUID clientId) throws InterruptedException {
         var deadline = Instant.now().plusSeconds(30);
         String state;
         do {
@@ -351,12 +472,6 @@ class KeycloakAdminTokenIntegrationTest {
             Thread.sleep(200);
         } while (Instant.now().isBefore(deadline));
         assertThat(state).isEqualTo("APPLIED");
-
-        var lookup = HttpClient.newHttpClient().send(
-                authorizedGetRequest(clientUri, accessToken),
-                HttpResponse.BodyHandlers.ofString());
-        assertThat(lookup.statusCode()).isEqualTo(200);
-        assertThat(lookup.body()).contains("\"projectionState\":\"APPLIED\"");
     }
 
     private static void assertTokenIsolation(String accessToken, URI issuer) {
