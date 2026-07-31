@@ -16,6 +16,13 @@ import br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEv
 import br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessOutcome;
 import br.dev.andrestamatto.identityhub.bootstrap.IdentityHubApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
+import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc.JdbcApplicationClientConfigurationRepository;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfiguration;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjection;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClient;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientId;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationIdentifier;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
@@ -51,6 +58,9 @@ class ClientApplicationAdminHttpTest {
     private static final UUID APPLICATION_ID =
             UUID.fromString("184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0");
     private static final String PATH = "/internal/admin/client-applications/" + APPLICATION_ID;
+    private static final UUID APPLICATION_CLIENT_ID =
+            UUID.fromString("ff7c4748-f053-4fb6-91be-d34cf0015834");
+    private static final String CLIENT_PATH = PATH + "/clients/" + APPLICATION_CLIENT_ID;
 
     @Autowired
     private MockMvc mvc;
@@ -63,6 +73,9 @@ class ClientApplicationAdminHttpTest {
 
     @MockitoBean
     private ClientApplicationRepository repository;
+
+    @MockitoBean
+    private JdbcApplicationClientConfigurationRepository clientRepository;
 
     @Test
     void adminWithTotpRegistersDraftApplication() throws Exception {
@@ -164,6 +177,72 @@ class ClientApplicationAdminHttpTest {
                 .andExpect(jsonPath("$.title").value("Client application not found"));
     }
 
+    @Test
+    void adminConfiguresProtectedApiWithPendingProjection() throws Exception {
+        when(repository.findById(any())).thenReturn(Optional.of(application()));
+        when(clientRepository.findById(any())).thenReturn(Optional.empty());
+        when(clientRepository.findByKey(any(), any())).thenReturn(Optional.empty());
+        when(clientRepository.findByAudience(any())).thenReturn(Optional.empty());
+
+        mvc.perform(put(CLIENT_PATH)
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(protectedApiBody()))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", CLIENT_PATH))
+                .andExpect(jsonPath("$.applicationClientId")
+                        .value(APPLICATION_CLIENT_ID.toString()))
+                .andExpect(jsonPath("$.type").value("API"))
+                .andExpect(jsonPath("$.audience").value("auto-radar-api"))
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.projectionState").value("PENDING"))
+                .andExpect(jsonPath("$.projectionAttempts").value(0));
+
+        verify(clientRepository).add(any(ApplicationClientConfiguration.class));
+    }
+
+    @Test
+    void auditorReadsApplicationClientProjectionDiagnostics() throws Exception {
+        when(clientRepository.findById(any())).thenReturn(Optional.of(clientConfiguration()));
+
+        mvc.perform(get(CLIENT_PATH).with(auditorWithTotp()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.key").value("auto-radar-api"))
+                .andExpect(jsonPath("$.projectionState").value("PENDING"))
+                .andExpect(jsonPath("$.nextProjectionAttemptAt")
+                        .value("2026-07-31T16:00:00Z"));
+    }
+
+    @Test
+    void adminRequestsExplicitProjectionReconciliation() throws Exception {
+        when(clientRepository.findById(any())).thenReturn(Optional.of(clientConfiguration()));
+        when(clientRepository.requeue(any(), any()))
+                .thenReturn(Optional.of(clientConfiguration()));
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post(CLIENT_PATH + "/projection/reconcile")
+                        .with(adminWithTotp()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.projectionState").value("PENDING"));
+    }
+
+    @Test
+    void auditorCannotConfigureOrReconcileApplicationClient() throws Exception {
+        mvc.perform(put(CLIENT_PATH)
+                        .with(auditorWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(protectedApiBody()))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post(CLIENT_PATH + "/projection/reconcile")
+                        .with(auditorWithTotp()))
+                .andExpect(status().isForbidden());
+
+        verify(clientRepository, never()).add(any());
+        verify(clientRepository, never()).requeue(any(), any());
+    }
+
     private RequestPostProcessor adminWithTotp() {
         return jwt().authorities(
                 new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"),
@@ -183,6 +262,30 @@ class ClientApplicationAdminHttpTest {
                   "displayName": "%s"
                 }
                 """.formatted(identifier, displayName);
+    }
+
+    private String protectedApiBody() {
+        return """
+                {
+                  "key": "auto-radar-api",
+                  "audience": "auto-radar-api"
+                }
+                """;
+    }
+
+    private ApplicationClientConfiguration clientConfiguration() {
+        ApplicationClient client = application().configureProtectedApi(
+                new ApplicationClientId(APPLICATION_CLIENT_ID),
+                new ApplicationClientKey("auto-radar-api"),
+                new TokenAudience("auto-radar-api"),
+                Clock.fixed(Instant.parse("2026-07-31T16:00:00Z"), ZoneOffset.UTC));
+        return new ApplicationClientConfiguration(
+                client,
+                ApplicationClientProjection.pending(
+                        UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
+                        client.id(),
+                        "http-projection-test",
+                        Instant.parse("2026-07-31T16:00:00Z")));
     }
 
     private ClientApplication application() {

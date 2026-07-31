@@ -116,6 +116,8 @@ class ProcessApplicationClientProjectionTest {
         var projection = new ApplicationClientProjection(
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
                 clientId,
+                1,
+                "process-projection",
                 ApplicationClientProjectionState.PENDING,
                 attempts,
                 NOW,
@@ -175,6 +177,13 @@ class ProcessApplicationClientProjectionTest {
             transition = "FAILED";
             this.attempts = attempts;
             this.failureCode = failureCode;
+        }
+
+        @Override
+        public Optional<ApplicationClientConfiguration> requeue(
+                ApplicationClientId clientId,
+                Instant now) {
+            throw new UnsupportedOperationException();
         }
     }
 }

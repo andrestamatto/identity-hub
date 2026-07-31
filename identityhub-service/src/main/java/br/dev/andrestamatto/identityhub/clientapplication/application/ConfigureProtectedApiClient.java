@@ -46,18 +46,19 @@ public final class ConfigureProtectedApiClient {
         rejectAssignedKey(applicationId, key);
         rejectAssignedAudience(audience);
 
-        return create(application, clientId, key, audience);
+        return create(application, clientId, key, audience, command.correlationId());
     }
 
     private ApplicationClientConfigurationResult create(
             ClientApplication application,
             ApplicationClientId clientId,
             ApplicationClientKey key,
-            TokenAudience audience) {
+            TokenAudience audience,
+            String correlationId) {
         var client = application.configureProtectedApi(clientId, key, audience, clock);
         var now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         var projection = ApplicationClientProjection.pending(
-                operationIdGenerator.get(), clientId, now);
+                operationIdGenerator.get(), clientId, correlationId, now);
         var configuration = new ApplicationClientConfiguration(client, projection);
         clientRepository.add(configuration);
         return new ApplicationClientConfigurationResult(
@@ -100,6 +101,7 @@ public final class ConfigureProtectedApiClient {
             UUID applicationId,
             UUID applicationClientId,
             String key,
-            String audience) {
+            String audience,
+            String correlationId) {
     }
 }

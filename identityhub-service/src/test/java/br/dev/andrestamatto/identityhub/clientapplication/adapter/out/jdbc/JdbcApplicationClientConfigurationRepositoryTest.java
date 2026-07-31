@@ -179,6 +179,25 @@ class JdbcApplicationClientConfigurationRepositoryTest {
                 .isPresent();
     }
 
+    @Test
+    void requeuesAppliedProjectionForExplicitReconciliation() {
+        repository.add(configuration(CLIENT_ID, OPERATION_ID, "catalog-api", "catalog-api"));
+        var worker = UUID.randomUUID();
+        repository.reserveNext(worker, NOW, Duration.ofSeconds(30)).orElseThrow();
+        repository.markApplied(OPERATION_ID, worker, NOW.plusSeconds(1));
+
+        var reconciled = repository.requeue(
+                        new ApplicationClientId(CLIENT_ID),
+                        NOW.plusSeconds(2))
+                .orElseThrow();
+
+        assertThat(reconciled.projection().state())
+                .isEqualTo(br.dev.andrestamatto.identityhub.clientapplication.application
+                        .ApplicationClientProjectionState.PENDING);
+        assertThat(reconciled.projection().attempts()).isZero();
+        assertThat(reconciled.projection().nextAttemptAt()).isEqualTo(NOW.plusSeconds(2));
+    }
+
     private ApplicationClientConfiguration configuration(
             UUID clientId,
             UUID operationId,
@@ -194,6 +213,7 @@ class JdbcApplicationClientConfigurationRepositoryTest {
                 ApplicationClientProjection.pending(
                         operationId,
                         client.id(),
+                        "jdbc-projection-test",
                         NOW));
     }
 

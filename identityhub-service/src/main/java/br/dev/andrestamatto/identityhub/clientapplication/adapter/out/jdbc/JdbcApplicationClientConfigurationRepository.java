@@ -39,6 +39,8 @@ public final class JdbcApplicationClientConfigurationRepository
                 c.enabled,
                 c.configured_at,
                 p.operation_id,
+                p.payload_version,
+                p.correlation_id,
                 p.state as projection_state,
                 p.attempts,
                 p.next_attempt_at,
@@ -204,6 +206,29 @@ public final class JdbcApplicationClientConfigurationRepository
                 failureCode);
     }
 
+    @Override
+    public Optional<ApplicationClientConfiguration> requeue(
+            ApplicationClientId clientId,
+            Instant now) {
+        return transactions.execute(status -> {
+            var updated = jdbcClient.sql("""
+                            update application_client_projection_outbox
+                            set state = 'PENDING',
+                                attempts = 0,
+                                next_attempt_at = :now,
+                                last_failure_code = null,
+                                locked_by = null,
+                                locked_until = null,
+                                updated_at = :now
+                            where application_client_id = :clientId
+                            """)
+                    .param("clientId", clientId.value())
+                    .param("now", utc(now))
+                    .update();
+            return updated == 0 ? Optional.empty() : findById(clientId);
+        });
+    }
+
     private void updateReservedProjection(
             UUID operationId,
             UUID workerId,
@@ -277,6 +302,8 @@ public final class JdbcApplicationClientConfigurationRepository
                         insert into application_client_projection_outbox (
                             operation_id,
                             application_client_id,
+                            payload_version,
+                            correlation_id,
                             state,
                             attempts,
                             next_attempt_at,
@@ -286,6 +313,8 @@ public final class JdbcApplicationClientConfigurationRepository
                         ) values (
                             :operationId,
                             :clientId,
+                            :payloadVersion,
+                            :correlationId,
                             :state,
                             :attempts,
                             :nextAttemptAt,
@@ -296,6 +325,8 @@ public final class JdbcApplicationClientConfigurationRepository
                         """)
                 .param("operationId", projection.operationId())
                 .param("clientId", projection.clientId().value())
+                .param("payloadVersion", projection.payloadVersion())
+                .param("correlationId", projection.correlationId())
                 .param("state", projection.state().name())
                 .param("attempts", projection.attempts())
                 .param(
@@ -327,6 +358,8 @@ public final class JdbcApplicationClientConfigurationRepository
         var projection = new ApplicationClientProjection(
                 resultSet.getObject("operation_id", java.util.UUID.class),
                 clientId,
+                resultSet.getInt("payload_version"),
+                resultSet.getString("correlation_id"),
                 ApplicationClientProjectionState.valueOf(
                         resultSet.getString("projection_state")),
                 resultSet.getInt("attempts"),

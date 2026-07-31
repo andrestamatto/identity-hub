@@ -104,11 +104,31 @@ class ConfigureProtectedApiClientTest {
                 .hasMessageContaining("audience");
     }
 
+    @Test
+    void rejectsUnsafeProjectionCorrelationId() {
+        applicationRepository.application = application();
+        var command = new ConfigureProtectedApiClient.Command(
+                APPLICATION_ID,
+                CLIENT_ID,
+                "social-catalog-api",
+                "catalog-api",
+                "authorization-header: secret");
+
+        assertThatThrownBy(() -> configure.execute(command))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("correlation");
+    }
+
     private ConfigureProtectedApiClient.Command command(
             UUID clientId,
             String key,
             String audience) {
-        return new ConfigureProtectedApiClient.Command(APPLICATION_ID, clientId, key, audience);
+        return new ConfigureProtectedApiClient.Command(
+                APPLICATION_ID,
+                clientId,
+                key,
+                audience,
+                "configure-protected-api");
     }
 
     private ClientApplication application() {

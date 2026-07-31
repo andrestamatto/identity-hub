@@ -34,6 +34,7 @@ class KeycloakApplicationClientProjectorTest {
     private HttpServer server;
     private ObjectNode storedClient;
     private int managementStatus = 200;
+    private boolean failAfterCreate;
 
     @BeforeEach
     void startServer() throws IOException {
@@ -114,6 +115,24 @@ class KeycloakApplicationClientProjectorTest {
                 });
     }
 
+    @Test
+    void retryAfterLostCreateResponseFindsAppliedRemoteEffect() {
+        var projector = projector();
+        failAfterCreate = true;
+
+        assertThatThrownBy(() -> projector.project(snapshot()))
+                .isInstanceOf(ApplicationClientProjectionException.class)
+                .satisfies(exception -> assertThat(
+                                ((ApplicationClientProjectionException) exception).retryable())
+                        .isTrue());
+
+        failAfterCreate = false;
+        projector.project(snapshot());
+
+        assertThat(creates).hasValue(1);
+        assertThat(updates).hasValue(0);
+    }
+
     private KeycloakApplicationClientProjector projector() {
         return new KeycloakApplicationClientProjector(
                 HttpClient.newHttpClient(),
@@ -134,7 +153,12 @@ class KeycloakApplicationClientProjectorTest {
                 true,
                 Instant.parse("2026-07-31T16:00:00Z"),
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
-                ApplicationClientProjectionState.PENDING);
+                1,
+                "keycloak-adapter-test",
+                ApplicationClientProjectionState.PENDING,
+                0,
+                Instant.parse("2026-07-31T16:00:00Z"),
+                null);
     }
 
     private void token(HttpExchange exchange) throws IOException {
@@ -156,7 +180,7 @@ class KeycloakApplicationClientProjectorTest {
         storedClient = received;
         if ("POST".equals(exchange.getRequestMethod())) {
             creates.incrementAndGet();
-            respond(exchange, 201, "");
+            respond(exchange, failAfterCreate ? 503 : 201, "");
             return;
         }
         if ("PUT".equals(exchange.getRequestMethod())) {

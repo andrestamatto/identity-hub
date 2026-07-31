@@ -26,7 +26,8 @@ class FoundationArchitectureTest {
                         BASE_PACKAGE + ".clientapplication.domain..",
                         BASE_PACKAGE + ".clientapplication.application..",
                         BASE_PACKAGE + ".clientapplication.adapter.in.http..",
-                        BASE_PACKAGE + ".clientapplication.adapter.out.jdbc..")
+                        BASE_PACKAGE + ".clientapplication.adapter.out.jdbc..",
+                        BASE_PACKAGE + ".clientapplication.adapter.out.keycloak..")
                 .check(PRODUCTION_CLASSES);
     }
 
@@ -82,7 +83,7 @@ class FoundationArchitectureTest {
     }
 
     @Test
-    void keycloakTypesCannotEscapeTheirFutureAdapter() {
+    void keycloakTypesCannotEscapeTheirDedicatedAdapter() {
         noClasses()
                 .that().resideOutsideOfPackage("..adapter.out.keycloak..")
                 .should().dependOnClassesThat()

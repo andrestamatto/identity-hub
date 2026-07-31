@@ -11,6 +11,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 public final class KeycloakApplicationClientProjector implements ApplicationClientProjector {
+
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
     static final String MANAGED_ATTRIBUTE = "identityhub.managed";
     static final String CLIENT_ID_ATTRIBUTE = "identityhub.application-client-id";
@@ -78,6 +81,7 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
                 (managementClientId + ":" + managementClientSecret)
                         .getBytes(StandardCharsets.UTF_8));
         var request = HttpRequest.newBuilder(tokenUri())
+                .timeout(REQUEST_TIMEOUT)
                 .header("Authorization", "Basic " + credentials)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString("grant_type=client_credentials"))
@@ -158,7 +162,9 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
             HttpRequest.Builder request,
             String accessToken) throws IOException, InterruptedException {
         return httpClient.send(
-                request.header("Authorization", "Bearer " + accessToken).build(),
+                request.timeout(REQUEST_TIMEOUT)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .build(),
                 HttpResponse.BodyHandlers.ofString());
     }
 

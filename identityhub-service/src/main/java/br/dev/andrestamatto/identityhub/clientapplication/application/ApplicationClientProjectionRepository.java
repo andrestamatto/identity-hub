@@ -1,5 +1,6 @@
 package br.dev.andrestamatto.identityhub.clientapplication.application;
 
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientId;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -28,4 +29,9 @@ public interface ApplicationClientProjectionRepository {
             int attempts,
             String failureCode,
             Instant now);
+
+    Optional<ApplicationClientConfiguration> requeue(
+            ApplicationClientId clientId,
+            Instant now);
+
 }

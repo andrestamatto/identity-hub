@@ -12,7 +12,12 @@ public record ApplicationClientSnapshot(
         boolean enabled,
         Instant configuredAt,
         UUID operationId,
-        ApplicationClientProjectionState projectionState) {
+        int projectionPayloadVersion,
+        String projectionCorrelationId,
+        ApplicationClientProjectionState projectionState,
+        int projectionAttempts,
+        Instant nextProjectionAttemptAt,
+        String lastProjectionFailureCode) {
 
     public static ApplicationClientSnapshot from(
             ApplicationClientConfiguration configuration) {
@@ -27,6 +32,11 @@ public record ApplicationClientSnapshot(
                 client.enabled(),
                 client.configuredAt(),
                 projection.operationId(),
-                projection.state());
+                projection.payloadVersion(),
+                projection.correlationId(),
+                projection.state(),
+                projection.attempts(),
+                projection.nextAttemptAt(),
+                projection.lastFailureCode());
     }
 }

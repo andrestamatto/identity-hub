@@ -119,6 +119,21 @@ class KeycloakAdminTokenIntegrationTest {
         registry.add(
                 "identityhub.security.admin.audience",
                 () -> ADMIN_AUDIENCE);
+        registry.add("identityhub.keycloak.management.enabled", () -> "true");
+        registry.add(
+                "identityhub.keycloak.management.base-uri",
+                () -> keycloakBaseUri().toString());
+        registry.add("identityhub.keycloak.management.realm", () -> REALM);
+        registry.add(
+                "identityhub.keycloak.management.client-id",
+                () -> MANAGEMENT_CLIENT_ID);
+        registry.add(
+                "identityhub.keycloak.management.client-secret",
+                () -> MANAGEMENT_CLIENT_SECRET);
+        registry.add("identityhub.keycloak.management.poll-interval", () -> "PT1S");
+        registry.add("identityhub.keycloak.management.lease-duration", () -> "PT30S");
+        registry.add("identityhub.keycloak.management.initial-retry-delay", () -> "PT1S");
+        registry.add("identityhub.keycloak.management.max-attempts", () -> "5");
     }
 
     @BeforeAll
@@ -211,7 +226,12 @@ class KeycloakAdminTokenIntegrationTest {
                 true,
                 Instant.parse("2026-07-31T16:00:00Z"),
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
-                ApplicationClientProjectionState.PENDING);
+                1,
+                "keycloak-integration-test",
+                ApplicationClientProjectionState.PENDING,
+                0,
+                Instant.parse("2026-07-31T16:00:00Z"),
+                null);
         var projector = new KeycloakApplicationClientProjector(
                 HttpClient.newHttpClient(),
                 JSON,
@@ -287,6 +307,56 @@ class KeycloakAdminTokenIntegrationTest {
                 .query(String.class)
                 .single())
                 .isEqualTo("ALLOWED");
+
+        assertProtectedApiProjection(accessToken, applicationUri, applicationId);
+    }
+
+    private void assertProtectedApiProjection(
+            String accessToken,
+            URI applicationUri,
+            UUID applicationId) throws Exception {
+        var clientId = UUID.fromString("1ae43ab3-ad03-41fe-b734-e579824e0e93");
+        var clientUri = URI.create(applicationUri + "/clients/" + clientId);
+        var response = HttpClient.newHttpClient().send(
+                authorizedPutJsonRequest(
+                        clientUri,
+                        accessToken,
+                        "configure-real-protected-api",
+                        """
+                                {
+                                  "key": "real-protected-api",
+                                  "audience": "real-protected-api"
+                                }
+                                """),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(response.body()).contains(
+                "\"applicationId\":\"" + applicationId + "\"",
+                "\"projectionState\":\"PENDING\"");
+
+        var deadline = Instant.now().plusSeconds(30);
+        String state;
+        do {
+            state = jdbcClient.sql("""
+                            select state
+                            from application_client_projection_outbox
+                            where application_client_id = :clientId
+                            """)
+                    .param("clientId", clientId)
+                    .query(String.class)
+                    .single();
+            if (!state.equals("PENDING")) {
+                break;
+            }
+            Thread.sleep(200);
+        } while (Instant.now().isBefore(deadline));
+        assertThat(state).isEqualTo("APPLIED");
+
+        var lookup = HttpClient.newHttpClient().send(
+                authorizedGetRequest(clientUri, accessToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(lookup.statusCode()).isEqualTo(200);
+        assertThat(lookup.body()).contains("\"projectionState\":\"APPLIED\"");
     }
 
     private static void assertTokenIsolation(String accessToken, URI issuer) {
