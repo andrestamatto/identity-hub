@@ -124,7 +124,27 @@ arquivos de auditoria omitidos foram recuperados em commit separado.
 - console administrativo próprio;
 - listagem, alteração de estado ou exclusão de `ClientApplication`.
 
-## 7. Revisão humana
+## 7. Harness para revisão manual
+
+O harness versionado em `scripts/local-dev.ps1` e `scripts/local-dev.py` permite
+subir PostgreSQL 17 e Keycloak 26.7 em loopback, executar o serviço pelo Gradle,
+obter uma sessão administrativa pelo Device Authorization Grant hospedado e
+realizar o round-trip `PUT`/`GET` desta slice.
+
+O bootstrap é idempotente, mantém password grant desabilitado no cliente público,
+exige cadastro TOTP no primeiro login e nunca imprime o access token. O Compose
+usa o plugin local quando disponível ou a imagem oficial fixada
+`docker:29.1.3-cli` como fallback. O procedimento está em
+`docs/guides/local-development.md`.
+
+Na prova local, os três containers ficaram saudáveis, a segunda execução detectou
+o realm existente e a aplicação atingiu readiness `UP` com as duas migrations do
+Flyway aplicadas. Três testes do harness passaram, o acesso anônimo retornou `401`
+e o endpoint oficial de Device Authorization expôs o contrato esperado. A revisão
+humana ainda deve concluir o login TOTP e executar a ação `smoke` antes da
+aprovação final.
+
+## 8. Revisão humana
 
 Os gates automatizados estão verdes. A conclusão e o push da `SLICE-001`
 dependem da revisão e aprovação humana deste incremento vertical.

@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Local development harness for SLICE-001 with loopback-only PostgreSQL and
+  Keycloak containers, idempotent realm bootstrap, hosted device login with TOTP,
+  protected token storage, and an administrative API smoke test.
 - Implemented SLICE-001 for human review with the `ClientApplication` aggregate,
   idempotent administrative registration and lookup, PostgreSQL/Flyway ownership,
   admin/auditor authorization, safe HTTP errors, correlation, auditing, metrics,
