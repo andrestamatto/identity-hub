@@ -49,6 +49,22 @@ public final class ClientApplication {
         return new ClientApplication(id, identifier, displayName, state, registeredAt);
     }
 
+    public ApplicationClient configureProtectedApi(
+            ApplicationClientId clientId,
+            ApplicationClientKey key,
+            TokenAudience audience,
+            Clock clock) {
+        Objects.requireNonNull(clock);
+        return new ApplicationClient(
+                clientId,
+                id,
+                key,
+                ApplicationClientType.API,
+                audience,
+                true,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
+    }
+
     public ClientApplicationId id() {
         return id;
     }

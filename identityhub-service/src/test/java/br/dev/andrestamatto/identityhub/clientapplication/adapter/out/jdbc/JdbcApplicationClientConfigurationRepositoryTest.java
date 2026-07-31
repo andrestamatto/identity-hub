@@ -1,0 +1,162 @@
+package br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfiguration;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjection;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientSnapshot;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationConflictException;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClient;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientId;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationIdentifier;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.UUID;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.support.JdbcTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
+@Testcontainers(disabledWithoutDocker = true)
+class JdbcApplicationClientConfigurationRepositoryTest {
+
+    private static final UUID APPLICATION_ID =
+            UUID.fromString("184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0");
+    private static final UUID CLIENT_ID =
+            UUID.fromString("ff7c4748-f053-4fb6-91be-d34cf0015834");
+    private static final UUID OTHER_CLIENT_ID =
+            UUID.fromString("011fc7ce-c10b-47ed-a1b8-2a98e8b849ca");
+    private static final UUID OPERATION_ID =
+            UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779");
+    private static final Instant NOW = Instant.parse("2026-07-31T14:00:00Z");
+
+    @Container
+    private static final PostgreSQLContainer POSTGRES =
+            new PostgreSQLContainer(DockerImageName.parse("postgres:17.10"));
+
+    private static JdbcClient jdbcClient;
+    private static JdbcClientApplicationRepository applicationRepository;
+    private static JdbcApplicationClientConfigurationRepository repository;
+
+    @BeforeAll
+    static void migrateDatabase() {
+        var dataSource = new DriverManagerDataSource(
+                POSTGRES.getJdbcUrl(),
+                POSTGRES.getUsername(),
+                POSTGRES.getPassword());
+        Flyway.configure().dataSource(dataSource).load().migrate();
+        jdbcClient = JdbcClient.create(dataSource);
+        applicationRepository = new JdbcClientApplicationRepository(jdbcClient);
+        repository = new JdbcApplicationClientConfigurationRepository(
+                jdbcClient,
+                new TransactionTemplate(new JdbcTransactionManager(dataSource)));
+    }
+
+    @BeforeEach
+    void clearAndRegisterApplication() {
+        jdbcClient.sql("delete from application_client_projection_outbox").update();
+        jdbcClient.sql("delete from application_client").update();
+        jdbcClient.sql("delete from client_application").update();
+        applicationRepository.add(application());
+    }
+
+    @Test
+    void atomicallyRoundTripsClientAndPendingProjection() {
+        var configuration = configuration(CLIENT_ID, OPERATION_ID, "catalog-api", "catalog-api");
+
+        repository.add(configuration);
+
+        assertThat(repository.findById(new ApplicationClientId(CLIENT_ID)))
+                .map(ApplicationClientSnapshot::from)
+                .contains(ApplicationClientSnapshot.from(configuration));
+        assertThat(repository.findByKey(
+                        new ClientApplicationId(APPLICATION_ID),
+                        new ApplicationClientKey("catalog-api")))
+                .isPresent();
+        assertThat(repository.findByAudience(new TokenAudience("catalog-api")))
+                .isPresent();
+        assertThat(numberOfClients()).isEqualTo(1);
+        assertThat(numberOfOperations()).isEqualTo(1);
+    }
+
+    @Test
+    void rollsBackClientWhenOutboxInsertFails() {
+        repository.add(configuration(CLIENT_ID, OPERATION_ID, "catalog-api", "catalog-api"));
+
+        assertThatThrownBy(() -> repository.add(configuration(
+                        OTHER_CLIENT_ID,
+                        OPERATION_ID,
+                        "another-api",
+                        "another-api")))
+                .isInstanceOf(ClientApplicationConflictException.class);
+
+        assertThat(repository.findById(new ApplicationClientId(OTHER_CLIENT_ID))).isEmpty();
+        assertThat(numberOfClients()).isEqualTo(1);
+        assertThat(numberOfOperations()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsAudienceAlreadyAssignedToAnotherClient() {
+        repository.add(configuration(CLIENT_ID, OPERATION_ID, "catalog-api", "catalog-api"));
+
+        assertThatThrownBy(() -> repository.add(configuration(
+                        OTHER_CLIENT_ID,
+                        UUID.randomUUID(),
+                        "another-api",
+                        "catalog-api")))
+                .isInstanceOf(ClientApplicationConflictException.class);
+    }
+
+    private ApplicationClientConfiguration configuration(
+            UUID clientId,
+            UUID operationId,
+            String key,
+            String audience) {
+        ApplicationClient client = application().configureProtectedApi(
+                new ApplicationClientId(clientId),
+                new ApplicationClientKey(key),
+                new TokenAudience(audience),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        return new ApplicationClientConfiguration(
+                client,
+                ApplicationClientProjection.pending(
+                        operationId,
+                        client.id(),
+                        NOW));
+    }
+
+    private ClientApplication application() {
+        return ClientApplication.register(
+                new ClientApplicationId(APPLICATION_ID),
+                new ApplicationIdentifier("social-catalog"),
+                new DisplayName("Social Catalog"),
+                Clock.fixed(Instant.parse("2026-07-31T12:00:00Z"), ZoneOffset.UTC));
+    }
+
+    private int numberOfClients() {
+        return jdbcClient.sql("select count(*) from application_client")
+                .query(Integer.class)
+                .single();
+    }
+
+    private int numberOfOperations() {
+        return jdbcClient.sql("select count(*) from application_client_projection_outbox")
+                .query(Integer.class)
+                .single();
+    }
+}
