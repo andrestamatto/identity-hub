@@ -489,10 +489,35 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
     if spa_status != 201 or spa_configured.get("projectionState") != "PENDING":
         raise RuntimeError("A configuração inicial da SPA pública não foi aceita.")
     projected_spa = wait_for_projection(spa_endpoint, token, "APPLIED")
+    bff_id = uuid.uuid4()
+    bff_endpoint = f"{endpoint}/clients/{bff_id}"
+    bff_body = json.dumps(
+        {
+            "type": "BFF",
+            "key": "local-smoke-bff",
+            "redirectUris": [
+                "http://127.0.0.1:8081/login/oauth2/code/identityhub"
+            ],
+        }
+    ).encode()
+    bff_status, bff_configured = put_application(bff_endpoint, headers, bff_body)
+    if bff_status != 201 or bff_configured.get("projectionState") != "PENDING":
+        raise RuntimeError("A configuração inicial do BFF confidencial não foi aceita.")
+    projected_bff = wait_for_projection(bff_endpoint, token, "APPLIED")
+    _, credential = request_json(
+        f"{bff_endpoint}/credentials/client-secret",
+        method="POST",
+        token=token,
+    )
+    if not isinstance(credential, dict) or not credential.get("clientSecret"):
+        raise RuntimeError("A credencial de uso único do BFF não foi emitida.")
+    credential = None
     print(
         "Smoke test aprovado: aplicação idempotente, API protegida projetada "
-        "e reconciliada, e SPA pública projetada com PKCE no Keycloak; estados "
-        f"{projected['projectionState']} e {projected_spa['projectionState']}."
+        "e reconciliada, SPA pública e BFF confidencial projetados no Keycloak; "
+        "credencial do BFF emitida sem exibição; estados "
+        f"{projected['projectionState']}, {projected_spa['projectionState']} e "
+        f"{projected_bff['projectionState']}."
     )
 
 

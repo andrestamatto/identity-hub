@@ -5,13 +5,14 @@ import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc.JdbcC
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfigurationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureBffClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureProtectedApiClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSpaClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.RegisterClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ReconcileApplicationClientProjection;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaTransportPolicy;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTransportPolicy;
 import java.time.Clock;
 import java.util.UUID;
 import org.springframework.context.annotation.Bean;
@@ -50,18 +51,37 @@ class ClientApplicationConfiguration {
     ConfigureSpaClient configureSpaClient(
             ClientApplicationRepository applicationRepository,
             ApplicationClientConfigurationRepository clientRepository,
-            IdentityHubRuntimeProperties runtimeProperties,
+            BrowserTransportPolicy transportPolicy,
             Clock clock) {
-        var transportPolicy = runtimeProperties.environment()
-                        == IdentityHubRuntimeProperties.DeploymentEnvironment.PRODUCTION
-                ? SpaTransportPolicy.PRODUCTION
-                : SpaTransportPolicy.DEVELOPMENT;
         return new ConfigureSpaClient(
                 applicationRepository,
                 clientRepository,
                 transportPolicy,
                 clock,
                 UUID::randomUUID);
+    }
+
+    @Bean
+    ConfigureBffClient configureBffClient(
+            ClientApplicationRepository applicationRepository,
+            ApplicationClientConfigurationRepository clientRepository,
+            BrowserTransportPolicy transportPolicy,
+            Clock clock) {
+        return new ConfigureBffClient(
+                applicationRepository,
+                clientRepository,
+                transportPolicy,
+                clock,
+                UUID::randomUUID);
+    }
+
+    @Bean
+    BrowserTransportPolicy browserTransportPolicy(
+            IdentityHubRuntimeProperties runtimeProperties) {
+        return runtimeProperties.environment()
+                        == IdentityHubRuntimeProperties.DeploymentEnvironment.PRODUCTION
+                ? BrowserTransportPolicy.PRODUCTION
+                : BrowserTransportPolicy.DEVELOPMENT;
     }
 
     @Bean

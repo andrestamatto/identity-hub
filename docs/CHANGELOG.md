@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Confidential BFF client projection with exact browser redirects, Authorization
+  Code plus PKCE `S256`, one-response Keycloak secret issuance, non-cacheable
+  output, and no IdentityHub secret persistence.
 - Public SPA client configuration with environment-aware exact redirect/origin
   validation, transactional PostgreSQL persistence, and Keycloak Authorization
   Code projection requiring PKCE `S256` without a client secret.

@@ -2,6 +2,7 @@ package br.dev.andrestamatto.identityhub.bootstrap.security;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -31,6 +32,10 @@ import org.springframework.test.web.servlet.MockMvc;
 })
 @AutoConfigureMockMvc
 class AdminHttpSecurityTest {
+
+    private static final String BFF_SECRET_ENDPOINT = "/internal/admin/client-applications/"
+            + "184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0/clients/"
+            + "72c43df3-9f34-4dc6-85cc-5d323762f299/credentials/client-secret";
 
     @Autowired
     private MockMvc mvc;
@@ -85,6 +90,23 @@ class AdminHttpSecurityTest {
                                   "displayName": "Auto Radar"
                                 }
                                 """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void protectsBffSecretRotationWithAuthenticationAndAdminTotp() throws Exception {
+        mvc.perform(post(BFF_SECRET_ENDPOINT))
+                .andExpect(status().isUnauthorized());
+
+        mvc.perform(post(BFF_SECRET_ENDPOINT)
+                        .with(jwt().authorities(
+                                new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"))))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(post(BFF_SECRET_ENDPOINT)
+                        .with(jwt().authorities(
+                                new SimpleGrantedAuthority("ROLE_PLATFORM_AUDITOR"),
+                                new SimpleGrantedAuthority("MFA_TOTP"))))
                 .andExpect(status().isForbidden());
     }
 }

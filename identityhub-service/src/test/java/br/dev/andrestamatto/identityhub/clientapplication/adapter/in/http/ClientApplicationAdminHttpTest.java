@@ -239,6 +239,11 @@ class ClientApplicationAdminHttpTest {
                         .with(auditorWithTotp()))
                 .andExpect(status().isForbidden());
 
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post(CLIENT_PATH + "/credentials/client-secret")
+                        .with(auditorWithTotp()))
+                .andExpect(status().isForbidden());
+
         verify(clientRepository, never()).add(any());
         verify(clientRepository, never()).requeue(any(), any());
     }
@@ -269,6 +274,33 @@ class ClientApplicationAdminHttpTest {
                         .value("http://127.0.0.1:5173/auth/callback"))
                 .andExpect(jsonPath("$.webOrigins[0]")
                         .value("http://127.0.0.1:5173"))
+                .andExpect(jsonPath("$.projectionState").value("PENDING"));
+    }
+
+    @Test
+    void adminConfiguresConfidentialBffThroughTypedContract() throws Exception {
+        when(repository.findById(any())).thenReturn(Optional.of(application()));
+        when(clientRepository.findById(any())).thenReturn(Optional.empty());
+        when(clientRepository.findByKey(any(), any())).thenReturn(Optional.empty());
+
+        mvc.perform(put(CLIENT_PATH)
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "BFF",
+                                  "key": "auto-radar-bff",
+                                  "redirectUris": [
+                                    "http://127.0.0.1:8081/login/oauth2/code/identityhub"
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("BFF"))
+                .andExpect(jsonPath("$.audience").doesNotExist())
+                .andExpect(jsonPath("$.redirectUris[0]")
+                        .value("http://127.0.0.1:8081/login/oauth2/code/identityhub"))
+                .andExpect(jsonPath("$.webOrigins").isEmpty())
                 .andExpect(jsonPath("$.projectionState").value("PENDING"));
     }
 

@@ -4,6 +4,8 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.Applicatio
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionFailureCode;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjector;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientSnapshot;
+import br.dev.andrestamatto.identityhub.clientapplication.application.BffClientSecretRotator;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfidentialClientSecret;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -20,7 +22,8 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-public final class KeycloakApplicationClientProjector implements ApplicationClientProjector {
+public final class KeycloakApplicationClientProjector
+        implements ApplicationClientProjector, BffClientSecretRotator {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
@@ -75,6 +78,46 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
         } catch (IOException exception) {
             throw ApplicationClientProjectionException.retryable(
                     ApplicationClientProjectionFailureCode.KEYCLOAK_UNAVAILABLE, exception);
+        }
+    }
+
+    @Override
+    public ConfidentialClientSecret rotate(ApplicationClientSnapshot client) {
+        Objects.requireNonNull(client);
+        if (!client.type().equals("BFF")) {
+            throw new IllegalArgumentException("Only BFF clients have a rotatable browser secret");
+        }
+        try {
+            var accessToken = requestManagementToken();
+            var existing = findClient(client, accessToken);
+            if (existing == null) {
+                throw ApplicationClientProjectionException.permanent(
+                        ApplicationClientProjectionFailureCode.KEYCLOAK_CLIENT_CONFLICT, null);
+            }
+            ensureOwnership(existing, client);
+            var keycloakId = existing.required("id").asString();
+            var response = sendAuthorized(
+                    HttpRequest.newBuilder(clientCollectionUri().resolve(
+                                    keycloakId + "/client-secret"))
+                            .POST(HttpRequest.BodyPublishers.noBody()),
+                    accessToken);
+            ensureSuccess(
+                    response.statusCode(),
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
+            return new ConfidentialClientSecret(
+                    objectMapper.readTree(response.body()).required("value").asString());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw ApplicationClientProjectionException.retryable(
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_UNAVAILABLE, exception);
+        } catch (IOException exception) {
+            throw ApplicationClientProjectionException.retryable(
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_UNAVAILABLE, exception);
+        } catch (ApplicationClientProjectionException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw ApplicationClientProjectionException.retryable(
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_INVALID_RESPONSE, exception);
         }
     }
 
@@ -177,13 +220,18 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
         }
         representation.put("clientId", keycloakClientId(client));
         var spa = client.type().equals("SPA");
+        var bff = client.type().equals("BFF");
+        var browserClient = spa || bff;
         representation.put("name", "IdentityHub " + client.type() + " " + client.key());
         representation.put("description", "Managed " + client.type() + " projection");
         representation.put("protocol", "openid-connect");
         representation.put("enabled", client.enabled());
-        representation.put("bearerOnly", !spa);
+        representation.put("bearerOnly", !browserClient);
         representation.put("publicClient", spa);
-        representation.put("standardFlowEnabled", spa);
+        if (bff) {
+            representation.put("clientAuthenticatorType", "client-secret");
+        }
+        representation.put("standardFlowEnabled", browserClient);
         representation.put("implicitFlowEnabled", false);
         representation.put("directAccessGrantsEnabled", false);
         representation.put("serviceAccountsEnabled", false);
@@ -207,11 +255,14 @@ public final class KeycloakApplicationClientProjector implements ApplicationClie
 
     private boolean matches(JsonNode existing, ApplicationClientSnapshot client) {
         var attributes = existing.path("attributes");
+        var browserClient = client.type().equals("SPA") || client.type().equals("BFF");
         return existing.path("enabled").asBoolean() == client.enabled()
                 && existing.path("bearerOnly").asBoolean() == client.type().equals("API")
                 && existing.path("publicClient").asBoolean() == client.type().equals("SPA")
-                && existing.path("standardFlowEnabled").asBoolean()
-                        == client.type().equals("SPA")
+                && existing.path("standardFlowEnabled").asBoolean() == browserClient
+                && (!client.type().equals("BFF")
+                        || existing.path("clientAuthenticatorType").asString()
+                                .equals("client-secret"))
                 && !existing.path("implicitFlowEnabled").asBoolean()
                 && !existing.path("directAccessGrantsEnabled").asBoolean()
                 && !existing.path("serviceAccountsEnabled").asBoolean()
