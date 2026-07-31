@@ -1,14 +1,17 @@
 package br.dev.andrestamatto.identityhub.clientapplication.adapter.in.http;
 
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientSnapshot;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfigurationResult;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationSnapshot;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureProtectedApiClient;
-import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSpaClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
+import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ReconcileApplicationClientProjection;
 import br.dev.andrestamatto.identityhub.clientapplication.application.RegisterClientApplication;
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.slf4j.MDC;
@@ -28,6 +31,7 @@ final class ClientApplicationAdminController {
     private final GetClientApplication getClientApplication;
     private final ClientApplicationRegistrationMetrics registrationMetrics;
     private final ConfigureProtectedApiClient configureProtectedApiClient;
+    private final ConfigureSpaClient configureSpaClient;
     private final GetApplicationClientConfiguration getApplicationClient;
     private final ReconcileApplicationClientProjection reconcileProjection;
     private final ApplicationClientManagementMetrics clientMetrics;
@@ -37,6 +41,7 @@ final class ClientApplicationAdminController {
             GetClientApplication getClientApplication,
             ClientApplicationRegistrationMetrics registrationMetrics,
             ConfigureProtectedApiClient configureProtectedApiClient,
+            ConfigureSpaClient configureSpaClient,
             GetApplicationClientConfiguration getApplicationClient,
             ReconcileApplicationClientProjection reconcileProjection,
             ApplicationClientManagementMetrics clientMetrics) {
@@ -44,6 +49,7 @@ final class ClientApplicationAdminController {
         this.getClientApplication = getClientApplication;
         this.registrationMetrics = registrationMetrics;
         this.configureProtectedApiClient = configureProtectedApiClient;
+        this.configureSpaClient = configureSpaClient;
         this.getApplicationClient = getApplicationClient;
         this.reconcileProjection = reconcileProjection;
         this.clientMetrics = clientMetrics;
@@ -72,23 +78,59 @@ final class ClientApplicationAdminController {
     }
 
     @PutMapping("/{applicationId}/clients/{applicationClientId}")
-    ResponseEntity<ApplicationClientResponse> configureProtectedApi(
+    ResponseEntity<ApplicationClientResponse> configureApplicationClient(
             @PathVariable UUID applicationId,
             @PathVariable UUID applicationClientId,
-            @RequestBody ConfigureProtectedApiRequest request) {
-        var result = clientMetrics.recordConfiguration(() -> configureProtectedApiClient.execute(
-                new ConfigureProtectedApiClient.Command(
-                        applicationId,
-                        applicationClientId,
-                        request.key(),
-                        request.audience(),
-                        MDC.get("correlationId"))));
+            @RequestBody ConfigureApplicationClientRequest request) {
+        if (request.type() == null) {
+            throw new IllegalArgumentException("Application client type is required");
+        }
+        var result = clientMetrics.recordConfiguration(() -> switch (request.type()) {
+            case "API" -> configureApi(applicationId, applicationClientId, request);
+            case "SPA" -> configureSpa(applicationId, applicationClientId, request);
+            default -> throw new IllegalArgumentException("Unsupported application client type");
+        });
         var response = ApplicationClientResponse.from(result.client());
         if (result.created()) {
             return ResponseEntity.created(clientUri(applicationId, applicationClientId))
                     .body(response);
         }
         return ResponseEntity.ok(response);
+    }
+
+    private ApplicationClientConfigurationResult configureApi(
+                    UUID applicationId,
+                    UUID applicationClientId,
+                    ConfigureApplicationClientRequest request) {
+        if (request.audience() == null
+                || request.redirectUris() != null
+                || request.webOrigins() != null) {
+            throw new IllegalArgumentException("API client contains incompatible fields");
+        }
+        return configureProtectedApiClient.execute(new ConfigureProtectedApiClient.Command(
+                applicationId,
+                applicationClientId,
+                request.key(),
+                request.audience(),
+                MDC.get("correlationId")));
+    }
+
+    private ApplicationClientConfigurationResult configureSpa(
+                    UUID applicationId,
+                    UUID applicationClientId,
+                    ConfigureApplicationClientRequest request) {
+        if (request.audience() != null
+                || request.redirectUris() == null
+                || request.webOrigins() == null) {
+            throw new IllegalArgumentException("SPA client contains incompatible fields");
+        }
+        return configureSpaClient.execute(new ConfigureSpaClient.Command(
+                applicationId,
+                applicationClientId,
+                request.key(),
+                request.redirectUris(),
+                request.webOrigins(),
+                MDC.get("correlationId")));
     }
 
     @GetMapping("/{applicationId}/clients/{applicationClientId}")
@@ -120,7 +162,12 @@ final class ClientApplicationAdminController {
     record RegisterClientApplicationRequest(String identifier, String displayName) {
     }
 
-    record ConfigureProtectedApiRequest(String key, String audience) {
+    record ConfigureApplicationClientRequest(
+            String type,
+            String key,
+            String audience,
+            List<String> redirectUris,
+            List<String> webOrigins) {
     }
 
     record ClientApplicationResponse(
@@ -146,6 +193,8 @@ final class ClientApplicationAdminController {
             String key,
             String type,
             String audience,
+            List<String> redirectUris,
+            List<String> webOrigins,
             boolean enabled,
             Instant configuredAt,
             UUID projectionOperationId,
@@ -163,6 +212,8 @@ final class ClientApplicationAdminController {
                     client.key(),
                     client.type(),
                     client.audience(),
+                    client.redirectUris(),
+                    client.webOrigins(),
                     client.enabled(),
                     client.configuredAt(),
                     client.operationId(),

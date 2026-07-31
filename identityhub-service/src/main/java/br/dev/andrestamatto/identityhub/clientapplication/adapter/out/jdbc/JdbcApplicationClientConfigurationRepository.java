@@ -10,15 +10,20 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClie
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientType;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaRedirectUri;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.WebOrigin;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,6 +102,7 @@ public final class JdbcApplicationClientConfigurationRepository
         try {
             transactions.executeWithoutResult(status -> {
                 insertClient(configuration.client());
+                insertTypeSpecificSettings(configuration.client());
                 insertProjection(configuration.projection());
             });
         } catch (DuplicateKeyException exception) {
@@ -289,12 +295,45 @@ public final class JdbcApplicationClientConfigurationRepository
                 .param("applicationId", client.applicationId().value())
                 .param("clientKey", client.key().value())
                 .param("clientType", client.type().name())
-                .param("audience", client.audience().value())
+                .param(
+                        "audience",
+                        client.settings() instanceof ProtectedApiSettings api
+                                ? api.audience().value()
+                                : null,
+                        Types.VARCHAR)
                 .param("enabled", client.enabled())
                 .param(
                         "configuredAt",
                         OffsetDateTime.ofInstant(client.configuredAt(), ZoneOffset.UTC))
                 .update();
+    }
+
+    private void insertTypeSpecificSettings(ApplicationClient client) {
+        if (!(client.settings() instanceof SpaSettings spa)) {
+            return;
+        }
+        for (var position = 0; position < spa.redirectUris().size(); position++) {
+            jdbcClient.sql("""
+                            insert into application_client_spa_redirect_uri (
+                                application_client_id, position, redirect_uri
+                            ) values (:clientId, :position, :redirectUri)
+                            """)
+                    .param("clientId", client.id().value())
+                    .param("position", position)
+                    .param("redirectUri", spa.redirectUris().get(position).value())
+                    .update();
+        }
+        for (var position = 0; position < spa.webOrigins().size(); position++) {
+            jdbcClient.sql("""
+                            insert into application_client_spa_web_origin (
+                                application_client_id, position, web_origin
+                            ) values (:clientId, :position, :webOrigin)
+                            """)
+                    .param("clientId", client.id().value())
+                    .param("position", position)
+                    .param("webOrigin", spa.webOrigins().get(position).value())
+                    .update();
+        }
     }
 
     private void insertProjection(ApplicationClientProjection projection) {
@@ -346,13 +385,13 @@ public final class JdbcApplicationClientConfigurationRepository
             ResultSet resultSet,
             int rowNumber) throws SQLException {
         var clientId = new ApplicationClientId(resultSet.getObject("id", java.util.UUID.class));
+        var type = ApplicationClientType.valueOf(resultSet.getString("client_type"));
         var client = ApplicationClient.reconstitute(
                 clientId,
                 new ClientApplicationId(
                         resultSet.getObject("application_id", java.util.UUID.class)),
                 new ApplicationClientKey(resultSet.getString("client_key")),
-                ApplicationClientType.valueOf(resultSet.getString("client_type")),
-                new TokenAudience(resultSet.getString("audience")),
+                settings(clientId, type, resultSet.getString("audience")),
                 resultSet.getBoolean("enabled"),
                 resultSet.getObject("configured_at", OffsetDateTime.class).toInstant());
         var projection = new ApplicationClientProjection(
@@ -368,5 +407,39 @@ public final class JdbcApplicationClientConfigurationRepository
                 resultSet.getObject("created_at", OffsetDateTime.class).toInstant(),
                 resultSet.getObject("updated_at", OffsetDateTime.class).toInstant());
         return new ApplicationClientConfiguration(client, projection);
+    }
+
+    private ApplicationClientSettings settings(
+            ApplicationClientId clientId,
+            ApplicationClientType type,
+            String audience) {
+        if (type == ApplicationClientType.API) {
+            return new ProtectedApiSettings(new TokenAudience(audience));
+        }
+        var redirects = jdbcClient.sql("""
+                        select redirect_uri
+                        from application_client_spa_redirect_uri
+                        where application_client_id = :clientId
+                        order by position
+                        """)
+                .param("clientId", clientId.value())
+                .query(String.class)
+                .list()
+                .stream()
+                .map(SpaRedirectUri::new)
+                .toList();
+        var origins = jdbcClient.sql("""
+                        select web_origin
+                        from application_client_spa_web_origin
+                        where application_client_id = :clientId
+                        order by position
+                        """)
+                .param("clientId", clientId.value())
+                .query(String.class)
+                .list()
+                .stream()
+                .map(WebOrigin::new)
+                .toList();
+        return new SpaSettings(redirects, origins);
     }
 }

@@ -4,28 +4,32 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClie
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaTransportPolicy;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-public final class ConfigureProtectedApiClient {
+public final class ConfigureSpaClient {
 
     private final ClientApplicationRepository applicationRepository;
     private final ApplicationClientConfigurationRepository clientRepository;
+    private final SpaTransportPolicy transportPolicy;
     private final Clock clock;
     private final Supplier<UUID> operationIdGenerator;
 
-    public ConfigureProtectedApiClient(
+    public ConfigureSpaClient(
             ClientApplicationRepository applicationRepository,
             ApplicationClientConfigurationRepository clientRepository,
+            SpaTransportPolicy transportPolicy,
             Clock clock,
             Supplier<UUID> operationIdGenerator) {
         this.applicationRepository = Objects.requireNonNull(applicationRepository);
         this.clientRepository = Objects.requireNonNull(clientRepository);
+        this.transportPolicy = Objects.requireNonNull(transportPolicy);
         this.clock = Objects.requireNonNull(clock);
         this.operationIdGenerator = Objects.requireNonNull(operationIdGenerator);
     }
@@ -35,28 +39,29 @@ public final class ConfigureProtectedApiClient {
         var applicationId = new ClientApplicationId(command.applicationId());
         var clientId = new ApplicationClientId(command.applicationClientId());
         var key = new ApplicationClientKey(command.key());
-        var audience = new TokenAudience(command.audience());
+        var settings = SpaSettings.create(
+                command.redirectUris(), command.webOrigins(), transportPolicy);
         var application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ClientApplicationNotFoundException(
-                        applicationId.value()));
+                .orElseThrow(() -> new ClientApplicationNotFoundException(applicationId.value()));
 
         var existing = clientRepository.findById(clientId);
         if (existing.isPresent()) {
-            return replay(existing.orElseThrow(), applicationId, key, audience);
+            return replay(existing.orElseThrow(), applicationId, key, settings);
         }
-        rejectAssignedKey(applicationId, key);
-        rejectAssignedAudience(audience);
-
-        return create(application, clientId, key, audience, command.correlationId());
+        if (clientRepository.findByKey(applicationId, key).isPresent()) {
+            throw new ClientApplicationConflictException(
+                    "Application client key is already assigned inside the application");
+        }
+        return create(application, clientId, key, settings, command.correlationId());
     }
 
     private ApplicationClientConfigurationResult create(
             ClientApplication application,
             ApplicationClientId clientId,
             ApplicationClientKey key,
-            TokenAudience audience,
+            SpaSettings settings,
             String correlationId) {
-        var client = application.configureProtectedApi(clientId, key, audience, clock);
+        var client = application.configureSpa(clientId, key, settings, clock);
         var now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         var projection = ApplicationClientProjection.pending(
                 operationIdGenerator.get(), clientId, correlationId, now);
@@ -70,12 +75,11 @@ public final class ConfigureProtectedApiClient {
             ApplicationClientConfiguration existing,
             ClientApplicationId applicationId,
             ApplicationClientKey key,
-            TokenAudience audience) {
+            SpaSettings settings) {
         var client = existing.client();
         if (client.applicationId().equals(applicationId)
                 && client.key().equals(key)
-                && client.settings() instanceof ProtectedApiSettings api
-                && api.audience().equals(audience)) {
+                && client.settings().equals(settings)) {
             return new ApplicationClientConfigurationResult(
                     ApplicationClientSnapshot.from(existing), false);
         }
@@ -83,27 +87,12 @@ public final class ConfigureProtectedApiClient {
                 "Application client id is already assigned to different content");
     }
 
-    private void rejectAssignedKey(
-            ClientApplicationId applicationId,
-            ApplicationClientKey key) {
-        if (clientRepository.findByKey(applicationId, key).isPresent()) {
-            throw new ClientApplicationConflictException(
-                    "Application client key is already assigned inside the application");
-        }
-    }
-
-    private void rejectAssignedAudience(TokenAudience audience) {
-        if (clientRepository.findByAudience(audience).isPresent()) {
-            throw new ClientApplicationConflictException(
-                    "Application client audience is already assigned in the environment");
-        }
-    }
-
     public record Command(
             UUID applicationId,
             UUID applicationClientId,
             String key,
-            String audience,
+            List<String> redirectUris,
+            List<String> webOrigins,
             String correlationId) {
     }
 }

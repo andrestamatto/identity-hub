@@ -8,8 +8,7 @@ public final class ApplicationClient {
     private final ApplicationClientId id;
     private final ClientApplicationId applicationId;
     private final ApplicationClientKey key;
-    private final ApplicationClientType type;
-    private final TokenAudience audience;
+    private final ApplicationClientSettings settings;
     private final boolean enabled;
     private final Instant configuredAt;
 
@@ -17,15 +16,13 @@ public final class ApplicationClient {
             ApplicationClientId id,
             ClientApplicationId applicationId,
             ApplicationClientKey key,
-            ApplicationClientType type,
-            TokenAudience audience,
+            ApplicationClientSettings settings,
             boolean enabled,
             Instant configuredAt) {
         this.id = Objects.requireNonNull(id);
         this.applicationId = Objects.requireNonNull(applicationId);
         this.key = Objects.requireNonNull(key);
-        this.type = Objects.requireNonNull(type);
-        this.audience = Objects.requireNonNull(audience);
+        this.settings = Objects.requireNonNull(settings);
         this.enabled = enabled;
         this.configuredAt = Objects.requireNonNull(configuredAt);
     }
@@ -34,16 +31,14 @@ public final class ApplicationClient {
             ApplicationClientId id,
             ClientApplicationId applicationId,
             ApplicationClientKey key,
-            ApplicationClientType type,
-            TokenAudience audience,
+            ApplicationClientSettings settings,
             boolean enabled,
             Instant configuredAt) {
         return new ApplicationClient(
                 id,
                 applicationId,
                 key,
-                type,
-                audience,
+                settings,
                 enabled,
                 configuredAt);
     }
@@ -61,11 +56,11 @@ public final class ApplicationClient {
     }
 
     public ApplicationClientType type() {
-        return type;
+        return settings.type();
     }
 
-    public TokenAudience audience() {
-        return audience;
+    public ApplicationClientSettings settings() {
+        return settings;
     }
 
     public boolean enabled() {

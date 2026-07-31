@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClient;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientType;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
 import java.time.Clock;
@@ -109,8 +109,7 @@ class ProcessApplicationClientProjectionTest {
                 new ClientApplicationId(
                         UUID.fromString("184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0")),
                 new ApplicationClientKey("catalog-api"),
-                ApplicationClientType.API,
-                new TokenAudience("catalog-api"),
+                new ProtectedApiSettings(new TokenAudience("catalog-api")),
                 true,
                 NOW.minusSeconds(60));
         var projection = new ApplicationClientProjection(
