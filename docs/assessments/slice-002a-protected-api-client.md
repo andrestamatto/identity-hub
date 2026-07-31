@@ -1,6 +1,6 @@
 # SLICE-002A — API protegida e projeção no Keycloak
 
-> **Status:** awaiting human review
+> **Status:** approved
 >
 > **Data:** 2026-07-31
 >
@@ -151,4 +151,6 @@ conclusão manual requer novo login humano com TOTP.
 
 ## 7. Revisão humana
 
-Pendente. Nenhum push será realizado antes da aprovação da fatia completa.
+O mantenedor aprovou a fatia completa em 2026-07-31 após revisar o contrato,
+as evidências automatizadas e o procedimento do harness local. A branch está
+autorizada para publicação e abertura do PR.
