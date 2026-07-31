@@ -37,10 +37,20 @@ class LocalDevelopmentHarnessTest(unittest.TestCase):
             {
                 "IDENTITYHUB_LOCAL_ADMIN_USERNAME": "local-admin",
                 "IDENTITYHUB_LOCAL_ADMIN_PASSWORD": "test-only-password",
+                "IDENTITYHUB_KEYCLOAK_MANAGEMENT_CLIENT_SECRET": "test-only-secret",
             }
         )
 
-        client = realm["clients"][0]
+        client = next(
+            configured
+            for configured in realm["clients"]
+            if configured["clientId"] == HARNESS.ADMIN_CLIENT
+        )
+        management = next(
+            configured
+            for configured in realm["clients"]
+            if configured["clientId"] == HARNESS.MANAGEMENT_CLIENT
+        )
         user = realm["users"][0]
         self.assertFalse(client["directAccessGrantsEnabled"])
         self.assertEqual(
@@ -49,6 +59,8 @@ class LocalDevelopmentHarnessTest(unittest.TestCase):
         )
         self.assertEqual(["CONFIGURE_TOTP"], user["requiredActions"])
         self.assertEqual(["PLATFORM_ADMIN"], user["realmRoles"])
+        self.assertTrue(management["serviceAccountsEnabled"])
+        self.assertFalse(management["fullScopeAllowed"])
 
     @mock.patch.object(HARNESS.subprocess, "run")
     def test_uses_pinned_compose_fallback_when_plugin_is_absent(self, run_mock) -> None:

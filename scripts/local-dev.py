@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import pathlib
+import secrets
 import subprocess
 import sys
 import time
@@ -19,6 +20,7 @@ import uuid
 REALM = "identityhub-development"
 ADMIN_CLIENT = "identityhub-local-admin"
 ADMIN_AUDIENCE = "identityhub-admin-api"
+MANAGEMENT_CLIENT = "identityhub-management"
 ADMIN_ROLES = ("PLATFORM_ADMIN", "PLATFORM_AUDITOR")
 
 
@@ -94,7 +96,7 @@ def request_json(
     url: str,
     *,
     method: str = "GET",
-    body: dict | None = None,
+    body: dict | list | None = None,
     token: str | None = None,
     form: dict[str, str] | None = None,
     expected: tuple[int, ...] = (200,),
@@ -166,6 +168,7 @@ def realm_representation(env: dict[str, str]) -> dict:
         "otpPolicyPeriod": 30,
         "roles": {"realm": [{"name": role} for role in ADMIN_ROLES]},
         "clients": [
+            management_client_representation(env),
             {
                 "clientId": ADMIN_CLIENT,
                 "name": "IdentityHub local administration",
@@ -214,6 +217,95 @@ def realm_representation(env: dict[str, str]) -> dict:
             }
         ],
     }
+
+
+def management_secret_file() -> pathlib.Path:
+    return pathlib.Path.home() / ".local" / "state" / "identityhub" / "management-client.secret"
+
+
+def management_secret() -> str:
+    path = management_secret_file()
+    if not path.exists():
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path.write_text(secrets.token_urlsafe(48), encoding="utf-8")
+        path.chmod(0o600)
+    return path.read_text(encoding="utf-8").strip()
+
+
+def management_client_representation(env: dict[str, str]) -> dict:
+    return {
+        "clientId": MANAGEMENT_CLIENT,
+        "name": "IdentityHub internal management",
+        "enabled": True,
+        "publicClient": False,
+        "clientAuthenticatorType": "client-secret",
+        "secret": required(env, "IDENTITYHUB_KEYCLOAK_MANAGEMENT_CLIENT_SECRET"),
+        "standardFlowEnabled": False,
+        "directAccessGrantsEnabled": False,
+        "serviceAccountsEnabled": True,
+        "fullScopeAllowed": False,
+    }
+
+
+def client_uuid(base: str, client_id: str, token: str) -> str | None:
+    _, clients = request_json(
+        f"{base}/clients?clientId={urllib.parse.quote(client_id)}&exact=true",
+        token=token,
+    )
+    assert isinstance(clients, list)
+    return str(clients[0]["id"]) if clients else None
+
+
+def configure_management_client(env: dict[str, str], token: str) -> None:
+    base = f"{keycloak_url(env)}/admin/realms/{REALM}"
+    management_uuid = client_uuid(base, MANAGEMENT_CLIENT, token)
+    representation = management_client_representation(env)
+    if management_uuid is None:
+        request_json(
+            f"{base}/clients",
+            method="POST",
+            token=token,
+            body=representation,
+            expected=(201,),
+        )
+        management_uuid = client_uuid(base, MANAGEMENT_CLIENT, token)
+    else:
+        request_json(
+            f"{base}/clients/{management_uuid}",
+            method="PUT",
+            token=token,
+            body=representation,
+            expected=(204,),
+        )
+    if management_uuid is None:
+        raise RuntimeError("O cliente interno de gerenciamento não foi criado.")
+
+    _, service_account = request_json(
+        f"{base}/clients/{management_uuid}/service-account-user", token=token
+    )
+    assert isinstance(service_account, dict)
+    realm_management_uuid = client_uuid(base, "realm-management", token)
+    if realm_management_uuid is None:
+        raise RuntimeError("O cliente realm-management não foi encontrado.")
+    _, manage_clients_role = request_json(
+        f"{base}/clients/{realm_management_uuid}/roles/manage-clients", token=token
+    )
+    assert isinstance(manage_clients_role, dict)
+    role_mapping = [manage_clients_role]
+    request_json(
+        f"{base}/users/{service_account['id']}/role-mappings/clients/{realm_management_uuid}",
+        method="POST",
+        token=token,
+        body=role_mapping,
+        expected=(204,),
+    )
+    request_json(
+        f"{base}/clients/{management_uuid}/scope-mappings/clients/{realm_management_uuid}",
+        method="POST",
+        token=token,
+        body=role_mapping,
+        expected=(204,),
+    )
 
 
 def configure_amr(env: dict[str, str], token: str) -> None:
@@ -270,6 +362,7 @@ def bootstrap(env: dict[str, str]) -> None:
     else:
         configure_amr(env, token)
         print("Keycloak local já estava configurado.")
+    configure_management_client(env, token)
 
 
 def up(args: argparse.Namespace, env: dict[str, str]) -> None:
@@ -358,10 +451,49 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
         or replayed != created
     ):
         raise RuntimeError("O round-trip da aplicação não preservou o contrato esperado.")
-    print(
-        "Smoke test aprovado: PUT HTTP 201, GET HTTP 200, "
-        f"replay HTTP 200, estado {found['state']}."
+    client_id = uuid.uuid4()
+    client_endpoint = f"{endpoint}/clients/{client_id}"
+    client_body = json.dumps(
+        {"key": "local-smoke-api", "audience": f"local-smoke-{client_id}"}
+    ).encode()
+    client_status, configured = put_application(client_endpoint, headers, client_body)
+    if client_status != 201 or configured.get("projectionState") != "PENDING":
+        raise RuntimeError("A configuração inicial da API protegida não foi aceita.")
+    projected = wait_for_projection(client_endpoint, token, "APPLIED")
+    reconcile_request = urllib.request.Request(
+        f"{client_endpoint}/projection/reconcile",
+        data=b"",
+        headers={"Authorization": f"Bearer {token}"},
+        method="POST",
     )
+    with urllib.request.urlopen(reconcile_request, timeout=10) as response:
+        reconciled = json.loads(response.read())
+        if response.status != 202 or reconciled.get("projectionState") != "PENDING":
+            raise RuntimeError("A reconciliação da projeção não foi aceita.")
+    wait_for_projection(client_endpoint, token, "APPLIED")
+    print(
+        "Smoke test aprovado: aplicação idempotente, API protegida projetada "
+        f"e reconciliada no Keycloak; estado {projected['projectionState']}."
+    )
+
+
+def wait_for_projection(endpoint: str, token: str, expected_state: str) -> dict:
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        request = urllib.request.Request(
+            endpoint, headers={"Authorization": f"Bearer {token}"}
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            projection = json.loads(response.read())
+        if projection.get("projectionState") == expected_state:
+            return projection
+        if projection.get("projectionState") == "FAILED":
+            raise RuntimeError(
+                "A projeção da API protegida falhou: "
+                f"{projection.get('lastProjectionFailureCode', 'UNKNOWN')}"
+            )
+        time.sleep(1)
+    raise RuntimeError("A projeção da API protegida não concluiu em 30 segundos.")
 
 
 def put_application(
@@ -374,6 +506,10 @@ def put_application(
         with urllib.request.urlopen(request, timeout=10) as response:
             return response.status, json.loads(response.read())
     except urllib.error.HTTPError as error:
+        if error.code == 401:
+            raise RuntimeError(
+                "Sessão administrativa ausente ou expirada. Execute primeiro a ação 'token'."
+            ) from error
         raise RuntimeError(f"Cadastro falhou com HTTP {error.code}.") from error
 
 
@@ -386,6 +522,15 @@ def main() -> None:
     local = read_env(args.env_file)
     process_env = os.environ.copy()
     process_env.update(local)
+    process_env.update(
+        {
+            "IDENTITYHUB_KEYCLOAK_MANAGEMENT_ENABLED": "true",
+            "IDENTITYHUB_KEYCLOAK_BASE_URI": keycloak_url(process_env),
+            "IDENTITYHUB_KEYCLOAK_REALM": REALM,
+            "IDENTITYHUB_KEYCLOAK_MANAGEMENT_CLIENT_ID": MANAGEMENT_CLIENT,
+            "IDENTITYHUB_KEYCLOAK_MANAGEMENT_CLIENT_SECRET": management_secret(),
+        }
+    )
 
     if args.action == "up":
         up(args, process_env)
