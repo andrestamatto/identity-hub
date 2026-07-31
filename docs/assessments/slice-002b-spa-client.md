@@ -1,6 +1,6 @@
 # SLICE-002B — SPA pública e PKCE
 
-> **Status:** awaiting human review
+> **Status:** approved
 >
 > **Data:** 2026-07-31
 >
@@ -130,4 +130,6 @@ uma SPA pública em loopback e aguarda ambos os estados `APPLIED`.
 
 ## 8. Revisão humana
 
-Pendente. Nenhum push será realizado antes da aprovação da fatia completa.
+O mantenedor aprovou a fatia completa em 2026-07-31 após revisar o contrato,
+as invariantes de segurança, as evidências automatizadas e o procedimento do
+harness local. A branch está autorizada para publicação e abertura do PR.
