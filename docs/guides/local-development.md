@@ -3,7 +3,7 @@
 ## 1. Objetivo
 
 O harness local permite executar e verificar as APIs administrativas das
-`SLICE-001` e `SLICE-002A` com PostgreSQL 17 e Keycloak 26.7 reais. A aplicação
+`SLICE-001`, `SLICE-002A` e `SLICE-002B` com PostgreSQL 17 e Keycloak 26.7 reais. A aplicação
 continua sendo iniciada pelo Gradle no WSL; somente as dependências de
 infraestrutura usam containers.
 
@@ -50,7 +50,7 @@ local-env run
 # Em outro terminal, inicia o login administrativo hospedado
 local-env token
 
-# Valida aplicação, API protegida, projeção e reconciliação
+# Valida aplicação, API protegida, SPA pública, projeção e reconciliação
 local-env smoke
 
 # Exibe os containers ou encerra a infraestrutura
@@ -82,7 +82,7 @@ WSL, com modo `0600`. A ação `down` remove esse arquivo. O cliente público
 não aceita Resource Owner Password Credentials e o acesso administrativo exige
 `PLATFORM_ADMIN` e `amr=totp`.
 
-## 5. Projeção da API protegida
+## 5. Projeção dos clientes da aplicação
 
 O bootstrap cria um cliente confidencial interno e concede somente
 `realm-management/manage-clients` ao seu service account. O escopo completo do
@@ -95,7 +95,10 @@ A ação `smoke`:
 1. cadastra uma `ClientApplication` e confirma seu replay idempotente;
 2. configura uma API protegida com projeção `PENDING`;
 3. aguarda o worker criar o cliente bearer-only e registrar `APPLIED`;
-4. solicita reconciliação explícita e confirma nova aplicação idempotente.
+4. solicita reconciliação explícita e confirma nova aplicação idempotente;
+5. configura uma SPA pública com redirects e origins exatos em loopback;
+6. aguarda o worker criar o cliente Authorization Code com PKCE `S256` e
+   registrar `APPLIED`.
 
 Se a sessão administrativa tiver expirado, execute novamente `local-env token`.
 
