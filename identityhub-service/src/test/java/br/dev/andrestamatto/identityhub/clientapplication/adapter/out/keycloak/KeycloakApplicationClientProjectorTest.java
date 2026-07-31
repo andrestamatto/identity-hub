@@ -31,6 +31,7 @@ class KeycloakApplicationClientProjectorTest {
 
     private final AtomicInteger creates = new AtomicInteger();
     private final AtomicInteger updates = new AtomicInteger();
+    private final AtomicInteger rotations = new AtomicInteger();
     private HttpServer server;
     private ObjectNode storedClient;
     private int managementStatus = 200;
@@ -154,6 +155,42 @@ class KeycloakApplicationClientProjectorTest {
         assertThat(storedClient.path("secret").isMissingNode()).isTrue();
     }
 
+    @Test
+    void createsConfidentialBffWithAuthorizationCodeAndPkceS256() {
+        projector().project(bffSnapshot());
+
+        assertThat(storedClient.path("clientId").asString())
+                .isEqualTo("ih-bff-72c43df3-9f34-4dc6-85cc-5d323762f299");
+        assertThat(storedClient.path("publicClient").asBoolean()).isFalse();
+        assertThat(storedClient.path("bearerOnly").asBoolean()).isFalse();
+        assertThat(storedClient.path("clientAuthenticatorType").asString())
+                .isEqualTo("client-secret");
+        assertThat(storedClient.path("standardFlowEnabled").asBoolean()).isTrue();
+        assertThat(storedClient.path("implicitFlowEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("directAccessGrantsEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("serviceAccountsEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("redirectUris"))
+                .containsExactly(JSON.valueToTree(
+                        "https://app.example.com/login/oauth2/code/identityhub"));
+        assertThat(storedClient.path("webOrigins")).isEmpty();
+        assertThat(storedClient.path("attributes").path("pkce.code.challenge.method").asString())
+                .isEqualTo("S256");
+        assertThat(storedClient.path("secret").isMissingNode()).isTrue();
+    }
+
+    @Test
+    void rotatesBffSecretAndReturnsItOnlyToTheCaller() {
+        var projector = projector();
+        projector.project(bffSnapshot());
+
+        var secret = projector.rotate(bffSnapshot());
+
+        assertThat(secret.value()).isEqualTo("one-time-generated-secret");
+        assertThat(secret.toString()).isEqualTo("[REDACTED]");
+        assertThat(rotations).hasValue(1);
+        assertThat(storedClient.path("secret").isMissingNode()).isTrue();
+    }
+
     private KeycloakApplicationClientProjector projector() {
         return new KeycloakApplicationClientProjector(
                 HttpClient.newHttpClient(),
@@ -204,6 +241,27 @@ class KeycloakApplicationClientProjectorTest {
                 null);
     }
 
+    private ApplicationClientSnapshot bffSnapshot() {
+        return new ApplicationClientSnapshot(
+                UUID.fromString("72c43df3-9f34-4dc6-85cc-5d323762f299"),
+                UUID.fromString("184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0"),
+                "catalog-bff",
+                "BFF",
+                null,
+                java.util.List.of(
+                        "https://app.example.com/login/oauth2/code/identityhub"),
+                java.util.List.of(),
+                true,
+                Instant.parse("2026-08-01T14:00:00Z"),
+                UUID.fromString("92390c62-b1f7-48d4-887a-d004a47faf8b"),
+                1,
+                "keycloak-bff-test",
+                ApplicationClientProjectionState.PENDING,
+                0,
+                Instant.parse("2026-08-01T14:00:00Z"),
+                null);
+    }
+
     private void token(HttpExchange exchange) throws IOException {
         respond(exchange, 200, "{\"access_token\":\"synthetic-management-token\"}");
     }
@@ -211,6 +269,12 @@ class KeycloakApplicationClientProjectorTest {
     private void clients(HttpExchange exchange) throws IOException {
         if (managementStatus != 200) {
             respond(exchange, managementStatus, "sensitive upstream details");
+            return;
+        }
+        if (exchange.getRequestURI().getPath().endsWith("/client-secret")
+                && "POST".equals(exchange.getRequestMethod())) {
+            rotations.incrementAndGet();
+            respond(exchange, 200, "{\"value\":\"one-time-generated-secret\"}");
             return;
         }
         if ("GET".equals(exchange.getRequestMethod())) {

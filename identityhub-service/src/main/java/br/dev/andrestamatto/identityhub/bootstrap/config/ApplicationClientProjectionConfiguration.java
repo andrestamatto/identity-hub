@@ -3,7 +3,9 @@ package br.dev.andrestamatto.identityhub.bootstrap.config;
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.keycloak.KeycloakApplicationClientProjector;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjector;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfigurationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ProcessApplicationClientProjection;
+import br.dev.andrestamatto.identityhub.clientapplication.application.RotateBffClientSecret;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.net.http.HttpClient;
 import java.time.Clock;
@@ -22,7 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 class ApplicationClientProjectionConfiguration {
 
     @Bean
-    ApplicationClientProjector applicationClientProjector(
+    KeycloakApplicationClientProjector applicationClientProjector(
             HttpClient httpClient,
             ObjectMapper objectMapper,
             KeycloakManagementProperties properties) {
@@ -33,6 +35,13 @@ class ApplicationClientProjectionConfiguration {
                 properties.realm(),
                 properties.clientId(),
                 properties.clientSecret());
+    }
+
+    @Bean
+    RotateBffClientSecret rotateBffClientSecret(
+            ApplicationClientConfigurationRepository repository,
+            KeycloakApplicationClientProjector projector) {
+        return new RotateBffClientSecret(repository, projector);
     }
 
     @Bean

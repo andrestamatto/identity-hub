@@ -2,10 +2,10 @@ package br.dev.andrestamatto.identityhub.clientapplication.application;
 
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTransportPolicy;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTransportPolicy;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -13,7 +13,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-public final class ConfigureSpaClient {
+public final class ConfigureBffClient {
 
     private final ClientApplicationRepository applicationRepository;
     private final ApplicationClientConfigurationRepository clientRepository;
@@ -21,7 +21,7 @@ public final class ConfigureSpaClient {
     private final Clock clock;
     private final Supplier<UUID> operationIdGenerator;
 
-    public ConfigureSpaClient(
+    public ConfigureBffClient(
             ClientApplicationRepository applicationRepository,
             ApplicationClientConfigurationRepository clientRepository,
             BrowserTransportPolicy transportPolicy,
@@ -39,8 +39,7 @@ public final class ConfigureSpaClient {
         var applicationId = new ClientApplicationId(command.applicationId());
         var clientId = new ApplicationClientId(command.applicationClientId());
         var key = new ApplicationClientKey(command.key());
-        var settings = SpaSettings.create(
-                command.redirectUris(), command.webOrigins(), transportPolicy);
+        var settings = BffSettings.create(command.redirectUris(), transportPolicy);
         var application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ClientApplicationNotFoundException(applicationId.value()));
 
@@ -59,9 +58,9 @@ public final class ConfigureSpaClient {
             ClientApplication application,
             ApplicationClientId clientId,
             ApplicationClientKey key,
-            SpaSettings settings,
+            BffSettings settings,
             String correlationId) {
-        var client = application.configureSpa(clientId, key, settings, clock);
+        var client = application.configureBff(clientId, key, settings, clock);
         var now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         var projection = ApplicationClientProjection.pending(
                 operationIdGenerator.get(), clientId, correlationId, now);
@@ -75,7 +74,7 @@ public final class ConfigureSpaClient {
             ApplicationClientConfiguration existing,
             ClientApplicationId applicationId,
             ApplicationClientKey key,
-            SpaSettings settings) {
+            BffSettings settings) {
         var client = existing.client();
         if (client.applicationId().equals(applicationId)
                 && client.key().equals(key)
@@ -92,7 +91,6 @@ public final class ConfigureSpaClient {
             UUID applicationClientId,
             String key,
             List<String> redirectUris,
-            List<String> webOrigins,
             String correlationId) {
     }
 }

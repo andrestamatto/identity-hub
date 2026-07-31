@@ -13,11 +13,11 @@ class SpaSettingsTest {
         var settings = SpaSettings.create(
                 List.of("https://app.example.com/auth/callback"),
                 List.of("https://app.example.com"),
-                SpaTransportPolicy.PRODUCTION);
+                BrowserTransportPolicy.PRODUCTION);
 
         assertThat(settings.type()).isEqualTo(ApplicationClientType.SPA);
         assertThat(settings.redirectUris())
-                .extracting(SpaRedirectUri::value)
+                .extracting(BrowserRedirectUri::value)
                 .containsExactly("https://app.example.com/auth/callback");
     }
 
@@ -26,18 +26,18 @@ class SpaSettingsTest {
         assertThat(SpaSettings.create(
                         List.of("http://127.0.0.1:5173/auth/callback"),
                         List.of("http://127.0.0.1:5173"),
-                        SpaTransportPolicy.DEVELOPMENT))
+                        BrowserTransportPolicy.DEVELOPMENT))
                 .isNotNull();
 
         assertThatThrownBy(() -> SpaSettings.create(
                         List.of("http://app.example.test/auth/callback"),
                         List.of("http://app.example.test"),
-                        SpaTransportPolicy.DEVELOPMENT))
+                        BrowserTransportPolicy.DEVELOPMENT))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> SpaSettings.create(
                         List.of("http://127.0.0.1:5173/auth/callback"),
                         List.of("http://127.0.0.1:5173"),
-                        SpaTransportPolicy.PRODUCTION))
+                        BrowserTransportPolicy.PRODUCTION))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -46,17 +46,17 @@ class SpaSettingsTest {
         assertThatThrownBy(() -> SpaSettings.create(
                         List.of("https://*.example.com/callback"),
                         List.of("https://*.example.com"),
-                        SpaTransportPolicy.PRODUCTION))
+                        BrowserTransportPolicy.PRODUCTION))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> SpaSettings.create(
                         List.of("https://login.example.com/callback"),
                         List.of("https://app.example.com/path"),
-                        SpaTransportPolicy.PRODUCTION))
+                        BrowserTransportPolicy.PRODUCTION))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> SpaSettings.create(
                         List.of("https://login.example.com/callback"),
                         List.of("https://app.example.com"),
-                        SpaTransportPolicy.PRODUCTION))
+                        BrowserTransportPolicy.PRODUCTION))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -65,14 +65,14 @@ class SpaSettingsTest {
         assertThatThrownBy(() -> SpaSettings.create(
                         List.of(),
                         List.of("https://app.example.com"),
-                        SpaTransportPolicy.PRODUCTION))
+                        BrowserTransportPolicy.PRODUCTION))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> SpaSettings.create(
                         List.of(
                                 "https://app.example.com/callback",
                                 "https://app.example.com/callback"),
                         List.of("https://app.example.com"),
-                        SpaTransportPolicy.PRODUCTION))
+                        BrowserTransportPolicy.PRODUCTION))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

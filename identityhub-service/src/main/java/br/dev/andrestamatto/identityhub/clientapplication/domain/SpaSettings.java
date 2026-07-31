@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 public record SpaSettings(
-        List<SpaRedirectUri> redirectUris,
+        List<BrowserRedirectUri> redirectUris,
         List<WebOrigin> webOrigins) implements ApplicationClientSettings {
 
     private static final int MAX_ENDPOINTS = 10;
@@ -19,7 +19,7 @@ public record SpaSettings(
             throw new IllegalArgumentException("SPA endpoints must be unique and contain 1 to 10 values");
         }
         var allowedOrigins = webOrigins.stream().map(WebOrigin::value).toList();
-        if (redirectUris.stream().map(SpaRedirectUri::origin)
+        if (redirectUris.stream().map(BrowserRedirectUri::origin)
                 .anyMatch(origin -> !allowedOrigins.contains(origin))) {
             throw new IllegalArgumentException("Every SPA redirect URI must use an allowed web origin");
         }
@@ -28,10 +28,10 @@ public record SpaSettings(
     public static SpaSettings create(
             List<String> redirectUris,
             List<String> webOrigins,
-            SpaTransportPolicy transportPolicy) {
+            BrowserTransportPolicy transportPolicy) {
         Objects.requireNonNull(transportPolicy);
         var redirects = Objects.requireNonNull(redirectUris).stream()
-                .map(SpaRedirectUri::new)
+                .map(BrowserRedirectUri::new)
                 .toList();
         var origins = Objects.requireNonNull(webOrigins).stream()
                 .map(WebOrigin::new)

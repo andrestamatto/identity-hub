@@ -377,6 +377,7 @@ class KeycloakAdminTokenIntegrationTest {
 
         assertProtectedApiProjection(accessToken, applicationUri, applicationId);
         assertSpaProjection(accessToken, applicationUri, applicationId);
+        assertBffProjectionAndSecretRotation(accessToken, applicationUri, applicationId);
     }
 
     private void assertProtectedApiProjection(
@@ -452,6 +453,102 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(projected.path("standardFlowEnabled").asBoolean()).isTrue();
         assertThat(projected.path("attributes").path("pkce.code.challenge.method").asString())
                 .isEqualTo("S256");
+    }
+
+    private void assertBffProjectionAndSecretRotation(
+            String accessToken,
+            URI applicationUri,
+            UUID applicationId) throws Exception {
+        var clientId = UUID.fromString("b99a9298-13ac-45b4-b198-19908e190f10");
+        var clientUri = URI.create(applicationUri + "/clients/" + clientId);
+        var response = HttpClient.newHttpClient().send(
+                authorizedPutJsonRequest(
+                        clientUri,
+                        accessToken,
+                        "configure-real-bff",
+                        """
+                                {
+                                  "type": "BFF",
+                                  "key": "real-confidential-bff",
+                                  "redirectUris": [
+                                    "http://127.0.0.1:8081/login/oauth2/code/identityhub"
+                                  ]
+                                }
+                                """),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(response.body()).contains(
+                "\"applicationId\":\"" + applicationId + "\"",
+                "\"type\":\"BFF\"",
+                "\"projectionState\":\"PENDING\"");
+
+        awaitAppliedProjection(clientId);
+
+        var projected = findKeycloakClient("ih-bff-" + clientId);
+        assertThat(projected.path("publicClient").asBoolean()).isFalse();
+        assertThat(projected.path("bearerOnly").asBoolean()).isFalse();
+        assertThat(projected.path("clientAuthenticatorType").asString())
+                .isEqualTo("client-secret");
+        assertThat(projected.path("standardFlowEnabled").asBoolean()).isTrue();
+        assertThat(projected.path("serviceAccountsEnabled").asBoolean()).isFalse();
+        assertThat(projected.path("attributes").path("pkce.code.challenge.method").asString())
+                .isEqualTo("S256");
+
+        var secretUri = URI.create(clientUri + "/credentials/client-secret");
+        var firstRotation = HttpClient.newHttpClient().send(
+                authorizedPostRequest(secretUri, accessToken, "rotate-real-bff-secret-1"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(firstRotation.statusCode()).isEqualTo(200);
+        assertThat(firstRotation.headers().firstValue("Cache-Control"))
+                .contains("no-store");
+        var firstSecret = JSON.readTree(firstRotation.body())
+                .required("clientSecret")
+                .asString();
+        assertThat(firstSecret).isNotBlank();
+
+        var secondRotation = HttpClient.newHttpClient().send(
+                authorizedPostRequest(secretUri, accessToken, "rotate-real-bff-secret-2"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(secondRotation.statusCode()).isEqualTo(200);
+        var secondSecret = JSON.readTree(secondRotation.body())
+                .required("clientSecret")
+                .asString();
+        assertThat(secondSecret).isNotBlank();
+        assertThat(MessageDigest.isEqual(
+                        MessageDigest.getInstance("SHA-256")
+                                .digest(firstSecret.getBytes(StandardCharsets.UTF_8)),
+                        MessageDigest.getInstance("SHA-256")
+                                .digest(secondSecret.getBytes(StandardCharsets.UTF_8))))
+                .isFalse();
+
+        var reconciliation = HttpClient.newHttpClient().send(
+                authorizedPostRequest(
+                        URI.create(clientUri + "/projection/reconcile"),
+                        accessToken,
+                        "reconcile-real-bff-after-secret"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(reconciliation.statusCode()).isEqualTo(202);
+        awaitAppliedProjection(clientId);
+
+        var retainedSecret = currentKeycloakClientSecret(projected.required("id").asString());
+        assertThat(MessageDigest.isEqual(
+                        MessageDigest.getInstance("SHA-256")
+                                .digest(secondSecret.getBytes(StandardCharsets.UTF_8)),
+                        MessageDigest.getInstance("SHA-256")
+                                .digest(retainedSecret.getBytes(StandardCharsets.UTF_8))))
+                .isTrue();
+    }
+
+    private static String currentKeycloakClientSecret(String keycloakClientId) throws Exception {
+        var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM + "/clients/" + keycloakClientId
+                                        + "/client-secret"),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        return JSON.readTree(response.body()).required("value").asString();
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {
@@ -721,6 +818,17 @@ class KeycloakAdminTokenIntegrationTest {
                 .header("X-Correlation-ID", correlationId)
                 .header("Content-Type", "application/json")
                 .PUT(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+    }
+
+    private static HttpRequest authorizedPostRequest(
+            URI uri,
+            String bearerToken,
+            String correlationId) {
+        return HttpRequest.newBuilder(uri)
+                .header("Authorization", "Bearer " + bearerToken)
+                .header("X-Correlation-ID", correlationId)
+                .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
     }
 

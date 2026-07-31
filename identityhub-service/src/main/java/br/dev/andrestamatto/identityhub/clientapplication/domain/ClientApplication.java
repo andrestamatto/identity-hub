@@ -79,6 +79,21 @@ public final class ClientApplication {
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
     }
 
+    public ApplicationClient configureBff(
+            ApplicationClientId clientId,
+            ApplicationClientKey key,
+            BffSettings settings,
+            Clock clock) {
+        Objects.requireNonNull(clock);
+        return new ApplicationClient(
+                clientId,
+                id,
+                key,
+                settings,
+                true,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
+    }
+
     public ClientApplicationId id() {
         return id;
     }

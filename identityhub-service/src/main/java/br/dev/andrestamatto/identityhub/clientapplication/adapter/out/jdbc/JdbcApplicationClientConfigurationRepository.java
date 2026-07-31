@@ -11,9 +11,10 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClie
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientType;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserRedirectUri;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaRedirectUri;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.WebOrigin;
@@ -309,29 +310,46 @@ public final class JdbcApplicationClientConfigurationRepository
     }
 
     private void insertTypeSpecificSettings(ApplicationClient client) {
-        if (!(client.settings() instanceof SpaSettings spa)) {
-            return;
+        switch (client.settings()) {
+            case SpaSettings spa -> {
+                insertRedirectUris(client.id(), spa.redirectUris());
+                insertWebOrigins(client.id(), spa.webOrigins());
+            }
+            case BffSettings bff -> insertRedirectUris(client.id(), bff.redirectUris());
+            default -> {
+                // API clients have no child settings.
+            }
         }
-        for (var position = 0; position < spa.redirectUris().size(); position++) {
+    }
+
+    private void insertRedirectUris(
+            ApplicationClientId clientId,
+            java.util.List<BrowserRedirectUri> redirectUris) {
+        for (var position = 0; position < redirectUris.size(); position++) {
             jdbcClient.sql("""
-                            insert into application_client_spa_redirect_uri (
+                            insert into application_client_browser_redirect_uri (
                                 application_client_id, position, redirect_uri
                             ) values (:clientId, :position, :redirectUri)
                             """)
-                    .param("clientId", client.id().value())
+                    .param("clientId", clientId.value())
                     .param("position", position)
-                    .param("redirectUri", spa.redirectUris().get(position).value())
+                    .param("redirectUri", redirectUris.get(position).value())
                     .update();
         }
-        for (var position = 0; position < spa.webOrigins().size(); position++) {
+    }
+
+    private void insertWebOrigins(
+            ApplicationClientId clientId,
+            java.util.List<WebOrigin> webOrigins) {
+        for (var position = 0; position < webOrigins.size(); position++) {
             jdbcClient.sql("""
                             insert into application_client_spa_web_origin (
                                 application_client_id, position, web_origin
                             ) values (:clientId, :position, :webOrigin)
                             """)
-                    .param("clientId", client.id().value())
+                    .param("clientId", clientId.value())
                     .param("position", position)
-                    .param("webOrigin", spa.webOrigins().get(position).value())
+                    .param("webOrigin", webOrigins.get(position).value())
                     .update();
         }
     }
@@ -418,7 +436,7 @@ public final class JdbcApplicationClientConfigurationRepository
         }
         var redirects = jdbcClient.sql("""
                         select redirect_uri
-                        from application_client_spa_redirect_uri
+                        from application_client_browser_redirect_uri
                         where application_client_id = :clientId
                         order by position
                         """)
@@ -426,8 +444,11 @@ public final class JdbcApplicationClientConfigurationRepository
                 .query(String.class)
                 .list()
                 .stream()
-                .map(SpaRedirectUri::new)
+                .map(BrowserRedirectUri::new)
                 .toList();
+        if (type == ApplicationClientType.BFF) {
+            return new BffSettings(redirects);
+        }
         var origins = jdbcClient.sql("""
                         select web_origin
                         from application_client_spa_web_origin

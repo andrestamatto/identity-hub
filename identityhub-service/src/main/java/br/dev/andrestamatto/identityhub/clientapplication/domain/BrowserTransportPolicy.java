@@ -1,20 +1,20 @@
 package br.dev.andrestamatto.identityhub.clientapplication.domain;
 
-public enum SpaTransportPolicy {
+public enum BrowserTransportPolicy {
     DEVELOPMENT,
     PRODUCTION;
 
-    void validate(SpaRedirectUri redirectUri) {
+    void validate(BrowserRedirectUri redirectUri) {
         if (!redirectUri.usesHttps()
                 && (this == PRODUCTION || !redirectUri.usesLoopbackHost())) {
-            throw new IllegalArgumentException("SPA redirect URI must use an allowed secure transport");
+            throw new IllegalArgumentException("Browser redirect URI must use secure transport");
         }
     }
 
     void validate(WebOrigin origin) {
         if (!origin.usesHttps()
                 && (this == PRODUCTION || !origin.usesLoopbackHost())) {
-            throw new IllegalArgumentException("Web origin must use an allowed secure transport");
+            throw new IllegalArgumentException("Web origin must use secure transport");
         }
     }
 }

@@ -4,14 +4,14 @@ import java.net.URI;
 import java.util.Locale;
 import java.util.Objects;
 
-public record SpaRedirectUri(String value) {
+public record BrowserRedirectUri(String value) {
 
     private static final int MAX_LENGTH = 2048;
 
-    public SpaRedirectUri {
+    public BrowserRedirectUri {
         Objects.requireNonNull(value);
         if (value.isBlank() || value.length() > MAX_LENGTH || value.contains("*")) {
-            throw new IllegalArgumentException("Invalid SPA redirect URI");
+            throw new IllegalArgumentException("Invalid browser redirect URI");
         }
         var uri = parse(value);
         var scheme = uri.getScheme() == null
@@ -21,7 +21,7 @@ public record SpaRedirectUri(String value) {
                 || uri.getHost() == null
                 || uri.getUserInfo() != null
                 || uri.getFragment() != null) {
-            throw new IllegalArgumentException("Invalid SPA redirect URI");
+            throw new IllegalArgumentException("Invalid browser redirect URI");
         }
     }
 
@@ -47,7 +47,7 @@ public record SpaRedirectUri(String value) {
         try {
             return URI.create(value);
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Invalid SPA redirect URI", exception);
+            throw new IllegalArgumentException("Invalid browser redirect URI", exception);
         }
     }
 }

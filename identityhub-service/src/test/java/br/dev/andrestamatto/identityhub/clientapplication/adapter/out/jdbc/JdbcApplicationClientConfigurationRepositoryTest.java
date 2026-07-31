@@ -11,12 +11,13 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClie
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationIdentifier;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTransportPolicy;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaTransportPolicy;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -216,6 +217,21 @@ class JdbcApplicationClientConfigurationRepositoryTest {
         assertThat(numberOfOperations()).isOne();
     }
 
+    @Test
+    void atomicallyRoundTripsBffRedirectsWithoutAudienceOrOrigins() {
+        var configuration = bffConfiguration();
+
+        repository.add(configuration);
+
+        var stored = repository.findById(new ApplicationClientId(CLIENT_ID)).orElseThrow();
+        assertThat(ApplicationClientSnapshot.from(stored).type()).isEqualTo("BFF");
+        assertThat(ApplicationClientSnapshot.from(stored).redirectUris()).containsExactly(
+                "http://127.0.0.1:8081/login/oauth2/code/identityhub");
+        assertThat(ApplicationClientSnapshot.from(stored).webOrigins()).isEmpty();
+        assertThat(ApplicationClientSnapshot.from(stored).audience()).isNull();
+        assertThat(numberOfOperations()).isOne();
+    }
+
     private ApplicationClientConfiguration configuration(
             UUID clientId,
             UUID operationId,
@@ -244,7 +260,7 @@ class JdbcApplicationClientConfigurationRepositoryTest {
                                 "http://127.0.0.1:5173/auth/callback",
                                 "http://127.0.0.1:5173/auth/silent-callback"),
                         java.util.List.of("http://127.0.0.1:5173"),
-                        SpaTransportPolicy.DEVELOPMENT),
+                        BrowserTransportPolicy.DEVELOPMENT),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         return new ApplicationClientConfiguration(
                 client,
@@ -252,6 +268,24 @@ class JdbcApplicationClientConfigurationRepositoryTest {
                         OPERATION_ID,
                         client.id(),
                         "jdbc-spa-projection",
+                        NOW));
+    }
+
+    private ApplicationClientConfiguration bffConfiguration() {
+        var client = application().configureBff(
+                new ApplicationClientId(CLIENT_ID),
+                new ApplicationClientKey("catalog-bff"),
+                BffSettings.create(
+                        java.util.List.of(
+                                "http://127.0.0.1:8081/login/oauth2/code/identityhub"),
+                        BrowserTransportPolicy.DEVELOPMENT),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        return new ApplicationClientConfiguration(
+                client,
+                ApplicationClientProjection.pending(
+                        OPERATION_ID,
+                        client.id(),
+                        "jdbc-bff-projection",
                         NOW));
     }
 

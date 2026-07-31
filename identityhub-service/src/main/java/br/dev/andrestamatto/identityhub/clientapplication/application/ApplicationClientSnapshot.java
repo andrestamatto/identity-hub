@@ -1,6 +1,7 @@
 package br.dev.andrestamatto.identityhub.clientapplication.application;
 
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
 import java.time.Instant;
 import java.util.List;
@@ -37,9 +38,15 @@ public record ApplicationClientSnapshot(
         var audience = client.settings() instanceof ProtectedApiSettings api
                 ? api.audience().value()
                 : null;
-        var redirectUris = client.settings() instanceof SpaSettings spa
-                ? spa.redirectUris().stream().map(uri -> uri.value()).toList()
-                : List.<String>of();
+        var redirectUris = switch (client.settings()) {
+            case SpaSettings spa -> spa.redirectUris().stream()
+                    .map(uri -> uri.value())
+                    .toList();
+            case BffSettings bff -> bff.redirectUris().stream()
+                    .map(uri -> uri.value())
+                    .toList();
+            default -> List.<String>of();
+        };
         var webOrigins = client.settings() instanceof SpaSettings spa
                 ? spa.webOrigins().stream().map(origin -> origin.value()).toList()
                 : List.<String>of();
