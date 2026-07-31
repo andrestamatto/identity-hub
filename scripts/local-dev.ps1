@@ -38,5 +38,5 @@ wsl.exe -d Ubuntu -- python3 "$repositoryWslPath/scripts/local-dev.py" `
     --env-file "$environmentWslPath"
 
 if ($LASTEXITCODE -ne 0) {
-    throw "O harness local falhou na ação '$Action'."
+    exit $LASTEXITCODE
 }

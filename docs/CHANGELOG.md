@@ -204,6 +204,8 @@ All notable changes to this project will be documented in this file.
 - Phone-based registration now generates WhatsApp verification tokens for the current verification-code delivery flow.
 
 ### Fixed
+- Normalized `ClientApplication.registeredAt` to microsecond precision so the
+  creation response and PostgreSQL round-trip expose the same timestamp.
 - Normalized password validation error message in `RawPassword`.
 - Fixed Spring context bootstrap issue for configuration properties binding.
 - Fixed `RegisterUserUseCaseTest` setup for deterministic token generation after introducing `VerificationTokenGenerator`.

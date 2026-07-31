@@ -83,7 +83,7 @@ Depois da implementação mínima, os testes cobrem:
 
 ```text
 .\gradlew.bat clean build --console=plain
-BUILD SUCCESSFUL in 59s
+BUILD SUCCESSFUL in 1m 5s
 ```
 
 O gate executou compilação, `bootJar`, Checkstyle, testes e JaCoCo. Os contratos
@@ -93,8 +93,8 @@ Testcontainers permanecem ignorados no host Windows sem Docker.
 
 ```text
 ./gradlew clean build --console=plain
-BUILD SUCCESSFUL in 4m 20s
-68 testes; 0 ignorados; 0 falhas
+BUILD SUCCESSFUL in 4m 51s
+69 testes; 0 ignorados; 0 falhas
 ```
 
 O cenário real iniciou Keycloak 26.7, PostgreSQL 17 do Keycloak e PostgreSQL 17
@@ -140,9 +140,11 @@ usa o plugin local quando disponível ou a imagem oficial fixada
 Na prova local, os três containers ficaram saudáveis, a segunda execução detectou
 o realm existente e a aplicação atingiu readiness `UP` com as duas migrations do
 Flyway aplicadas. Três testes do harness passaram, o acesso anônimo retornou `401`
-e o endpoint oficial de Device Authorization expôs o contrato esperado. A revisão
-humana ainda deve concluir o login TOTP e executar a ação `smoke` antes da
-aprovação final.
+e o endpoint oficial de Device Authorization expôs o contrato esperado. O login
+humano com TOTP revelou uma diferença submicrossegundo entre a resposta de criação
+e a leitura do PostgreSQL. Após a normalização temporal no aggregate, o smoke com
+uma aplicação nova aprovou criação `201`, leitura `200` e replay idempotente `200`
+com o mesmo contrato. A aprovação final permanece sob revisão humana.
 
 ## 8. Revisão humana
 

@@ -2,6 +2,7 @@ package br.dev.andrestamatto.identityhub.clientapplication.domain;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 public final class ClientApplication {
@@ -36,7 +37,7 @@ public final class ClientApplication {
                 identifier,
                 displayName,
                 ClientApplicationState.DRAFT,
-                clock.instant());
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
     }
 
     public static ClientApplication reconstitute(

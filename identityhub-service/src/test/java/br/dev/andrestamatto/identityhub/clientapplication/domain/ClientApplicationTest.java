@@ -29,4 +29,18 @@ class ClientApplicationTest {
         assertThat(application.state()).isEqualTo(ClientApplicationState.DRAFT);
         assertThat(application.registeredAt()).isEqualTo(REGISTERED_AT);
     }
+
+    @Test
+    void normalizesRegistrationTimestampToMicroseconds() {
+        var preciseInstant = Instant.parse("2026-07-30T14:00:00.123456789Z");
+
+        var application = ClientApplication.register(
+                new ClientApplicationId(APPLICATION_ID),
+                new ApplicationIdentifier("auto-radar"),
+                new DisplayName("Auto Radar"),
+                Clock.fixed(preciseInstant, ZoneOffset.UTC));
+
+        assertThat(application.registeredAt())
+                .isEqualTo(Instant.parse("2026-07-30T14:00:00.123456Z"));
+    }
 }

@@ -330,7 +330,8 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
     if not path.exists():
         raise RuntimeError("Sessão ausente. Execute primeiro a ação 'token'.")
     token = path.read_text(encoding="utf-8").strip()
-    application_id = uuid.UUID("75f911ae-d107-46b4-bb6f-bcb46a62f124")
+    application_id = uuid.uuid4()
+    application_identifier = f"local-smoke-{application_id.hex[:12]}"
     endpoint = f"http://127.0.0.1:8080/internal/admin/client-applications/{application_id}"
     headers = {
         "Accept": "application/json",
@@ -338,27 +339,42 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
         "Authorization": f"Bearer {token}",
         "X-Correlation-ID": str(uuid.uuid4()),
     }
-    request = urllib.request.Request(
-        endpoint,
-        data=json.dumps({"identifier": "local-smoke-app", "displayName": "Local Smoke App"}).encode(),
-        headers=headers,
-        method="PUT",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            created = json.loads(response.read())
-            put_status = response.status
-    except urllib.error.HTTPError as error:
-        raise RuntimeError(f"Cadastro falhou com HTTP {error.code}.") from error
+    body = json.dumps(
+        {"identifier": application_identifier, "displayName": "Local Smoke App"}
+    ).encode()
+    put_status, created = put_application(endpoint, headers, body)
     get_request = urllib.request.Request(endpoint, headers={"Authorization": f"Bearer {token}"})
     try:
         with urllib.request.urlopen(get_request, timeout=10) as response:
             found = json.loads(response.read())
     except urllib.error.HTTPError as error:
         raise RuntimeError(f"Consulta falhou com HTTP {error.code}.") from error
-    if created.get("applicationId") != str(application_id) or found != created:
+    replay_status, replayed = put_application(endpoint, headers, body)
+    if (
+        put_status != 201
+        or replay_status != 200
+        or created.get("applicationId") != str(application_id)
+        or found != created
+        or replayed != created
+    ):
         raise RuntimeError("O round-trip da aplicação não preservou o contrato esperado.")
-    print(f"Smoke test aprovado: PUT HTTP {put_status}, GET HTTP 200, estado {found['state']}.")
+    print(
+        "Smoke test aprovado: PUT HTTP 201, GET HTTP 200, "
+        f"replay HTTP 200, estado {found['state']}."
+    )
+
+
+def put_application(
+    endpoint: str, headers: dict[str, str], body: bytes
+) -> tuple[int, dict]:
+    request = urllib.request.Request(
+        endpoint, data=body, headers=headers, method="PUT"
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return response.status, json.loads(response.read())
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(f"Cadastro falhou com HTTP {error.code}.") from error
 
 
 def main() -> None:
