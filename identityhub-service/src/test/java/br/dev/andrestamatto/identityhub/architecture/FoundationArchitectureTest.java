@@ -25,6 +25,7 @@ class FoundationArchitectureTest {
                         BASE_PACKAGE + ".audit..",
                         BASE_PACKAGE + ".clientapplication.domain..",
                         BASE_PACKAGE + ".clientapplication.application..",
+                        BASE_PACKAGE + ".clientapplication.adapter.in.http..",
                         BASE_PACKAGE + ".clientapplication.adapter.out.jdbc..")
                 .check(PRODUCTION_CLASSES);
     }

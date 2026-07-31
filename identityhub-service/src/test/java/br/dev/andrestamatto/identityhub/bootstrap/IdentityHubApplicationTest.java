@@ -36,6 +36,10 @@ class IdentityHubApplicationTest {
     private br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEventRepository
             administrativeAccessEventRepository;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository
+            clientApplicationRepository;
+
     @Test
     void startsWithDevelopmentEnvironmentAndUtcClock() {
         assertThat(runtimeProperties.environment())

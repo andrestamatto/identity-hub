@@ -85,7 +85,9 @@ class JdbcClientApplicationRepositoryTest {
         var firstResult = register.execute(command);
         var retriedResult = register.execute(command);
 
-        assertThat(retriedResult).isEqualTo(firstResult);
+        assertThat(retriedResult.application()).isEqualTo(firstResult.application());
+        assertThat(firstResult.created()).isTrue();
+        assertThat(retriedResult.created()).isFalse();
         assertThat(numberOfApplications()).isEqualTo(1);
     }
 

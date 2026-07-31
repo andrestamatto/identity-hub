@@ -35,11 +35,12 @@ class RegisterClientApplicationTest {
     void registersDraftApplication() {
         var result = register.execute(command(APPLICATION_ID, "auto-radar", "Auto Radar"));
 
-        assertThat(result.applicationId()).isEqualTo(APPLICATION_ID);
-        assertThat(result.identifier()).isEqualTo("auto-radar");
-        assertThat(result.displayName()).isEqualTo("Auto Radar");
-        assertThat(result.state()).isEqualTo(ClientApplicationState.DRAFT);
-        assertThat(result.registeredAt()).isEqualTo(REGISTERED_AT);
+        assertThat(result.created()).isTrue();
+        assertThat(result.application().applicationId()).isEqualTo(APPLICATION_ID);
+        assertThat(result.application().identifier()).isEqualTo("auto-radar");
+        assertThat(result.application().displayName()).isEqualTo("Auto Radar");
+        assertThat(result.application().state()).isEqualTo(ClientApplicationState.DRAFT);
+        assertThat(result.application().registeredAt()).isEqualTo(REGISTERED_AT);
         assertThat(repository.additions()).isEqualTo(1);
     }
 
@@ -48,7 +49,9 @@ class RegisterClientApplicationTest {
         var firstResult = register.execute(command(APPLICATION_ID, "auto-radar", " Auto Radar "));
         var retriedResult = register.execute(command(APPLICATION_ID, "auto-radar", "Auto Radar"));
 
-        assertThat(retriedResult).isEqualTo(firstResult);
+        assertThat(retriedResult.application()).isEqualTo(firstResult.application());
+        assertThat(firstResult.created()).isTrue();
+        assertThat(retriedResult.created()).isFalse();
         assertThat(repository.additions()).isEqualTo(1);
     }
 
@@ -62,8 +65,9 @@ class RegisterClientApplicationTest {
         var result = concurrentRegister.execute(
                 command(APPLICATION_ID, "auto-radar", "Auto Radar"));
 
-        assertThat(result).isEqualTo(
+        assertThat(result.application()).isEqualTo(
                 ClientApplicationSnapshot.from(concurrentRepository.application));
+        assertThat(result.created()).isFalse();
     }
 
     @Test

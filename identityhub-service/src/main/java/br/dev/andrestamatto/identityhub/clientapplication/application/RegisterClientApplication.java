@@ -20,7 +20,7 @@ public final class RegisterClientApplication {
         this.clock = Objects.requireNonNull(clock);
     }
 
-    public ClientApplicationSnapshot execute(Command command) {
+    public ClientApplicationRegistration execute(Command command) {
         Objects.requireNonNull(command);
         var id = new ClientApplicationId(command.applicationId());
         var identifier = new ApplicationIdentifier(command.identifier());
@@ -28,7 +28,7 @@ public final class RegisterClientApplication {
 
         var applicationWithId = repository.findById(id);
         if (applicationWithId.isPresent()) {
-            return replayOrReject(applicationWithId.orElseThrow(), identifier, displayName);
+            return replay(applicationWithId.orElseThrow(), identifier, displayName);
         }
         if (repository.findByIdentifier(identifier).isPresent()) {
             throw new ClientApplicationConflictException(
@@ -41,23 +41,27 @@ public final class RegisterClientApplication {
         } catch (ClientApplicationConflictException conflict) {
             var concurrentWinner = repository.findById(id);
             if (concurrentWinner.isPresent()) {
-                return replayOrReject(
+                return replay(
                         concurrentWinner.orElseThrow(),
                         identifier,
                         displayName);
             }
             throw conflict;
         }
-        return ClientApplicationSnapshot.from(application);
+        return new ClientApplicationRegistration(
+                ClientApplicationSnapshot.from(application),
+                true);
     }
 
-    private ClientApplicationSnapshot replayOrReject(
+    private ClientApplicationRegistration replay(
             ClientApplication existing,
             ApplicationIdentifier identifier,
             DisplayName displayName) {
         if (existing.identifier().equals(identifier)
                 && existing.displayName().equals(displayName)) {
-            return ClientApplicationSnapshot.from(existing);
+            return new ClientApplicationRegistration(
+                    ClientApplicationSnapshot.from(existing),
+                    false);
         }
         throw new ClientApplicationConflictException(
                 "Client application id is already assigned to different content");

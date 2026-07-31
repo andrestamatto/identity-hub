@@ -5,7 +5,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
 
-@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
+@SpringBootApplication(
+        scanBasePackages = "br.dev.andrestamatto.identityhub",
+        exclude = UserDetailsServiceAutoConfiguration.class)
 @ConfigurationPropertiesScan
 public class IdentityHubApplication {
 
