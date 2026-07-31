@@ -1,8 +1,10 @@
 # SLICE-001 — Cadastro de ClientApplication
 
-> **Status:** awaiting human approval
+> **Status:** approved
 >
 > **Data:** 2026-07-31
+>
+> **Aprovação humana:** 2026-07-31
 >
 > **Branch:** `feat/slice-001-client-application`
 >
@@ -144,9 +146,10 @@ e o endpoint oficial de Device Authorization expôs o contrato esperado. O login
 humano com TOTP revelou uma diferença submicrossegundo entre a resposta de criação
 e a leitura do PostgreSQL. Após a normalização temporal no aggregate, o smoke com
 uma aplicação nova aprovou criação `201`, leitura `200` e replay idempotente `200`
-com o mesmo contrato. A aprovação final permanece sob revisão humana.
+com o mesmo contrato.
 
 ## 8. Revisão humana
 
-Os gates automatizados estão verdes. A conclusão e o push da `SLICE-001`
-dependem da revisão e aprovação humana deste incremento vertical.
+O mantenedor revisou o comportamento pelo harness local, confirmou o login
+administrativo com TOTP e aprovou o incremento em 2026-07-31. Os gates
+automatizados e a prova manual estão verdes; a branch pode ser publicada para PR.
