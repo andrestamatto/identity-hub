@@ -3,7 +3,8 @@
 ## 1. Objetivo
 
 O harness local permite executar e verificar as APIs administrativas das
-`SLICE-001`, `SLICE-002A` e `SLICE-002B` com PostgreSQL 17 e Keycloak 26.7 reais. A aplicação
+`SLICE-001` e os incrementos `SLICE-002A` a `SLICE-002C` com PostgreSQL 17 e
+Keycloak 26.7 reais. A aplicação
 continua sendo iniciada pelo Gradle no WSL; somente as dependências de
 infraestrutura usam containers.
 
@@ -50,7 +51,7 @@ local-env run
 # Em outro terminal, inicia o login administrativo hospedado
 local-env token
 
-# Valida aplicação, API protegida, SPA pública, projeção e reconciliação
+# Valida aplicação, API, SPA, BFF, projeção, reconciliação e credencial
 local-env smoke
 
 # Exibe os containers ou encerra a infraestrutura
@@ -98,7 +99,15 @@ A ação `smoke`:
 4. solicita reconciliação explícita e confirma nova aplicação idempotente;
 5. configura uma SPA pública com redirects e origins exatos em loopback;
 6. aguarda o worker criar o cliente Authorization Code com PKCE `S256` e
-   registrar `APPLIED`.
+   registrar `APPLIED`;
+7. configura um BFF confidencial com redirect exato em loopback;
+8. aguarda o cliente Authorization Code + PKCE `S256` ficar `APPLIED`;
+9. solicita uma credencial gerada ao Keycloak e a descarta sem exibi-la.
+
+O smoke nunca imprime nem persiste a credencial do BFF. Para uma integração
+real, a resposta de emissão deve ser copiada diretamente para o secret manager
+do consumidor. Repetir a operação gera uma nova credencial e invalida a anterior;
+ela não funciona como recuperação.
 
 Se a sessão administrativa tiver expirado, execute novamente `local-env token`.
 
