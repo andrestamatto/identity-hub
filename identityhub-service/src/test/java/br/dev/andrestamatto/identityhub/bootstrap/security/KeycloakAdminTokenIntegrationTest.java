@@ -169,6 +169,8 @@ class KeycloakAdminTokenIntegrationTest {
                 .single())
                 .isEqualTo("ALLOWED");
 
+        assertClientApplicationAdministration(accessToken);
+
         var deniedCorrelationId = "anonymous-admin-request";
         var deniedResponse = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(
@@ -189,6 +191,53 @@ class KeycloakAdminTokenIntegrationTest {
                 .query(String.class)
                 .single())
                 .isEqualTo("DENIED");
+    }
+
+    private void assertClientApplicationAdministration(String accessToken)
+            throws Exception {
+        var applicationId = UUID.fromString("184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0");
+        var applicationUri = URI.create("http://127.0.0.1:" + servicePort
+                + "/internal/admin/client-applications/" + applicationId);
+        var correlationId = "real-keycloak-client-application";
+        var requestBody = """
+                {
+                  "identifier": "auto-radar",
+                  "displayName": "Auto Radar"
+                }
+                """;
+
+        var registration = HttpClient.newHttpClient().send(
+                authorizedPutJsonRequest(
+                        applicationUri,
+                        accessToken,
+                        correlationId,
+                        requestBody),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(registration.statusCode()).isEqualTo(201);
+        assertThat(registration.body()).contains(
+                "\"identifier\":\"auto-radar\"",
+                "\"state\":\"DRAFT\"");
+
+        var lookup = HttpClient.newHttpClient().send(
+                authorizedGetRequest(applicationUri, accessToken),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(lookup.statusCode()).isEqualTo(200);
+        assertThat(lookup.body()).contains("\"applicationId\":\"" + applicationId + "\"");
+        assertThat(jdbcClient.sql("select count(*) from client_application")
+                .query(Integer.class)
+                .single())
+                .isEqualTo(1);
+        assertThat(jdbcClient.sql("""
+                            select outcome
+                            from administrative_access_event
+                            where correlation_id = :correlationId
+                            """)
+                .param("correlationId", correlationId)
+                .query(String.class)
+                .single())
+                .isEqualTo("ALLOWED");
     }
 
     private static void assertTokenIsolation(String accessToken, URI issuer) {
@@ -368,6 +417,19 @@ class KeycloakAdminTokenIntegrationTest {
                 .header("Authorization", "Bearer " + bearerToken)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+    }
+
+    private static HttpRequest authorizedPutJsonRequest(
+            URI uri,
+            String bearerToken,
+            String correlationId,
+            String body) {
+        return HttpRequest.newBuilder(uri)
+                .header("Authorization", "Bearer " + bearerToken)
+                .header("X-Correlation-ID", correlationId)
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(body))
                 .build();
     }
 

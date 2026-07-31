@@ -1,0 +1,58 @@
+name: identityhub-local
+
+services:
+  identityhub-database:
+    image: postgres:17.10
+    environment:
+      POSTGRES_DB: ${IDENTITYHUB_DATABASE_NAME:?Set IDENTITYHUB_DATABASE_NAME}
+      POSTGRES_USER: ${IDENTITYHUB_DATABASE_USERNAME:?Set IDENTITYHUB_DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${IDENTITYHUB_DATABASE_PASSWORD:?Set IDENTITYHUB_DATABASE_PASSWORD}
+    ports:
+      - "127.0.0.1:${IDENTITYHUB_DATABASE_PORT:?Set IDENTITYHUB_DATABASE_PORT}:5432"
+    volumes:
+      - identityhub-database-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  keycloak-database:
+    image: postgres:17.10
+    environment:
+      POSTGRES_DB: ${IDENTITYHUB_KEYCLOAK_DATABASE_NAME:?Set IDENTITYHUB_KEYCLOAK_DATABASE_NAME}
+      POSTGRES_USER: ${IDENTITYHUB_KEYCLOAK_DATABASE_USERNAME:?Set IDENTITYHUB_KEYCLOAK_DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${IDENTITYHUB_KEYCLOAK_DATABASE_PASSWORD:?Set IDENTITYHUB_KEYCLOAK_DATABASE_PASSWORD}
+    volumes:
+      - keycloak-database-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.0
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-database
+      KC_DB_URL_DATABASE: ${IDENTITYHUB_KEYCLOAK_DATABASE_NAME:?Set IDENTITYHUB_KEYCLOAK_DATABASE_NAME}
+      KC_DB_USERNAME: ${IDENTITYHUB_KEYCLOAK_DATABASE_USERNAME:?Set IDENTITYHUB_KEYCLOAK_DATABASE_USERNAME}
+      KC_DB_PASSWORD: ${IDENTITYHUB_KEYCLOAK_DATABASE_PASSWORD:?Set IDENTITYHUB_KEYCLOAK_DATABASE_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${IDENTITYHUB_KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME:?Set IDENTITYHUB_KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${IDENTITYHUB_KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD:?Set IDENTITYHUB_KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+    ports:
+      - "127.0.0.1:${IDENTITYHUB_KEYCLOAK_PORT:?Set IDENTITYHUB_KEYCLOAK_PORT}:8080"
+    depends_on:
+      keycloak-database:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  identityhub-database-data:
+  keycloak-database-data:

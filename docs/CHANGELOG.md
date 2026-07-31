@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Local development harness for SLICE-001 with loopback-only PostgreSQL and
+  Keycloak containers, idempotent realm bootstrap, hosted device login with TOTP,
+  protected token storage, and an administrative API smoke test.
+- Approved SLICE-001 with the `ClientApplication` aggregate,
+  idempotent administrative registration and lookup, PostgreSQL/Flyway ownership,
+  admin/auditor authorization, safe HTTP errors, correlation, auditing, metrics,
+  and real Keycloak/PostgreSQL Testcontainers evidence.
 - Approved SLICE-000 administrative boundary with real Keycloak 26.7 hosted TOTP login, isolated PostgreSQL 17 databases, exact environment and audience validation, role-based access, readiness, correlation, Flyway-owned append-only access auditing, and Testcontainers contract evidence.
 - Approved MIG-003 controlled reset assessment with TDD evidence, negative guardrail proofs, residue verification, historical secret baseline, and rollback strategy.
 - Initial `identityhub-service` Spring Boot 4 foundation with typed runtime environment, injectable UTC clock, fail-closed stateless security, minimal health probes, and sanitized request correlation.
@@ -197,6 +204,8 @@ All notable changes to this project will be documented in this file.
 - Phone-based registration now generates WhatsApp verification tokens for the current verification-code delivery flow.
 
 ### Fixed
+- Normalized `ClientApplication.registeredAt` to microsecond precision so the
+  creation response and PostgreSQL round-trip expose the same timestamp.
 - Normalized password validation error message in `RawPassword`.
 - Fixed Spring context bootstrap issue for configuration properties binding.
 - Fixed `RegisterUserUseCaseTest` setup for deterministic token generation after introducing `VerificationTokenGenerator`.

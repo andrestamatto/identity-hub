@@ -18,11 +18,15 @@ class FoundationArchitectureTest {
             .importPackages(BASE_PACKAGE);
 
     @Test
-    void foundationContainsOnlyBootstrapAndAuditCode() {
+    void codeContainsOnlyApprovedCapabilities() {
         classes()
                 .should().resideInAnyPackage(
                         BASE_PACKAGE + ".bootstrap..",
-                        BASE_PACKAGE + ".audit..")
+                        BASE_PACKAGE + ".audit..",
+                        BASE_PACKAGE + ".clientapplication.domain..",
+                        BASE_PACKAGE + ".clientapplication.application..",
+                        BASE_PACKAGE + ".clientapplication.adapter.in.http..",
+                        BASE_PACKAGE + ".clientapplication.adapter.out.jdbc..")
                 .check(PRODUCTION_CLASSES);
     }
 
@@ -39,15 +43,41 @@ class FoundationArchitectureTest {
     }
 
     @Test
-    void futureDomainCodeCannotDependOnFrameworks() {
+    void domainCodeDoesNotDependOnOuterLayersOrFrameworks() {
         noClasses()
                 .that().resideInAPackage("..domain..")
                 .should().dependOnClassesThat()
                 .resideInAnyPackage(
                         "org.springframework..",
-                        "jakarta.persistence..",
-                        "org.keycloak..")
+                        "jakarta..",
+                        "org.keycloak..",
+                        "..application..",
+                        "..adapter..",
+                        "..bootstrap..")
                 .allowEmptyShould(true)
+                .check(PRODUCTION_CLASSES);
+    }
+
+    @Test
+    void clientApplicationAdapterDoesNotDependOnBootstrap() {
+        noClasses()
+                .that().resideInAPackage("..clientapplication.adapter..")
+                .should().dependOnClassesThat()
+                .resideInAPackage("..bootstrap..")
+                .check(PRODUCTION_CLASSES);
+    }
+
+    @Test
+    void applicationCodeDoesNotDependOnFrameworksOrAdapters() {
+        noClasses()
+                .that().resideInAPackage("..clientapplication.application..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta..",
+                        "org.keycloak..",
+                        "..adapter..",
+                        "..bootstrap..")
                 .check(PRODUCTION_CLASSES);
     }
 

@@ -2,17 +2,19 @@ package br.dev.andrestamatto.identityhub.bootstrap.security;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEventRepository;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -36,6 +38,9 @@ class AdminHttpSecurityTest {
 
     @MockitoBean
     private AdministrativeAccessEventRepository administrativeAccessEventRepository;
+
+    @MockitoBean
+    private ClientApplicationRepository clientApplicationRepository;
 
     @Test
     void requiresAuthenticationForAdministrativeEndpoints() throws Exception {
@@ -63,10 +68,18 @@ class AdminHttpSecurityTest {
 
     @Test
     void auditorCannotReachAdministrativeMutation() throws Exception {
-        mvc.perform(post("/internal/admin/test-mutation")
+        mvc.perform(put("/internal/admin/client-applications/"
+                        + "184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0")
                         .with(jwt().authorities(
                                 new SimpleGrantedAuthority("ROLE_PLATFORM_AUDITOR"),
-                                new SimpleGrantedAuthority("MFA_TOTP"))))
+                                new SimpleGrantedAuthority("MFA_TOTP")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "identifier": "auto-radar",
+                                  "displayName": "Auto Radar"
+                                }
+                                """))
                 .andExpect(status().isForbidden());
     }
 }

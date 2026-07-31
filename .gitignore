@@ -3,7 +3,7 @@
 .data/
 .gradle/
 build/
-out/
+/out/
 
 .idea/
 *.iml
@@ -17,6 +17,8 @@ out/
 *.tmp
 *.swp
 *.swo
+__pycache__/
+*.py[cod]
 
 .env
 .env.*
