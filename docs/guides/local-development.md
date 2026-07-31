@@ -2,9 +2,10 @@
 
 ## 1. Objetivo
 
-O harness local permite executar e verificar a API administrativa da `SLICE-001`
-com PostgreSQL 17 e Keycloak 26.7 reais. A aplicação continua sendo iniciada pelo
-Gradle no WSL; somente as dependências de infraestrutura usam containers.
+O harness local permite executar e verificar as APIs administrativas das
+`SLICE-001` e `SLICE-002A` com PostgreSQL 17 e Keycloak 26.7 reais. A aplicação
+continua sendo iniciada pelo Gradle no WSL; somente as dependências de
+infraestrutura usam containers.
 
 O harness é exclusivo de desenvolvimento. Ele não define topologia, credenciais
 ou procedimentos de produção.
@@ -36,25 +37,30 @@ outro ambiente.
 
 ## 3. Comandos
 
-Execute os comandos abaixo no PowerShell, a partir de qualquer diretório:
+Com a função genérica `local-env` configurada no Git Bash, execute na raiz do
+repositório:
 
-```powershell
+```sh
 # Sobe PostgreSQL e Keycloak e configura o realm de forma idempotente
-& C:\Users\re040282\dev\repo\projects\identity-hub\scripts\local-dev.ps1 up
+local-env up
 
 # Inicia o IdentityHub na porta 8080; mantenha este terminal aberto
-& C:\Users\re040282\dev\repo\projects\identity-hub\scripts\local-dev.ps1 run
+local-env run
 
 # Em outro terminal, inicia o login administrativo hospedado
-& C:\Users\re040282\dev\repo\projects\identity-hub\scripts\local-dev.ps1 token
+local-env token
 
-# Cadastra e consulta uma ClientApplication pela API real
-& C:\Users\re040282\dev\repo\projects\identity-hub\scripts\local-dev.ps1 smoke
+# Valida aplicação, API protegida, projeção e reconciliação
+local-env smoke
 
 # Exibe os containers ou encerra a infraestrutura
-& C:\Users\re040282\dev\repo\projects\identity-hub\scripts\local-dev.ps1 status
-& C:\Users\re040282\dev\repo\projects\identity-hub\scripts\local-dev.ps1 down
+local-env status
+local-env down
 ```
+
+Sem o alias, os mesmos comandos podem ser executados no PowerShell a partir da
+raiz do repositório com
+`pwsh.exe -NoProfile -File ./scripts/local-dev.ps1 <ação>`.
 
 O parâmetro `-EnvironmentFile` permite selecionar outro arquivo local sem mudar
 o conteúdo versionado.
@@ -76,7 +82,24 @@ WSL, com modo `0600`. A ação `down` remove esse arquivo. O cliente público
 não aceita Resource Owner Password Credentials e o acesso administrativo exige
 `PLATFORM_ADMIN` e `amr=totp`.
 
-## 5. Dados e reinicialização
+## 5. Projeção da API protegida
+
+O bootstrap cria um cliente confidencial interno e concede somente
+`realm-management/manage-clients` ao seu service account. O escopo completo do
+realm permanece desabilitado. O segredo é gerado localmente, guardado em
+`~/.local/state/identityhub/management-client.secret` com modo `0600` e nunca é
+impresso ou armazenado no repositório.
+
+A ação `smoke`:
+
+1. cadastra uma `ClientApplication` e confirma seu replay idempotente;
+2. configura uma API protegida com projeção `PENDING`;
+3. aguarda o worker criar o cliente bearer-only e registrar `APPLIED`;
+4. solicita reconciliação explícita e confirma nova aplicação idempotente.
+
+Se a sessão administrativa tiver expirado, execute novamente `local-env token`.
+
+## 6. Dados e reinicialização
 
 O comando `down` remove containers e redes, mas preserva os volumes nomeados dos
 dois bancos. A remoção desses volumes apaga dados e credenciais TOTP e, portanto,
