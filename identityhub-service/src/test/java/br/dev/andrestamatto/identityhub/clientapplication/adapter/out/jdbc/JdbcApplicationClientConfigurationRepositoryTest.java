@@ -16,6 +16,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicati
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -120,6 +121,62 @@ class JdbcApplicationClientConfigurationRepositoryTest {
                         "another-api",
                         "catalog-api")))
                 .isInstanceOf(ClientApplicationConflictException.class);
+    }
+
+    @Test
+    void reservesDueProjectionForOnlyOneWorkerAndAppliesIt() {
+        repository.add(configuration(CLIENT_ID, OPERATION_ID, "catalog-api", "catalog-api"));
+        var firstWorker = UUID.randomUUID();
+        var secondWorker = UUID.randomUUID();
+
+        assertThat(repository.reserveNext(firstWorker, NOW, Duration.ofSeconds(30)))
+                .map(configuration -> configuration.projection().operationId())
+                .contains(OPERATION_ID);
+        assertThat(repository.reserveNext(secondWorker, NOW, Duration.ofSeconds(30)))
+                .isEmpty();
+
+        repository.markApplied(OPERATION_ID, firstWorker, NOW.plusSeconds(1));
+
+        var projection = repository.findById(new ApplicationClientId(CLIENT_ID))
+                .orElseThrow()
+                .projection();
+        assertThat(projection.state())
+                .isEqualTo(br.dev.andrestamatto.identityhub.clientapplication.application
+                        .ApplicationClientProjectionState.APPLIED);
+        assertThat(projection.attempts()).isOne();
+    }
+
+    @Test
+    void makesTransientFailureEligibleOnlyAfterBackoff() {
+        repository.add(configuration(CLIENT_ID, OPERATION_ID, "catalog-api", "catalog-api"));
+        var worker = UUID.randomUUID();
+        var retryAt = NOW.plusSeconds(10);
+        repository.reserveNext(worker, NOW, Duration.ofSeconds(30)).orElseThrow();
+
+        repository.scheduleRetry(
+                OPERATION_ID,
+                worker,
+                1,
+                retryAt,
+                "KEYCLOAK_UNAVAILABLE",
+                NOW.plusSeconds(1));
+
+        assertThat(repository.reserveNext(UUID.randomUUID(), NOW.plusSeconds(9), Duration.ofSeconds(30)))
+                .isEmpty();
+        assertThat(repository.reserveNext(UUID.randomUUID(), retryAt, Duration.ofSeconds(30)))
+                .isPresent();
+    }
+
+    @Test
+    void recoversProjectionAfterWorkerLeaseExpires() {
+        repository.add(configuration(CLIENT_ID, OPERATION_ID, "catalog-api", "catalog-api"));
+        repository.reserveNext(UUID.randomUUID(), NOW, Duration.ofSeconds(30)).orElseThrow();
+
+        assertThat(repository.reserveNext(
+                        UUID.randomUUID(),
+                        NOW.plusSeconds(31),
+                        Duration.ofSeconds(30)))
+                .isPresent();
     }
 
     private ApplicationClientConfiguration configuration(

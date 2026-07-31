@@ -3,6 +3,7 @@ package br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfiguration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfigurationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjection;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionState;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationConflictException;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClient;
@@ -16,14 +17,17 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.support.TransactionOperations;
 
 public final class JdbcApplicationClientConfigurationRepository
-        implements ApplicationClientConfigurationRepository {
+        implements ApplicationClientConfigurationRepository, ApplicationClientProjectionRepository {
 
     private static final String SELECT_CONFIGURATION = """
             select
@@ -98,6 +102,142 @@ public final class JdbcApplicationClientConfigurationRepository
                     "Application client, key, audience, or operation is already assigned",
                     exception);
         }
+    }
+
+    @Override
+    public Optional<ApplicationClientConfiguration> reserveNext(
+            UUID workerId,
+            Instant now,
+            Duration leaseDuration) {
+        return transactions.execute(status -> jdbcClient.sql("""
+                        with candidate as (
+                            select operation_id
+                            from application_client_projection_outbox
+                            where state = 'PENDING'
+                              and next_attempt_at <= :now
+                              and (locked_until is null or locked_until <= :now)
+                            order by next_attempt_at, created_at
+                            for update skip locked
+                            limit 1
+                        )
+                        update application_client_projection_outbox projection
+                        set locked_by = :workerId,
+                            locked_until = :lockedUntil,
+                            updated_at = :now
+                        from candidate
+                        where projection.operation_id = candidate.operation_id
+                        returning projection.application_client_id
+                        """)
+                .param("now", utc(now))
+                .param("workerId", workerId)
+                .param("lockedUntil", utc(now.plus(leaseDuration)))
+                .query(UUID.class)
+                .optional()
+                .flatMap(id -> findById(new ApplicationClientId(id))));
+    }
+
+    @Override
+    public void markApplied(UUID operationId, UUID workerId, Instant now) {
+        updateReservedProjection(
+                operationId,
+                workerId,
+                """
+                        state = 'APPLIED',
+                        attempts = attempts + 1,
+                        last_failure_code = null,
+                        locked_by = null,
+                        locked_until = null,
+                        updated_at = :now
+                        """,
+                now,
+                null,
+                null,
+                null);
+    }
+
+    @Override
+    public void scheduleRetry(
+            UUID operationId,
+            UUID workerId,
+            int attempts,
+            Instant nextAttemptAt,
+            String failureCode,
+            Instant now) {
+        updateReservedProjection(
+                operationId,
+                workerId,
+                """
+                        attempts = :attempts,
+                        next_attempt_at = :nextAttemptAt,
+                        last_failure_code = :failureCode,
+                        locked_by = null,
+                        locked_until = null,
+                        updated_at = :now
+                        """,
+                now,
+                attempts,
+                nextAttemptAt,
+                failureCode);
+    }
+
+    @Override
+    public void markFailed(
+            UUID operationId,
+            UUID workerId,
+            int attempts,
+            String failureCode,
+            Instant now) {
+        updateReservedProjection(
+                operationId,
+                workerId,
+                """
+                        state = 'FAILED',
+                        attempts = :attempts,
+                        last_failure_code = :failureCode,
+                        locked_by = null,
+                        locked_until = null,
+                        updated_at = :now
+                        """,
+                now,
+                attempts,
+                null,
+                failureCode);
+    }
+
+    private void updateReservedProjection(
+            UUID operationId,
+            UUID workerId,
+            String assignments,
+            Instant now,
+            Integer attempts,
+            Instant nextAttemptAt,
+            String failureCode) {
+        var statement = jdbcClient.sql("""
+                        update application_client_projection_outbox
+                        set %s
+                        where operation_id = :operationId
+                          and state = 'PENDING'
+                          and locked_by = :workerId
+                        """.formatted(assignments))
+                .param("operationId", operationId)
+                .param("workerId", workerId)
+                .param("now", utc(now));
+        if (attempts != null) {
+            statement = statement.param("attempts", attempts);
+        }
+        if (nextAttemptAt != null) {
+            statement = statement.param("nextAttemptAt", utc(nextAttemptAt));
+        }
+        if (failureCode != null) {
+            statement = statement.param("failureCode", failureCode);
+        }
+        if (statement.update() != 1) {
+            throw new IllegalStateException("Projection is not reserved by this worker");
+        }
+    }
+
+    private static OffsetDateTime utc(Instant instant) {
+        return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
 
     private void insertClient(ApplicationClient client) {
