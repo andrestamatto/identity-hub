@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEventRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
+import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc
+        .JdbcApplicationClientConfigurationRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -41,6 +43,9 @@ class AdminHttpSecurityTest {
 
     @MockitoBean
     private ClientApplicationRepository clientApplicationRepository;
+
+    @MockitoBean
+    private JdbcApplicationClientConfigurationRepository applicationClientConfigurationRepository;
 
     @Test
     void requiresAuthenticationForAdministrativeEndpoints() throws Exception {

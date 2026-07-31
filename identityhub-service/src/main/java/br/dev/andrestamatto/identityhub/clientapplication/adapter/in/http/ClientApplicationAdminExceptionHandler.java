@@ -1,5 +1,6 @@
 package br.dev.andrestamatto.identityhub.clientapplication.adapter.in.http;
 
+import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientNotFoundException;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationConflictException;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -31,7 +32,15 @@ final class ClientApplicationAdminExceptionHandler {
         return problem(
                 HttpStatus.CONFLICT,
                 "Client application conflict",
-                "The application id or identifier is already assigned");
+                "The application or client identity is already assigned");
+    }
+
+    @ExceptionHandler(ApplicationClientNotFoundException.class)
+    ProblemDetail applicationClientNotFound() {
+        return problem(
+                HttpStatus.NOT_FOUND,
+                "Application client not found",
+                "The requested application client does not exist");
     }
 
     private ProblemDetail problem(HttpStatus status, String title, String detail) {

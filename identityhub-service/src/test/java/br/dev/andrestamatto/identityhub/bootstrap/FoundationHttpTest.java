@@ -37,6 +37,11 @@ class FoundationHttpTest {
     private br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository
             clientApplicationRepository;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc
+                    .JdbcApplicationClientConfigurationRepository
+            applicationClientConfigurationRepository;
+
     @Test
     void exposesMinimalHealthWithoutDetails() throws Exception {
         var liveness = get("/actuator/health/liveness");
