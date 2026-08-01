@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Changed
+- Delivery governance now supports a revocable autonomous mode with mandatory
+  PR checks, explicit stop conditions and a versioned pending-decision ledger.
+
 ### Added
 - Machine client configuration and Keycloak projection with Service Accounts,
   confidential one-response secret issuance, and no browser flows or secret

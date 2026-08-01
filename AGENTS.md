@@ -15,7 +15,8 @@ Read the relevant documents before changing behavior:
 3. `docs/security-model.md` — threats and mandatory controls;
 4. `docs/integration-mode.md` — consumer contract;
 5. `docs/migration-strategy.md` — delivery sequence and gates;
-6. `docs/adr/` — accepted decisions.
+6. `docs/autonomous-delivery.md` — autonomous mandate and stop conditions;
+7. `docs/adr/` — accepted decisions.
 
 When code and documentation disagree, stop and request human direction. Do not
 silently reinterpret an accepted decision.
@@ -25,9 +26,14 @@ silently reinterpret an accepted decision.
 - Work in a branch created from an updated `develop`.
 - Define acceptance criteria before non-trivial implementation.
 - Use TDD: red test, minimum implementation, refactor.
-- Request human approval before committing or pushing a completed increment.
+- When an autonomous mandate is active, commit, push, open and merge pull
+  requests only after every gate in `docs/autonomous-delivery.md` passes.
+- Without an active autonomous mandate, request human approval before committing
+  or pushing a completed increment.
 - Use Conventional Commits and keep unrelated contexts separate.
 - Never edit another product repository, including Auto Radar, from this project.
+- Record deferrable decisions in `docs/pending-decisions.md`; stop for blocking
+  decisions instead of selecting a product or security policy silently.
 
 ## Architecture
 
@@ -96,6 +102,9 @@ Before handoff:
 - scan the diff for credentials, generated files and unrelated changes;
 - document any test that could not be executed.
 
+Before autonomous merge, also require all mandatory GitHub checks to be green
+and no unresolved blocking review or pending decision.
+
 Use Testcontainers for real PostgreSQL or Keycloak integration only when the
 slice introduces those dependencies. Unit tests must remain the fastest layer.
 
@@ -106,3 +115,6 @@ slice introduces those dependencies. Unit tests must remain the fastest layer.
 - Do not rewrite unrelated user changes.
 - Avoid destructive Git commands.
 - Database cleanup requires explicit target inspection and human authorization.
+- Autonomous delivery never authorizes production deployment, paid services,
+  real-secret rotation, destructive data operations or writes to another
+  repository.
