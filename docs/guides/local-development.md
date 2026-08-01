@@ -105,6 +105,13 @@ segredo fica em
 não consulta usuários. O bootstrap também mantém a política local de senhas em
 15 a 64 caracteres.
 
+O processo local também recebe `IDENTITYHUB_PUBLIC_BASE_URI` como
+`http://127.0.0.1:8080`. Somente loopback pode usar HTTP; qualquer host externo
+exige HTTPS. Links de verificação são persistidos no outbox apenas enquanto a
+entrega está pendente e são removidos após sucesso ou falha terminal. O Mailpit
+permite inspecionar a mensagem sem enviar e-mail à internet. O cadastro público
+ainda não está exposto nesta fatia.
+
 A ação `smoke`:
 
 1. cadastra uma `ClientApplication` e confirma seu replay idempotente;

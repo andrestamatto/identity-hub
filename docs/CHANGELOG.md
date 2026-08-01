@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Durable email-verification core with 30-minute single-use challenges, hashed
+  256-bit secrets, resend and attempt limits, atomic email outbox scheduling,
+  address-bound Keycloak activation, and erasure of delivered sensitive links.
 - Internal pending-local-identity foundation with normalized email, 15–64
   character password baseline, fail-closed per-application policy, disabled and
   unverified Keycloak users, idempotent replay, opaque account references, and
