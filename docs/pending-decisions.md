@@ -26,4 +26,18 @@ Itens bloqueantes não entram aqui como forma de contornar uma parada obrigatór
 
 ## Pendências abertas
 
-Nenhuma.
+### PD-001 — Provedor de e-mail de produção
+
+- Status: OPEN
+- Blocking: no
+- Detected in: SLICE-003A
+- Context: o MVP precisa de entrega SMTP em produção, mas nenhum provedor foi
+  contratado ou aprovado.
+- Impact: verificação de e-mail, recuperação de senha e notificações de segurança
+  não podem ser implantadas em produção antes da decisão.
+- Temporary choice: porta SMTP neutra e Mailpit 1.30.6 apenas em desenvolvimento
+  e testes.
+- Resolution condition: selecionar um provedor SMTP compatível, configurar
+  credenciais por secret manager e validar entregabilidade no ambiente de destino.
+- References: `identityhub-spec.md` IH-MVP-018, `architecture.md` seção 14.5 e
+  `roadmap.md` seção 9.6.

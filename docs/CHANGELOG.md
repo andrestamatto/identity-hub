@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Durable transactional email outbox for password-change notifications, with
+  PostgreSQL leasing, controlled retry and terminal failure diagnostics,
+  sanitized admin/auditor access, SMTP adapter, and real Mailpit evidence.
 - Machine client configuration and Keycloak projection with Service Accounts,
   confidential one-response secret issuance, and no browser flows or secret
   persistence.
