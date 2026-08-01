@@ -2,15 +2,15 @@
 
 > **Status:** approved
 >
-> **Versão do documento:** 1.0
+> **Versão do documento:** 1.1
 >
-> **Última atualização:** 2026-07-29
+> **Última atualização:** 2026-07-31
 
 ## 1. Finalidade
 
 Este documento define como substituir a implementação abandonada do IdentityHub
 pela arquitetura aprovada, preservando rastreabilidade, segurança e ciclos curtos
-de validação humana.
+de validação verificável.
 
 A estratégia transforma a baseline técnica e a especificação do MVP em:
 
@@ -21,8 +21,9 @@ A estratégia transforma a baseline técnica e a especificação do MVP em:
 - gates de qualidade e segurança;
 - regras de commit, revisão, rollback e documentação.
 
-Ela não autoriza implementação. Cada incremento ainda exige escopo explícito,
-branch própria e aprovação humana final.
+Cada incremento exige escopo explícito, branch própria e um gate final. O gate
+pode ser uma aprovação humana ou o mandato autônomo controlado definido em
+`autonomous-delivery.md`.
 
 ## 2. Entradas normativas
 
@@ -208,8 +209,8 @@ Hardening, E2E, ZAP e pentest
 Release do MVP
 ```
 
-Nenhuma fase autoriza automaticamente a seguinte. O gate e a revisão humana da
-fase atual precisam estar concluídos.
+Nenhuma fase autoriza a seguinte sem concluir seu gate. A revisão aplicável segue
+o modo supervisionado ou autônomo controlado da seção 11.3.
 
 ## 7. Pré-condições de implementação
 
@@ -618,19 +619,30 @@ Para cada comportamento:
 4. demonstrar o estado verde;
 5. refatorar sem alterar comportamento;
 6. executar o gate completo;
-7. apresentar diff e evidências para revisão humana.
+7. apresentar ou registrar diff e evidências para o gate de entrega aplicável.
 
 Testes de infraestrutura podem começar por contrato ou integração quando um unit
 test não oferece confiança relevante.
 
-### 11.3 Revisão humana incremental
+### 11.3 Modos de revisão e entrega
+
+No modo supervisionado:
 
 - nenhuma branch de implementação é enviada antes da validação final solicitada;
 - alterações permanecem locais durante a revisão, salvo autorização diferente;
 - objeções alteram código, teste e documento antes do commit;
-- aprovação autoriza atualizar documentação, organizar commits e publicar branch;
-- merge continua sendo realizado pelo mantenedor enquanto não houver integração
-  remota instalada.
+- aprovação autoriza atualizar documentação, organizar commits e publicar branch.
+
+No modo autônomo controlado:
+
+- o mandato do mantenedor autoriza commits, push, criação e merge de PRs;
+- cada fatia continua em branch e PR próprios;
+- o agente registra critérios, evidências, riscos e rollback antes do merge;
+- todos os checks obrigatórios devem estar verdes;
+- falha de CI é investigada e corrigida na mesma branch;
+- pendência adiável é registrada em `pending-decisions.md`;
+- condição bloqueante de `autonomous-delivery.md` interrompe o ciclo e exige o
+  mantenedor.
 
 ### 11.4 Commits
 
@@ -900,7 +912,7 @@ O assessment de baseline não é reescrito. Resultados futuros são comparados a
 
 ## 19. Definition of Done por fatia
 
-Uma fatia está pronta para aprovação humana quando:
+Uma fatia está pronta para seu gate final quando:
 
 - resultado observável foi demonstrado;
 - critérios relacionados estão rastreados;
@@ -917,7 +929,8 @@ Uma fatia está pronta para aprovação humana quando:
 - documentação está coerente;
 - riscos residuais estão explícitos.
 
-Uma aprovação visual ou “parece funcionar” não substitui esses itens.
+Uma aprovação visual, mandato autônomo ou “parece funcionar” não substitui esses
+itens.
 
 ## 20. Riscos e controles
 
@@ -952,9 +965,13 @@ Antes de marcar este documento como aprovado, devem ser confirmados:
 8. `ClientApplication` antes de identidade de usuário;
 9. outbox entrando com a primeira projeção externa;
 10. checkpoint de desenvolvimento antes da conclusão integral do MVP;
-11. revisão e aprovação humana por fatia.
+11. revisão humana ou entrega autônoma controlada com gates equivalentes por
+    fatia.
 
-## 22. Próximo passo após aprovação
+## 22. Primeiro passo histórico após aprovação
+
+O passo abaixo foi concluído por `MIG-001` e permanece registrado como histórico
+da estratégia inicial.
 
 Criar branch exclusiva para `MIG-001` e investigar a descoberta dos testes.
 
@@ -964,4 +981,5 @@ O contrato inicial será:
 - mudança máxima: build e testes estritamente necessários;
 - proibido: refatorar produção, atualizar stack inteira ou remover legado;
 - evidência: relatório antes/depois e prova de falha controlada;
-- encerramento: revisão humana antes de commit e push.
+- encerramento: revisão humana antes de commit e push, conforme o modo vigente
+  naquele incremento.
