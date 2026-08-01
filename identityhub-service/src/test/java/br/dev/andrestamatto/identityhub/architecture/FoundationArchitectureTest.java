@@ -33,7 +33,11 @@ class FoundationArchitectureTest {
                         BASE_PACKAGE + ".communication.adapter.in.http..",
                         BASE_PACKAGE + ".communication.adapter.out.jdbc..",
                         BASE_PACKAGE + ".communication.adapter.out.smtp..",
-                        BASE_PACKAGE + ".communication.adapter.out.clientapplication..")
+                        BASE_PACKAGE + ".communication.adapter.out.clientapplication..",
+                        BASE_PACKAGE + ".identity.domain..",
+                        BASE_PACKAGE + ".identity.application..",
+                        BASE_PACKAGE + ".identity.adapter.out.clientapplication..",
+                        BASE_PACKAGE + ".identity.adapter.out.keycloak..")
                 .check(PRODUCTION_CLASSES);
     }
 
@@ -66,9 +70,9 @@ class FoundationArchitectureTest {
     }
 
     @Test
-    void clientApplicationAdapterDoesNotDependOnBootstrap() {
+    void adaptersDoNotDependOnBootstrap() {
         noClasses()
-                .that().resideInAPackage("..clientapplication.adapter..")
+                .that().resideInAPackage("..adapter..")
                 .should().dependOnClassesThat()
                 .resideInAPackage("..bootstrap..")
                 .check(PRODUCTION_CLASSES);
@@ -79,7 +83,8 @@ class FoundationArchitectureTest {
         noClasses()
                 .that().resideInAnyPackage(
                         "..clientapplication.application..",
-                        "..communication.application..")
+                        "..communication.application..",
+                        "..identity.application..")
                 .should().dependOnClassesThat()
                 .resideInAnyPackage(
                         "org.springframework..",

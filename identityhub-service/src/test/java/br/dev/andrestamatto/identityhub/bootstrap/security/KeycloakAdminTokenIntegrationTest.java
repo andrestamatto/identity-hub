@@ -6,6 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.keycloak.KeycloakApplicationClientProjector;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionState;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientSnapshot;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityRegistrar;
+import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
+import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
+import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -53,6 +57,9 @@ class KeycloakAdminTokenIntegrationTest {
     private static final String ADMIN_AUDIENCE = "identityhub-admin-api";
     private static final String MANAGEMENT_CLIENT_ID = "identityhub-management";
     private static final String MANAGEMENT_CLIENT_SECRET = syntheticPassword();
+    private static final String IDENTITY_MANAGEMENT_CLIENT_ID =
+            "identityhub-identity-management";
+    private static final String IDENTITY_MANAGEMENT_CLIENT_SECRET = syntheticPassword();
     private static final String USERNAME = "platform-admin";
     private static final String PASSWORD = syntheticPassword();
     private static final String OTP_SECRET = String.join("", "JBSWY3DP", "EHPK3PXP");
@@ -142,6 +149,7 @@ class KeycloakAdminTokenIntegrationTest {
         var adminToken = requestBootstrapAdminToken();
         createRealm(adminToken);
         grantClientManagement(adminToken);
+        grantIdentityManagement(adminToken);
         configureAuthenticationMethodReferences(adminToken);
     }
 
@@ -262,6 +270,64 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(projected.path("redirectUris")).isEmpty();
         assertThat(projected.path("attributes").path("identityhub.audience").asString())
                 .isEqualTo("catalog-api");
+    }
+
+    @Test
+    void registersPendingLocalIdentityUsingIsolatedServiceAccount() throws Exception {
+        var registrar = new KeycloakLocalIdentityRegistrar(
+                HttpClient.newHttpClient(),
+                JSON,
+                keycloakBaseUri(),
+                REALM,
+                IDENTITY_MANAGEMENT_CLIENT_ID,
+                IDENTITY_MANAGEMENT_CLIENT_SECRET);
+
+        var email = new LoginEmail("Pending.User@Example.test");
+        UUID createdUserId;
+        try (var password = new LocalPassword("test-only-long-local-password".toCharArray())) {
+            var first = registrar.register(new PendingLocalIdentity(email, password));
+            var replay = registrar.register(new PendingLocalIdentity(email, password));
+
+            assertThat(first.created()).isTrue();
+            assertThat(replay.created()).isFalse();
+            assertThat(replay.userAccountRef()).isEqualTo(first.userAccountRef());
+            createdUserId = first.userAccountRef().value();
+        }
+
+        var bootstrapToken = requestBootstrapAdminToken();
+        var lookup = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM
+                                        + "/users?username=pending.user%40example.test&exact=true"),
+                        bootstrapToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(lookup.statusCode()).isEqualTo(200);
+        var stored = JSON.readTree(lookup.body()).required(0);
+        assertThat(stored.required("id").asString())
+                .isEqualTo(createdUserId.toString());
+        assertThat(stored.path("username").asString()).isEqualTo("pending.user@example.test");
+        assertThat(stored.path("email").asString()).isEqualTo("pending.user@example.test");
+        assertThat(stored.path("enabled").asBoolean()).isFalse();
+        assertThat(stored.path("emailVerified").asBoolean()).isFalse();
+
+        var identityToken = requestServiceAccountToken(
+                IDENTITY_MANAGEMENT_CLIENT_ID, IDENTITY_MANAGEMENT_CLIENT_SECRET);
+        var forbiddenClients = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve("/admin/realms/" + REALM + "/clients"),
+                        identityToken),
+                HttpResponse.BodyHandlers.discarding());
+        assertThat(forbiddenClients.statusCode()).isEqualTo(403);
+
+        var clientManagementToken = requestServiceAccountToken(
+                MANAGEMENT_CLIENT_ID, MANAGEMENT_CLIENT_SECRET);
+        var forbiddenUsers = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve("/admin/realms/" + REALM + "/users"),
+                        clientManagementToken),
+                HttpResponse.BodyHandlers.discarding());
+        assertThat(forbiddenUsers.statusCode()).isEqualTo(403);
     }
 
     @Test
@@ -669,6 +735,21 @@ class KeycloakAdminTokenIntegrationTest {
         return JSON.readTree(response.body()).required("access_token").asString();
     }
 
+    private static String requestServiceAccountToken(String clientId, String clientSecret)
+            throws Exception {
+        var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                formRequest(
+                        keycloakBaseUri.resolve(
+                                "/realms/" + REALM + "/protocol/openid-connect/token"),
+                        Map.of(
+                                "grant_type", "client_credentials",
+                                "client_id", clientId,
+                                "client_secret", clientSecret)),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        return JSON.readTree(response.body()).required("access_token").asString();
+    }
+
     private static void createRealm(String adminToken) throws Exception {
         var response = httpClient(HttpClient.Redirect.NORMAL).send(
                 authorizedJsonRequest(
@@ -709,7 +790,20 @@ class KeycloakAdminTokenIntegrationTest {
     }
 
     private static void grantClientManagement(String adminToken) throws Exception {
-        var managementClientUuid = clientUuid(adminToken, MANAGEMENT_CLIENT_ID);
+        grantManagementRoles(adminToken, MANAGEMENT_CLIENT_ID, List.of("manage-clients"));
+    }
+
+    private static void grantIdentityManagement(String adminToken) throws Exception {
+        grantManagementRoles(
+                adminToken,
+                IDENTITY_MANAGEMENT_CLIENT_ID,
+                List.of("manage-users", "view-users", "query-users"));
+    }
+
+    private static void grantManagementRoles(
+            String adminToken, String serviceClientId, List<String> roleNames)
+            throws Exception {
+        var managementClientUuid = clientUuid(adminToken, serviceClientId);
         var realmManagementUuid = clientUuid(adminToken, "realm-management");
         var serviceAccountResponse = httpClient(HttpClient.Redirect.NORMAL).send(
                 authorizedGetRequest(
@@ -723,14 +817,19 @@ class KeycloakAdminTokenIntegrationTest {
                 .required("id")
                 .asString();
 
-        var roleResponse = httpClient(HttpClient.Redirect.NORMAL).send(
-                authorizedGetRequest(
-                        keycloakBaseUri.resolve(
-                                "/admin/realms/" + REALM + "/clients/"
-                                        + realmManagementUuid + "/roles/manage-clients"),
-                        adminToken),
-                HttpResponse.BodyHandlers.ofString());
-        assertThat(roleResponse.statusCode()).isEqualTo(200);
+        var roles = new java.util.ArrayList<JsonNode>();
+        for (var roleName : roleNames) {
+            var roleResponse = httpClient(HttpClient.Redirect.NORMAL).send(
+                    authorizedGetRequest(
+                            keycloakBaseUri.resolve(
+                                    "/admin/realms/" + REALM + "/clients/"
+                                            + realmManagementUuid + "/roles/" + roleName),
+                            adminToken),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(roleResponse.statusCode()).isEqualTo(200);
+            roles.add(JSON.readTree(roleResponse.body()));
+        }
+        var roleMapping = JSON.writeValueAsString(roles);
 
         var mappingResponse = httpClient(HttpClient.Redirect.NORMAL).send(
                 authorizedJsonRequest(
@@ -738,7 +837,7 @@ class KeycloakAdminTokenIntegrationTest {
                                 "/admin/realms/" + REALM + "/users/" + serviceAccountId
                                         + "/role-mappings/clients/" + realmManagementUuid),
                         adminToken,
-                        "[" + roleResponse.body() + "]"),
+                        roleMapping),
                 HttpResponse.BodyHandlers.discarding());
         assertThat(mappingResponse.statusCode()).isEqualTo(204);
 
@@ -748,7 +847,7 @@ class KeycloakAdminTokenIntegrationTest {
                                 "/admin/realms/" + REALM + "/clients/" + managementClientUuid
                                         + "/scope-mappings/clients/" + realmManagementUuid),
                         adminToken,
-                        "[" + roleResponse.body() + "]"),
+                        roleMapping),
                 HttpResponse.BodyHandlers.discarding());
         assertThat(scopeMappingResponse.statusCode()).isEqualTo(204);
     }
@@ -1001,6 +1100,7 @@ class KeycloakAdminTokenIntegrationTest {
                   "otpPolicyAlgorithm": "HmacSHA1",
                   "otpPolicyDigits": 6,
                   "otpPolicyPeriod": 30,
+                  "passwordPolicy": "length(15) and maxLength(64)",
                   "roles": {
                     "realm": [
                       {"name": "PLATFORM_ADMIN"},
@@ -1008,6 +1108,17 @@ class KeycloakAdminTokenIntegrationTest {
                     ]
                   },
                   "clients": [
+                    {
+                      "clientId": "%s",
+                      "enabled": true,
+                      "publicClient": false,
+                      "clientAuthenticatorType": "client-secret",
+                      "secret": "%s",
+                      "standardFlowEnabled": false,
+                      "directAccessGrantsEnabled": false,
+                      "serviceAccountsEnabled": true,
+                      "fullScopeAllowed": false
+                    },
                     {
                       "clientId": "%s",
                       "enabled": true,
@@ -1079,6 +1190,8 @@ class KeycloakAdminTokenIntegrationTest {
                 REALM,
                 MANAGEMENT_CLIENT_ID,
                 MANAGEMENT_CLIENT_SECRET,
+                IDENTITY_MANAGEMENT_CLIENT_ID,
+                IDENTITY_MANAGEMENT_CLIENT_SECRET,
                 CLIENT_ID,
                 REDIRECT_URI,
                 ADMIN_AUDIENCE,
