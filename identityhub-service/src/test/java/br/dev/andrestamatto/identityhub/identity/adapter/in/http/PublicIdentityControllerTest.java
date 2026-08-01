@@ -19,6 +19,7 @@ import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerific
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRejectedException;
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRateLimitException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
+import br.dev.andrestamatto.identityhub.identity.application.SelfRegistrationDisabledException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -76,6 +77,34 @@ class PublicIdentityControllerTest {
     }
 
     @Test
+    void returnsTheSamePublicContractForNewAndExistingAccounts() throws Exception {
+        when(beginRegistration.execute(any()))
+                .thenReturn(
+                        new BeginLocalRegistration.Result(
+                                UUID.fromString("fbd31357-31b8-46dc-9ec7-38b0c72d1207"),
+                                UUID.fromString("1e04b771-df2f-45e1-bc45-f22d46da11b5")),
+                        new BeginLocalRegistration.Result(
+                                UUID.fromString("936bc8c5-a66b-4795-b16c-ac375700759e"),
+                                UUID.fromString("2ea5eaac-f9e5-4826-9129-a889e6358852")));
+
+        var newAccount = mvc.perform(registrationRequest(
+                        "new@example.com", "correct-horse-battery"))
+                .andReturn()
+                .getResponse();
+        var existingAccount = mvc.perform(registrationRequest(
+                        "existing@example.com", "correct-horse-battery"))
+                .andReturn()
+                .getResponse();
+
+        org.assertj.core.api.Assertions.assertThat(existingAccount.getStatus())
+                .isEqualTo(newAccount.getStatus());
+        org.assertj.core.api.Assertions.assertThat(existingAccount.getContentAsString())
+                .isEqualTo(newAccount.getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(existingAccount.getHeader("Cache-Control"))
+                .isEqualTo(newAccount.getHeader("Cache-Control"));
+    }
+
+    @Test
     void makesDestinationRateLimitIndistinguishableFromAcceptedRequest() throws Exception {
         when(beginRegistration.execute(any())).thenThrow(new EmailVerificationRateLimitException());
 
@@ -88,6 +117,15 @@ class PublicIdentityControllerTest {
     void hidesUnknownApplicationBehindRegistrationUnavailable() throws Exception {
         when(getApplication.execute("auto-radar"))
                 .thenThrow(new ClientApplicationUnavailableException());
+
+        mvc.perform(registrationRequest("andre@example.com", "correct-horse-battery"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("Registration is unavailable"));
+    }
+
+    @Test
+    void hidesDisabledRegistrationBehindTheSameUnavailableResponse() throws Exception {
+        when(beginRegistration.execute(any())).thenThrow(new SelfRegistrationDisabledException());
 
         mvc.perform(registrationRequest("andre@example.com", "correct-horse-battery"))
                 .andExpect(status().isNotFound())
