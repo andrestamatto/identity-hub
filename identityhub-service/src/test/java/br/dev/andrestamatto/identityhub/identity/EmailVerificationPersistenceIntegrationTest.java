@@ -97,7 +97,7 @@ class EmailVerificationPersistenceIntegrationTest {
                 .param("deliveryId", CHALLENGE_ID)
                 .query(String.class)
                 .single())
-                .isEqualTo("https://auth.dev.example.test/verify-email?token="
+                .isEqualTo("https://auth.dev.example.test/verify-email#token="
                         + CHALLENGE_ID + "." + SECRET);
     }
 

@@ -41,7 +41,7 @@ class RequestEmailVerificationTest {
         assertThat(repository.windowStart).isEqualTo(NOW.minusSeconds(900));
         assertThat(repository.maximumRequests).isEqualTo(3);
         assertThat(requester.verificationUrl).isEqualTo(
-                "https://auth.dev.example.test/verify-email?token=" + CHALLENGE_ID
+                "https://auth.dev.example.test/verify-email#token=" + CHALLENGE_ID
                         + ".test-only-verification-secret");
         assertThat(requester.correlationId).isEqualTo("registration-correlation");
     }

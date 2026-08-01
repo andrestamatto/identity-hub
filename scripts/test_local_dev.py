@@ -8,6 +8,7 @@ import importlib.util
 import pathlib
 import tempfile
 import unittest
+import uuid
 from unittest import mock
 
 
@@ -83,6 +84,35 @@ class LocalDevelopmentHarnessTest(unittest.TestCase):
 
         self.assertIn("docker:29.1.3-cli", command)
         self.assertIn("/var/run/docker.sock:/var/run/docker.sock", command)
+
+    @mock.patch.object(HARNESS, "request_json")
+    @mock.patch.object(HARNESS.uuid, "uuid4")
+    def test_public_registration_smoke_keeps_the_contract_generic(
+        self, uuid_mock, request_mock
+    ) -> None:
+        fixed = "a" * 32
+        uuid_mock.return_value = uuid.UUID(hex=fixed)
+        request_mock.side_effect = [
+            (202, {"message": "If the request is eligible, instructions will be sent"}),
+            (200, {"messages": [{"To": f"local-smoke-{fixed}@example.test"}]}),
+        ]
+
+        HARNESS.smoke_public_registration(
+            "local-smoke-application", {"IDENTITYHUB_MAILPIT_HTTP_PORT": "8025"}
+        )
+
+        registration_call = request_mock.call_args_list[0]
+        self.assertEqual((202,), registration_call.kwargs["expected"])
+        self.assertEqual(
+            f"local-smoke-{fixed}@example.test",
+            registration_call.kwargs["body"]["email"],
+        )
+        self.assertTrue(
+            registration_call.kwargs["body"]["password"].startswith(
+                "Local-smoke-registration-"
+            )
+        )
+        self.assertEqual(2, request_mock.call_count)
 
 
 if __name__ == "__main__":

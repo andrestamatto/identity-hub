@@ -12,6 +12,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureS
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSelfRegistration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
+import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplicationByIdentifier;
 import br.dev.andrestamatto.identityhub.clientapplication.application.RegisterClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ReconcileApplicationClientProjection;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTransportPolicy;
@@ -125,6 +126,12 @@ class ClientApplicationConfiguration {
     @Bean
     GetClientApplication getClientApplication(ClientApplicationRepository repository) {
         return new GetClientApplication(repository);
+    }
+
+    @Bean
+    GetClientApplicationByIdentifier getClientApplicationByIdentifier(
+            ClientApplicationRepository repository) {
+        return new GetClientApplicationByIdentifier(repository);
     }
 
     @Bean

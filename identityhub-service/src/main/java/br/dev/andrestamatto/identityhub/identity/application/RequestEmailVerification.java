@@ -75,7 +75,7 @@ public final class RequestEmailVerification {
     }
 
     private String verificationUrl(UUID challengeId, EmailVerificationSecret secret) {
-        return publicBaseUri.resolve("/verify-email?token=" + challengeId + "." + secret.value())
+        return publicBaseUri.resolve("/verify-email#token=" + challengeId + "." + secret.value())
                 .toString();
     }
 

@@ -109,24 +109,27 @@ O processo local também recebe `IDENTITYHUB_PUBLIC_BASE_URI` como
 `http://127.0.0.1:8080`. Somente loopback pode usar HTTP; qualquer host externo
 exige HTTPS. Links de verificação são persistidos no outbox apenas enquanto a
 entrega está pendente e são removidos após sucesso ou falha terminal. O Mailpit
-permite inspecionar a mensagem sem enviar e-mail à internet. O cadastro público
-ainda não está exposto nesta fatia.
+permite inspecionar a mensagem sem enviar e-mail à internet. A ação `run` também
+habilita a borda pública local, que permanece desabilitada por padrão em qualquer
+outro ambiente.
 
 A ação `smoke`:
 
 1. cadastra uma `ClientApplication` e confirma seu replay idempotente;
 2. habilita explicitamente a política de autocadastro da aplicação;
-3. configura uma API protegida com projeção `PENDING`;
-4. aguarda o worker criar o cliente bearer-only e registrar `APPLIED`;
-5. solicita reconciliação explícita e confirma nova aplicação idempotente;
-6. configura uma SPA pública com redirects e origins exatos em loopback;
-7. aguarda o worker criar o cliente Authorization Code com PKCE `S256` e
+3. inicia um cadastro público com resposta genérica e confirma que o e-mail de
+   verificação chegou ao Mailpit sem expor credenciais;
+4. configura uma API protegida com projeção `PENDING`;
+5. aguarda o worker criar o cliente bearer-only e registrar `APPLIED`;
+6. solicita reconciliação explícita e confirma nova aplicação idempotente;
+7. configura uma SPA pública com redirects e origins exatos em loopback;
+8. aguarda o worker criar o cliente Authorization Code com PKCE `S256` e
    registrar `APPLIED`;
-8. configura um BFF confidencial com redirect exato em loopback;
-9. aguarda o cliente Authorization Code + PKCE `S256` ficar `APPLIED`;
-10. solicita uma credencial gerada ao Keycloak e a descarta sem exibi-la.
-11. configura um cliente de máquina confidencial sem redirects ou origins;
-12. confirma somente Service Accounts habilitado e descarta sua credencial sem
+9. configura um BFF confidencial com redirect exato em loopback;
+10. aguarda o cliente Authorization Code + PKCE `S256` ficar `APPLIED`;
+11. solicita uma credencial gerada ao Keycloak e a descarta sem exibi-la;
+12. configura um cliente de máquina confidencial sem redirects ou origins;
+13. confirma somente Service Accounts habilitado e descarta sua credencial sem
     exibi-la.
 
 O smoke nunca imprime nem persiste credenciais confidenciais. Para uma integração
