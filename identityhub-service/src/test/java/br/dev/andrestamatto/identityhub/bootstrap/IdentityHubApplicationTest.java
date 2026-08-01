@@ -45,6 +45,10 @@ class IdentityHubApplicationTest {
                     .JdbcApplicationClientConfigurationRepository
             applicationClientConfigurationRepository;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryRepository
+            emailDeliveryRepository;
+
     @Test
     void startsWithDevelopmentEnvironmentAndUtcClock() {
         assertThat(runtimeProperties.environment())

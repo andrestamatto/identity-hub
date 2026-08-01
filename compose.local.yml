@@ -53,6 +53,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  mailpit:
+    image: axllent/mailpit:v1.30.6
+    ports:
+      - "127.0.0.1:${IDENTITYHUB_SMTP_PORT:?Set IDENTITYHUB_SMTP_PORT}:1025"
+      - "127.0.0.1:${IDENTITYHUB_MAILPIT_HTTP_PORT:?Set IDENTITYHUB_MAILPIT_HTTP_PORT}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
 volumes:
   identityhub-database-data:
   keycloak-database-data:

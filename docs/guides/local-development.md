@@ -3,8 +3,8 @@
 ## 1. Objetivo
 
 O harness local permite executar e verificar as APIs administrativas das
-`SLICE-001` e os incrementos `SLICE-002A` a `SLICE-002C` com PostgreSQL 17 e
-Keycloak 26.7 reais. A aplicação
+`SLICE-001`, os incrementos `SLICE-002A` a `SLICE-002C` e a entrega SMTP da
+`SLICE-003A` com PostgreSQL 17, Keycloak 26.7 e Mailpit 1.30.6 reais. A aplicação
 continua sendo iniciada pelo Gradle no WSL; somente as dependências de
 infraestrutura usam containers.
 
@@ -42,7 +42,7 @@ Com a função genérica `local-env` configurada no Git Bash, execute na raiz do
 repositório:
 
 ```sh
-# Sobe PostgreSQL e Keycloak e configura o realm de forma idempotente
+# Sobe PostgreSQL, Keycloak e Mailpit e configura o realm de forma idempotente
 local-env up
 
 # Inicia o IdentityHub na porta 8080; mantenha este terminal aberto
@@ -65,6 +65,11 @@ raiz do repositório com
 
 O parâmetro `-EnvironmentFile` permite selecionar outro arquivo local sem mudar
 o conteúdo versionado.
+
+O endereço da interface do Mailpit é informado por `local-env up` e permanece
+restrito ao loopback. No arquivo local padrão, ele é
+`http://127.0.0.1:8025`. O Mailpit captura e-mails sem entregá-los na internet e
+nunca deve ser configurado em produção.
 
 ## 4. Primeiro login
 
@@ -120,5 +125,6 @@ O comando `down` remove containers e redes, mas preserva os volumes nomeados dos
 dois bancos. A remoção desses volumes apaga dados e credenciais TOTP e, portanto,
 deve ser feita manualmente somente após inspeção explícita do alvo.
 
-O console administrativo do Keycloak existe apenas em `127.0.0.1` neste harness.
+O console administrativo do Keycloak e a interface do Mailpit existem apenas em
+`127.0.0.1` neste harness.
 Ele não integra o contrato público do IdentityHub.

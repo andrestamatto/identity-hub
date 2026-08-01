@@ -52,6 +52,10 @@ class AdminHttpSecurityTest {
     @MockitoBean
     private JdbcApplicationClientConfigurationRepository applicationClientConfigurationRepository;
 
+    @MockitoBean
+    private br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryRepository
+            emailDeliveryRepository;
+
     @Test
     void requiresAuthenticationForAdministrativeEndpoints() throws Exception {
         mvc.perform(get("/internal/admin/runtime"))

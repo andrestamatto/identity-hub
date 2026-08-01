@@ -366,9 +366,12 @@ def bootstrap(env: dict[str, str]) -> None:
 
 
 def up(args: argparse.Namespace, env: dict[str, str]) -> None:
-    compose(["up", "-d", "identityhub-database", "keycloak"], args, env)
+    compose(["up", "-d", "identityhub-database", "keycloak", "mailpit"], args, env)
     bootstrap(env)
-    print("Infraestrutura local pronta.")
+    print(
+        "Infraestrutura local pronta. Mailpit: "
+        f"http://127.0.0.1:{required(env, 'IDENTITYHUB_MAILPIT_HTTP_PORT')}"
+    )
 
 
 def token_file(args: argparse.Namespace) -> pathlib.Path:

@@ -77,6 +77,10 @@ class ClientApplicationAdminHttpTest {
     @MockitoBean
     private JdbcApplicationClientConfigurationRepository clientRepository;
 
+    @MockitoBean
+    private br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryRepository
+            emailDeliveryRepository;
+
     @Test
     void adminWithTotpRegistersDraftApplication() throws Exception {
         when(repository.findById(any())).thenReturn(Optional.empty());
