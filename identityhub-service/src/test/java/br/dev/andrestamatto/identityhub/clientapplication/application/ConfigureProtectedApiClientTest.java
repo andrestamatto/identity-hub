@@ -160,6 +160,11 @@ class ConfigureProtectedApiClientTest {
         public void add(ClientApplication addedApplication) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public void updateSelfRegistrationPolicy(ClientApplication updatedApplication) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private static final class InMemoryApplicationClientConfigurationRepository

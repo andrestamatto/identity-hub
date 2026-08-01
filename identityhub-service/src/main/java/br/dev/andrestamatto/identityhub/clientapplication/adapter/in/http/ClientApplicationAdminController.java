@@ -7,6 +7,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureB
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureMachineClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureProtectedApiClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSpaClient;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSelfRegistration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ReconcileApplicationClientProjection;
@@ -39,6 +40,7 @@ final class ClientApplicationAdminController {
     private final GetApplicationClientConfiguration getApplicationClient;
     private final ReconcileApplicationClientProjection reconcileProjection;
     private final ApplicationClientManagementMetrics clientMetrics;
+    private final ConfigureSelfRegistration configureSelfRegistration;
 
     ClientApplicationAdminController(
             RegisterClientApplication registerClientApplication,
@@ -50,7 +52,8 @@ final class ClientApplicationAdminController {
             ConfigureMachineClient configureMachineClient,
             GetApplicationClientConfiguration getApplicationClient,
             ReconcileApplicationClientProjection reconcileProjection,
-            ApplicationClientManagementMetrics clientMetrics) {
+            ApplicationClientManagementMetrics clientMetrics,
+            ConfigureSelfRegistration configureSelfRegistration) {
         this.registerClientApplication = registerClientApplication;
         this.getClientApplication = getClientApplication;
         this.registrationMetrics = registrationMetrics;
@@ -61,6 +64,7 @@ final class ClientApplicationAdminController {
         this.getApplicationClient = getApplicationClient;
         this.reconcileProjection = reconcileProjection;
         this.clientMetrics = clientMetrics;
+        this.configureSelfRegistration = configureSelfRegistration;
     }
 
     @PutMapping("/{applicationId}")
@@ -83,6 +87,15 @@ final class ClientApplicationAdminController {
     @GetMapping("/{applicationId}")
     ClientApplicationResponse get(@PathVariable UUID applicationId) {
         return ClientApplicationResponse.from(getClientApplication.execute(applicationId));
+    }
+
+    @PutMapping("/{applicationId}/registration-policy")
+    ClientApplicationResponse configureRegistrationPolicy(
+            @PathVariable UUID applicationId,
+            @RequestBody ConfigureRegistrationPolicyRequest request) {
+        return ClientApplicationResponse.from(configureSelfRegistration.execute(
+                applicationId,
+                request.selfRegistration()));
     }
 
     @PutMapping("/{applicationId}/clients/{applicationClientId}")
@@ -205,6 +218,9 @@ final class ClientApplicationAdminController {
     record RegisterClientApplicationRequest(String identifier, String displayName) {
     }
 
+    record ConfigureRegistrationPolicyRequest(String selfRegistration) {
+    }
+
     record ConfigureApplicationClientRequest(
             String type,
             String key,
@@ -218,6 +234,7 @@ final class ClientApplicationAdminController {
             String identifier,
             String displayName,
             String state,
+            String selfRegistration,
             Instant registeredAt) {
 
         static ClientApplicationResponse from(ClientApplicationSnapshot application) {
@@ -226,6 +243,7 @@ final class ClientApplicationAdminController {
                     application.identifier(),
                     application.displayName(),
                     application.state().name(),
+                    application.selfRegistrationPolicy().name(),
                     application.registeredAt());
         }
     }

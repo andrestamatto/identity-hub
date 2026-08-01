@@ -9,6 +9,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureB
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureMachineClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureProtectedApiClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSpaClient;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSelfRegistration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.RegisterClientApplication;
@@ -124,5 +125,11 @@ class ClientApplicationConfiguration {
     @Bean
     GetClientApplication getClientApplication(ClientApplicationRepository repository) {
         return new GetClientApplication(repository);
+    }
+
+    @Bean
+    ConfigureSelfRegistration configureSelfRegistration(
+            ClientApplicationRepository repository) {
+        return new ConfigureSelfRegistration(repository);
     }
 }

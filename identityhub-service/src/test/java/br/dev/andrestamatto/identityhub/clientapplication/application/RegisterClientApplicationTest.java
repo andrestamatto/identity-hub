@@ -125,6 +125,11 @@ class RegisterClientApplicationTest {
             additions++;
         }
 
+        @Override
+        public void updateSelfRegistrationPolicy(ClientApplication application) {
+            throw new UnsupportedOperationException();
+        }
+
         int additions() {
             return additions;
         }
@@ -151,6 +156,11 @@ class RegisterClientApplicationTest {
             application = addedApplication;
             throw new ClientApplicationConflictException(
                     "Concurrent registration won the unique constraint");
+        }
+
+        @Override
+        public void updateSelfRegistrationPolicy(ClientApplication updatedApplication) {
+            throw new UnsupportedOperationException();
         }
     }
 }

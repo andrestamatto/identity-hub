@@ -12,4 +12,6 @@ public interface ClientApplicationRepository {
     Optional<ClientApplication> findByIdentifier(ApplicationIdentifier identifier);
 
     void add(ClientApplication application);
+
+    void updateSelfRegistrationPolicy(ClientApplication application);
 }

@@ -10,6 +10,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationIden
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SelfRegistrationPolicy;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -109,6 +110,24 @@ class JdbcClientApplicationRepositoryTest {
                         application(APPLICATION_ID, "another-app", "Another App")))
                 .isInstanceOf(ClientApplicationConflictException.class);
         assertThat(numberOfApplications()).isEqualTo(1);
+    }
+
+    @Test
+    void persistsSelfRegistrationPolicyForOnlyTheSelectedApplication() {
+        var selected = application(APPLICATION_ID, "auto-radar", "Auto Radar");
+        var other = application(OTHER_APPLICATION_ID, "other-app", "Other App");
+        repository.add(selected);
+        repository.add(other);
+
+        selected.configureSelfRegistration(SelfRegistrationPolicy.ENABLED);
+        repository.updateSelfRegistrationPolicy(selected);
+
+        assertThat(repository.findById(selected.id())).get()
+                .extracting(ClientApplication::selfRegistrationPolicy)
+                .isEqualTo(SelfRegistrationPolicy.ENABLED);
+        assertThat(repository.findById(other.id())).get()
+                .extracting(ClientApplication::selfRegistrationPolicy)
+                .isEqualTo(SelfRegistrationPolicy.DISABLED);
     }
 
     private ClientApplication application(

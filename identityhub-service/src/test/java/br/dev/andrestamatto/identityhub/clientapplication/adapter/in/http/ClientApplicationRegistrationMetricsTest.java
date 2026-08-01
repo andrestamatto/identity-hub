@@ -7,6 +7,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.ClientAppl
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRegistration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationSnapshot;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationState;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SelfRegistrationPolicy;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.UUID;
@@ -48,6 +49,7 @@ class ClientApplicationRegistrationMetricsTest {
                         "auto-radar",
                         "Auto Radar",
                         ClientApplicationState.DRAFT,
+                        SelfRegistrationPolicy.DISABLED,
                         Instant.parse("2026-07-30T14:00:00Z")),
                 created);
     }

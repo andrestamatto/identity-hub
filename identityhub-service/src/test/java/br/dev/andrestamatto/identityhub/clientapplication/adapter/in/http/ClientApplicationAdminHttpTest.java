@@ -146,6 +146,62 @@ class ClientApplicationAdminHttpTest {
     }
 
     @Test
+    void adminEnablesSelfRegistrationExplicitly() throws Exception {
+        when(repository.findById(any())).thenReturn(Optional.of(application()));
+
+        mvc.perform(put(PATH + "/registration-policy")
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"selfRegistration": "ENABLED"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.selfRegistration").value("ENABLED"));
+
+        verify(repository).updateSelfRegistrationPolicy(argThat(application ->
+                application.selfRegistrationPolicy().name().equals("ENABLED")));
+    }
+
+    @Test
+    void auditorCannotChangeSelfRegistrationPolicy() throws Exception {
+        mvc.perform(put(PATH + "/registration-policy")
+                        .with(auditorWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"selfRegistration": "ENABLED"}
+                                """))
+                .andExpect(status().isForbidden());
+
+        verify(repository, never()).updateSelfRegistrationPolicy(any());
+    }
+
+    @Test
+    void unknownSelfRegistrationPolicyIsRejected() throws Exception {
+        mvc.perform(put(PATH + "/registration-policy")
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"selfRegistration": "UNKNOWN"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid client application"));
+
+        verify(repository, never()).updateSelfRegistrationPolicy(any());
+    }
+
+    @Test
+    void missingSelfRegistrationPolicyIsRejected() throws Exception {
+        mvc.perform(put(PATH + "/registration-policy")
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid client application"));
+
+        verify(repository, never()).updateSelfRegistrationPolicy(any());
+    }
+
+    @Test
     void invalidApplicationReturnsSafeBadRequest() throws Exception {
         mvc.perform(put(PATH)
                         .with(adminWithTotp())
