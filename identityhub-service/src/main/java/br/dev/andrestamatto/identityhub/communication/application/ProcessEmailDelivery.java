@@ -9,7 +9,7 @@ public final class ProcessEmailDelivery {
 
     private final EmailDeliveryRepository repository;
     private final EmailDeliverySender sender;
-    private final PasswordChangedEmailRenderer renderer;
+    private final EmailDeliveryRenderer renderer;
     private final Clock clock;
     private final Duration leaseDuration;
     private final Duration initialRetryDelay;
@@ -18,7 +18,7 @@ public final class ProcessEmailDelivery {
     public ProcessEmailDelivery(
             EmailDeliveryRepository repository,
             EmailDeliverySender sender,
-            PasswordChangedEmailRenderer renderer,
+            EmailDeliveryRenderer renderer,
             Clock clock,
             Duration leaseDuration,
             Duration initialRetryDelay,
@@ -33,6 +33,24 @@ public final class ProcessEmailDelivery {
             throw new IllegalArgumentException("Maximum attempts must be positive");
         }
         this.maxAttempts = maxAttempts;
+    }
+
+    public ProcessEmailDelivery(
+            EmailDeliveryRepository repository,
+            EmailDeliverySender sender,
+            PasswordChangedEmailRenderer renderer,
+            Clock clock,
+            Duration leaseDuration,
+            Duration initialRetryDelay,
+            int maxAttempts) {
+        this(
+                repository,
+                sender,
+                new EmailDeliveryRenderer(renderer, new EmailVerificationEmailRenderer()),
+                clock,
+                leaseDuration,
+                initialRetryDelay,
+                maxAttempts);
     }
 
     public EmailDeliveryResult processNext(UUID workerId) {

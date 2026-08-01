@@ -26,6 +26,7 @@ public final class JdbcEmailDeliveryRepository implements EmailDeliveryRepositor
     private static final String SELECT_DELIVERY = """
             select delivery_id, application_id, application_identifier,
                    application_display_name, environment, recipient, purpose, state,
+                   sensitive_content,
                    attempts, next_attempt_at, last_failure_code, correlation_id,
                    requested_at, updated_at
             from email_delivery_outbox
@@ -56,11 +57,13 @@ public final class JdbcEmailDeliveryRepository implements EmailDeliveryRepositor
                     insert into email_delivery_outbox (
                         delivery_id, application_id, application_identifier,
                         application_display_name, environment, recipient, purpose, state,
+                        sensitive_content,
                         attempts, next_attempt_at, last_failure_code, correlation_id,
                         requested_at, updated_at
                     ) values (
                         :deliveryId, :applicationId, :applicationIdentifier,
                         :applicationDisplayName, :environment, :recipient, :purpose, :state,
+                        :sensitiveContent,
                         :attempts, :nextAttemptAt, :lastFailureCode, :correlationId,
                         :requestedAt, :updatedAt
                     )
@@ -73,6 +76,7 @@ public final class JdbcEmailDeliveryRepository implements EmailDeliveryRepositor
                     .param("recipient", delivery.recipient().value())
                     .param("purpose", delivery.purpose().name())
                     .param("state", delivery.state().name())
+                    .param("sensitiveContent", delivery.sensitiveContent(), Types.VARCHAR)
                     .param("attempts", delivery.attempts())
                     .param("nextAttemptAt", utc(delivery.nextAttemptAt()))
                     .param("lastFailureCode", delivery.lastFailureCode(), Types.VARCHAR)
@@ -123,7 +127,7 @@ public final class JdbcEmailDeliveryRepository implements EmailDeliveryRepositor
                 id, workerId,
                 "state = 'DELIVERED', attempts = attempts + 1, "
                         + "last_failure_code = null, locked_by = null, locked_until = null, "
-                        + "updated_at = :now",
+                        + "sensitive_content = null, updated_at = :now",
                 null, null, null, now);
     }
 
@@ -153,7 +157,8 @@ public final class JdbcEmailDeliveryRepository implements EmailDeliveryRepositor
         updateReserved(
                 id, workerId,
                 "state = 'FAILED', attempts = :attempts, last_failure_code = :failureCode, "
-                        + "locked_by = null, locked_until = null, updated_at = :now",
+                        + "locked_by = null, locked_until = null, sensitive_content = null, "
+                        + "updated_at = :now",
                 attempts, null, failureCode, now);
     }
 
@@ -165,6 +170,7 @@ public final class JdbcEmailDeliveryRepository implements EmailDeliveryRepositor
                             last_failure_code = null, locked_by = null, locked_until = null,
                             updated_at = :now
                         where delivery_id = :deliveryId and state = 'FAILED'
+                          and (purpose = 'PASSWORD_CHANGED' or sensitive_content is not null)
                         """)
                 .param("deliveryId", id.value())
                 .param("now", utc(now))
@@ -213,6 +219,7 @@ public final class JdbcEmailDeliveryRepository implements EmailDeliveryRepositor
                 resultSet.getString("environment"),
                 new EmailRecipient(resultSet.getString("recipient")),
                 EmailDeliveryPurpose.valueOf(resultSet.getString("purpose")),
+                resultSet.getString("sensitive_content"),
                 EmailDeliveryState.valueOf(resultSet.getString("state")),
                 resultSet.getInt("attempts"),
                 resultSet.getObject("next_attempt_at", OffsetDateTime.class).toInstant(),

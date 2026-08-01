@@ -14,6 +14,7 @@ public record EmailDelivery(
         String environment,
         EmailRecipient recipient,
         EmailDeliveryPurpose purpose,
+        String sensitiveContent,
         EmailDeliveryState state,
         int attempts,
         Instant nextAttemptAt,
@@ -38,6 +39,7 @@ public record EmailDelivery(
         if (attempts < 0) {
             throw new IllegalArgumentException("Attempts cannot be negative");
         }
+        validateSensitiveContent(purpose, state, sensitiveContent);
     }
 
     public static EmailDelivery request(
@@ -55,6 +57,32 @@ public record EmailDelivery(
                 origin.environment(),
                 recipient,
                 purpose,
+                null,
+                EmailDeliveryState.PENDING,
+                0,
+                now,
+                null,
+                requireCorrelationId(correlationId),
+                now,
+                now);
+    }
+
+    public static EmailDelivery requestVerification(
+            EmailDeliveryId id,
+            EmailOrigin origin,
+            EmailRecipient recipient,
+            String verificationUrl,
+            String correlationId,
+            Instant now) {
+        return new EmailDelivery(
+                id,
+                origin.applicationId(),
+                origin.applicationIdentifier(),
+                origin.applicationDisplayName(),
+                origin.environment(),
+                recipient,
+                EmailDeliveryPurpose.EMAIL_VERIFICATION,
+                requireSensitiveContent(verificationUrl),
                 EmailDeliveryState.PENDING,
                 0,
                 now,
@@ -72,6 +100,7 @@ public record EmailDelivery(
             String environment,
             EmailRecipient recipient,
             EmailDeliveryPurpose purpose,
+            String sensitiveContent,
             EmailDeliveryState state,
             int attempts,
             Instant nextAttemptAt,
@@ -81,8 +110,45 @@ public record EmailDelivery(
             Instant updatedAt) {
         return new EmailDelivery(
                 id, applicationId, applicationIdentifier, applicationDisplayName, environment,
-                recipient, purpose, state, attempts, nextAttemptAt, lastFailureCode,
+                recipient, purpose, sensitiveContent, state, attempts, nextAttemptAt, lastFailureCode,
                 correlationId, requestedAt, updatedAt);
+    }
+
+    public static EmailDelivery reconstitute(
+            EmailDeliveryId id,
+            UUID applicationId,
+            String applicationIdentifier,
+            String applicationDisplayName,
+            String environment,
+            EmailRecipient recipient,
+            EmailDeliveryPurpose purpose,
+            EmailDeliveryState state,
+            int attempts,
+            Instant nextAttemptAt,
+            String lastFailureCode,
+            String correlationId,
+            Instant requestedAt,
+            Instant updatedAt) {
+        return reconstitute(
+                id, applicationId, applicationIdentifier, applicationDisplayName,
+                environment, recipient, purpose, null, state, attempts, nextAttemptAt,
+                lastFailureCode, correlationId, requestedAt, updatedAt);
+    }
+
+    public boolean matchesVerification(
+            UUID expectedApplicationId,
+            EmailRecipient expectedRecipient,
+            String expectedCorrelationId) {
+        return applicationId.equals(expectedApplicationId)
+                && recipient.equals(expectedRecipient)
+                && correlationId.equals(requireCorrelationId(expectedCorrelationId))
+                && purpose == EmailDeliveryPurpose.EMAIL_VERIFICATION;
+    }
+
+    @Override
+    public String toString() {
+        return "EmailDelivery[id=" + id + ", purpose=" + purpose + ", state=" + state
+                + ", sensitiveContent=REDACTED]";
     }
 
     public boolean matches(UUID expectedApplicationId, EmailRecipient expectedRecipient, String expectedCorrelationId) {
@@ -100,5 +166,32 @@ public record EmailDelivery(
             throw new IllegalArgumentException("Correlation id is invalid");
         }
         return normalized;
+    }
+
+    private static String requireSensitiveContent(String value) {
+        Objects.requireNonNull(value);
+        if (value.isBlank() || value.length() > 2048
+                || value.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("Sensitive email content is invalid");
+        }
+        return value;
+    }
+
+    private static void validateSensitiveContent(
+            EmailDeliveryPurpose purpose,
+            EmailDeliveryState state,
+            String sensitiveContent) {
+        if (purpose == EmailDeliveryPurpose.PASSWORD_CHANGED && sensitiveContent != null) {
+            throw new IllegalArgumentException("Password email cannot contain sensitive content");
+        }
+        if (purpose == EmailDeliveryPurpose.EMAIL_VERIFICATION
+                && state == EmailDeliveryState.PENDING) {
+            requireSensitiveContent(sensitiveContent);
+        }
+        if (purpose == EmailDeliveryPurpose.EMAIL_VERIFICATION
+                && state != EmailDeliveryState.PENDING
+                && sensitiveContent != null) {
+            throw new IllegalArgumentException("Completed email cannot retain sensitive content");
+        }
     }
 }

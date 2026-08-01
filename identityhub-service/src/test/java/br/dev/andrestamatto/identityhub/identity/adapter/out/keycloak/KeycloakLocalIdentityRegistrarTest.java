@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationFailureCode;
+import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
@@ -31,6 +32,7 @@ class KeycloakLocalIdentityRegistrarTest {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final AtomicInteger creates = new AtomicInteger();
+    private final AtomicInteger updates = new AtomicInteger();
     private HttpServer server;
     private JsonNode storedUser;
     private int managementStatus = 200;
@@ -103,6 +105,36 @@ class KeycloakLocalIdentityRegistrarTest {
                         });
     }
 
+    @Test
+    void verifiesAndEnablesUserIdempotently() {
+        var registrar = registrar();
+        var registration = register(registrar);
+
+        registrar.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+        registrar.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+
+        assertThat(storedUser.path("enabled").asBoolean()).isTrue();
+        assertThat(storedUser.path("emailVerified").asBoolean()).isTrue();
+        assertThat(updates).hasValue(1);
+    }
+
+    @Test
+    void refusesToVerifyWhenCurrentEmailDoesNotMatchChallenge() {
+        var registrar = registrar();
+        var registration = register(registrar);
+
+        assertThatThrownBy(() -> registrar.verifyAndEnable(
+                        registration.userAccountRef(),
+                        new LoginEmail("another@example.com")))
+                .isInstanceOfSatisfying(
+                        LocalIdentityVerificationException.class,
+                        exception -> assertThat(exception.retryable()).isFalse());
+        assertThat(updates).hasValue(0);
+        assertThat(storedUser.path("enabled").asBoolean()).isFalse();
+    }
+
     private KeycloakLocalIdentityRegistrar registrar() {
         return new KeycloakLocalIdentityRegistrar(
                 HttpClient.newHttpClient(),
@@ -129,6 +161,21 @@ class KeycloakLocalIdentityRegistrarTest {
     private void users(HttpExchange exchange) throws IOException {
         if (managementStatus != 200) {
             send(exchange, managementStatus, "provider-body-must-not-leak");
+            return;
+        }
+        if (exchange.getRequestURI().getPath().endsWith(USER_ID.toString())) {
+            if (exchange.getRequestMethod().equals("GET")) {
+                send(exchange, 200, JSON.writeValueAsString(java.util.Map.of(
+                        "id", USER_ID.toString(),
+                        "username", storedUser.path("username").asString(),
+                        "email", storedUser.path("email").asString(),
+                        "enabled", storedUser.path("enabled").asBoolean(),
+                        "emailVerified", storedUser.path("emailVerified").asBoolean())));
+                return;
+            }
+            storedUser = JSON.readTree(exchange.getRequestBody().readAllBytes());
+            updates.incrementAndGet();
+            send(exchange, 204, "");
             return;
         }
         if (exchange.getRequestMethod().equals("GET")) {

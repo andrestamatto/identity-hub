@@ -103,6 +103,30 @@ class JdbcEmailDeliveryRepositoryTest {
                 });
     }
 
+    @Test
+    void terminalVerificationFailureErasesLinkAndCannotReplayIt() {
+        var verification = EmailDelivery.requestVerification(
+                DELIVERY_ID,
+                new EmailOrigin(
+                        APPLICATION_ID, "auto-radar", "Auto Radar", "development"),
+                new EmailRecipient("andre@example.com"),
+                "https://auth.dev.example.test/verify-email?token=test-only-secret",
+                "verification-failure",
+                NOW);
+        repository.add(verification);
+        repository.reserveNext(WORKER_ID, NOW, Duration.ofSeconds(30));
+
+        repository.markFailed(
+                DELIVERY_ID, WORKER_ID, 1, "INVALID_MESSAGE", NOW.plusSeconds(1));
+
+        assertThat(repository.find(DELIVERY_ID)).get()
+                .satisfies(delivery -> {
+                    assertThat(delivery.state()).isEqualTo(EmailDeliveryState.FAILED);
+                    assertThat(delivery.sensitiveContent()).isNull();
+                });
+        assertThat(repository.requeue(DELIVERY_ID, NOW.plusSeconds(2))).isEmpty();
+    }
+
     private EmailDelivery delivery() {
         return EmailDelivery.request(
                 DELIVERY_ID,

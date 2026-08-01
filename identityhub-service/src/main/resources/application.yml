@@ -28,6 +28,7 @@ identityhub:
     identity-management:
       enabled: ${IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_ENABLED:false}
       base-uri: ${IDENTITYHUB_KEYCLOAK_BASE_URI:}
+      public-base-uri: ${IDENTITYHUB_PUBLIC_BASE_URI:}
       realm: ${IDENTITYHUB_KEYCLOAK_REALM:}
       client-id: ${IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_ID:}
       client-secret: ${IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_SECRET:}

@@ -5,11 +5,14 @@ import br.dev.andrestamatto.identityhub.communication.adapter.out.clientapplicat
 import br.dev.andrestamatto.identityhub.communication.adapter.out.jdbc.JdbcEmailDeliveryRepository;
 import br.dev.andrestamatto.identityhub.communication.adapter.out.smtp.SmtpEmailDeliverySender;
 import br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryRepository;
+import br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryRenderer;
+import br.dev.andrestamatto.identityhub.communication.application.EmailVerificationEmailRenderer;
 import br.dev.andrestamatto.identityhub.communication.application.GetEmailDelivery;
 import br.dev.andrestamatto.identityhub.communication.application.PasswordChangedEmailRenderer;
 import br.dev.andrestamatto.identityhub.communication.application.ProcessEmailDelivery;
 import br.dev.andrestamatto.identityhub.communication.application.RequeueEmailDelivery;
 import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordChangedEmail;
+import br.dev.andrestamatto.identityhub.communication.application.RequestEmailVerificationEmail;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.util.UUID;
@@ -48,6 +51,14 @@ class EmailDeliveryConfiguration {
     }
 
     @Bean
+    RequestEmailVerificationEmail requestEmailVerificationEmail(
+            EmailDeliveryRepository repository,
+            ClientApplicationEmailOriginResolver originResolver,
+            Clock clock) {
+        return new RequestEmailVerificationEmail(repository, originResolver, clock);
+    }
+
+    @Bean
     GetEmailDelivery getEmailDelivery(EmailDeliveryRepository repository) {
         return new GetEmailDelivery(repository);
     }
@@ -81,7 +92,9 @@ class EmailDeliveryConfiguration {
         return new ProcessEmailDelivery(
                 repository,
                 sender,
-                new PasswordChangedEmailRenderer(),
+                new EmailDeliveryRenderer(
+                        new PasswordChangedEmailRenderer(),
+                        new EmailVerificationEmailRenderer()),
                 clock,
                 properties.leaseDuration(),
                 properties.initialRetryDelay(),

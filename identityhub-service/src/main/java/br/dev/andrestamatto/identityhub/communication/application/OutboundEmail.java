@@ -10,4 +10,9 @@ public record OutboundEmail(EmailRecipient recipient, String subject, String bod
         Objects.requireNonNull(subject);
         Objects.requireNonNull(body);
     }
+
+    @Override
+    public String toString() {
+        return "OutboundEmail[content=REDACTED]";
+    }
 }
