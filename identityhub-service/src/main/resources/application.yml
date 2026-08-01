@@ -25,6 +25,12 @@ identityhub:
       jwk-set-uri: ${IDENTITYHUB_ADMIN_JWK_SET_URI}
       audience: ${IDENTITYHUB_ADMIN_AUDIENCE}
   keycloak:
+    identity-management:
+      enabled: ${IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_ENABLED:false}
+      base-uri: ${IDENTITYHUB_KEYCLOAK_BASE_URI:}
+      realm: ${IDENTITYHUB_KEYCLOAK_REALM:}
+      client-id: ${IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_ID:}
+      client-secret: ${IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_SECRET:}
     management:
       enabled: ${IDENTITYHUB_KEYCLOAK_MANAGEMENT_ENABLED:false}
       base-uri: ${IDENTITYHUB_KEYCLOAK_BASE_URI:}

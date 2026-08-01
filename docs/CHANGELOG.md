@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Internal pending-local-identity foundation with normalized email, 15–64
+  character password baseline, fail-closed per-application policy, disabled and
+  unverified Keycloak users, idempotent replay, opaque account references, and
+  mutually isolated least-privilege service accounts.
 - Per-application self-registration policy with fail-closed default,
   idempotent administrative configuration, PostgreSQL isolation, and local
   harness coverage.

@@ -3,8 +3,9 @@
 ## 1. Objetivo
 
 O harness local permite executar e verificar as APIs administrativas das
-`SLICE-001`, os incrementos `SLICE-002A` a `SLICE-002C` e a entrega SMTP da
-`SLICE-003A` com PostgreSQL 17, Keycloak 26.7 e Mailpit 1.30.6 reais. A aplicação
+`SLICE-001`, os incrementos `SLICE-002A` a `SLICE-002C`, a entrega SMTP da
+`SLICE-003A` e a fundação de identidade local da `SLICE-004B` com PostgreSQL 17,
+Keycloak 26.7 e Mailpit 1.30.6 reais. A aplicação
 continua sendo iniciada pelo Gradle no WSL; somente as dependências de
 infraestrutura usam containers.
 
@@ -95,6 +96,14 @@ O bootstrap cria um cliente confidencial interno e concede somente
 realm permanece desabilitado. O segredo é gerado localmente, guardado em
 `~/.local/state/identityhub/management-client.secret` com modo `0600` e nunca é
 impresso ou armazenado no repositório.
+
+Uma segunda service account, `identityhub-identity-management`, é isolada da
+primeira e recebe somente `manage-users`, `view-users` e `query-users`. Seu
+segredo fica em
+`~/.local/state/identityhub/identity-management-client.secret`, também com modo
+`0600`. A conta de identidades não gerencia clients, enquanto a conta de clients
+não consulta usuários. O bootstrap também mantém a política local de senhas em
+15 a 64 caracteres.
 
 A ação `smoke`:
 
