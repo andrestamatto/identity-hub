@@ -21,6 +21,7 @@ REALM = "identityhub-development"
 ADMIN_CLIENT = "identityhub-local-admin"
 ADMIN_AUDIENCE = "identityhub-admin-api"
 MANAGEMENT_CLIENT = "identityhub-management"
+IDENTITY_MANAGEMENT_CLIENT = "identityhub-identity-management"
 ADMIN_ROLES = ("PLATFORM_ADMIN", "PLATFORM_AUDITOR")
 
 
@@ -166,9 +167,11 @@ def realm_representation(env: dict[str, str]) -> dict:
         "otpPolicyAlgorithm": "HmacSHA1",
         "otpPolicyDigits": 6,
         "otpPolicyPeriod": 30,
+        "passwordPolicy": "length(15) and maxLength(64)",
         "roles": {"realm": [{"name": role} for role in ADMIN_ROLES]},
         "clients": [
             management_client_representation(env),
+            identity_management_client_representation(env),
             {
                 "clientId": ADMIN_CLIENT,
                 "name": "IdentityHub local administration",
@@ -232,6 +235,19 @@ def management_secret() -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
+def identity_management_secret_file() -> pathlib.Path:
+    return pathlib.Path.home() / ".local" / "state" / "identityhub" / "identity-management-client.secret"
+
+
+def identity_management_secret() -> str:
+    path = identity_management_secret_file()
+    if not path.exists():
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path.write_text(secrets.token_urlsafe(48), encoding="utf-8")
+        path.chmod(0o600)
+    return path.read_text(encoding="utf-8").strip()
+
+
 def management_client_representation(env: dict[str, str]) -> dict:
     return {
         "clientId": MANAGEMENT_CLIENT,
@@ -240,6 +256,21 @@ def management_client_representation(env: dict[str, str]) -> dict:
         "publicClient": False,
         "clientAuthenticatorType": "client-secret",
         "secret": required(env, "IDENTITYHUB_KEYCLOAK_MANAGEMENT_CLIENT_SECRET"),
+        "standardFlowEnabled": False,
+        "directAccessGrantsEnabled": False,
+        "serviceAccountsEnabled": True,
+        "fullScopeAllowed": False,
+    }
+
+
+def identity_management_client_representation(env: dict[str, str]) -> dict:
+    return {
+        "clientId": IDENTITY_MANAGEMENT_CLIENT,
+        "name": "IdentityHub internal identity management",
+        "enabled": True,
+        "publicClient": False,
+        "clientAuthenticatorType": "client-secret",
+        "secret": required(env, "IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_SECRET"),
         "standardFlowEnabled": False,
         "directAccessGrantsEnabled": False,
         "serviceAccountsEnabled": True,
@@ -308,6 +339,60 @@ def configure_management_client(env: dict[str, str], token: str) -> None:
     )
 
 
+def configure_identity_management_client(env: dict[str, str], token: str) -> None:
+    base = f"{keycloak_url(env)}/admin/realms/{REALM}"
+    identity_uuid = client_uuid(base, IDENTITY_MANAGEMENT_CLIENT, token)
+    representation = identity_management_client_representation(env)
+    if identity_uuid is None:
+        request_json(
+            f"{base}/clients",
+            method="POST",
+            token=token,
+            body=representation,
+            expected=(201,),
+        )
+        identity_uuid = client_uuid(base, IDENTITY_MANAGEMENT_CLIENT, token)
+    else:
+        request_json(
+            f"{base}/clients/{identity_uuid}",
+            method="PUT",
+            token=token,
+            body=representation,
+            expected=(204,),
+        )
+    if identity_uuid is None:
+        raise RuntimeError("O cliente interno de identidades não foi criado.")
+
+    _, service_account = request_json(
+        f"{base}/clients/{identity_uuid}/service-account-user", token=token
+    )
+    assert isinstance(service_account, dict)
+    realm_management_uuid = client_uuid(base, "realm-management", token)
+    if realm_management_uuid is None:
+        raise RuntimeError("O cliente realm-management não foi encontrado.")
+    roles = []
+    for role_name in ("manage-users", "view-users", "query-users"):
+        _, role = request_json(
+            f"{base}/clients/{realm_management_uuid}/roles/{role_name}", token=token
+        )
+        assert isinstance(role, dict)
+        roles.append(role)
+    request_json(
+        f"{base}/users/{service_account['id']}/role-mappings/clients/{realm_management_uuid}",
+        method="POST",
+        token=token,
+        body=roles,
+        expected=(204,),
+    )
+    request_json(
+        f"{base}/clients/{identity_uuid}/scope-mappings/clients/{realm_management_uuid}",
+        method="POST",
+        token=token,
+        body=roles,
+        expected=(204,),
+    )
+
+
 def configure_amr(env: dict[str, str], token: str) -> None:
     base = f"{keycloak_url(env)}/admin/realms/{REALM}"
     _, executions = request_json(
@@ -344,6 +429,16 @@ def configure_amr(env: dict[str, str], token: str) -> None:
         raise RuntimeError("O fluxo do Keycloak não expôs execuções suficientes para AMR.")
 
 
+def configure_password_policy(env: dict[str, str], token: str) -> None:
+    request_json(
+        f"{keycloak_url(env)}/admin/realms/{REALM}",
+        method="PUT",
+        token=token,
+        body={"passwordPolicy": "length(15) and maxLength(64)"},
+        expected=(204,),
+    )
+
+
 def bootstrap(env: dict[str, str]) -> None:
     wait_for_keycloak(env)
     token = bootstrap_token(env)
@@ -362,7 +457,9 @@ def bootstrap(env: dict[str, str]) -> None:
     else:
         configure_amr(env, token)
         print("Keycloak local já estava configurado.")
+    configure_password_policy(env, token)
     configure_management_client(env, token)
+    configure_identity_management_client(env, token)
 
 
 def up(args: argparse.Namespace, env: dict[str, str]) -> None:
@@ -612,6 +709,9 @@ def main() -> None:
             "IDENTITYHUB_KEYCLOAK_REALM": REALM,
             "IDENTITYHUB_KEYCLOAK_MANAGEMENT_CLIENT_ID": MANAGEMENT_CLIENT,
             "IDENTITYHUB_KEYCLOAK_MANAGEMENT_CLIENT_SECRET": management_secret(),
+            "IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_ENABLED": "true",
+            "IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_ID": IDENTITY_MANAGEMENT_CLIENT,
+            "IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_SECRET": identity_management_secret(),
         }
     )
 
