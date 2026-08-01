@@ -232,6 +232,31 @@ class JdbcApplicationClientConfigurationRepositoryTest {
         assertThat(numberOfOperations()).isOne();
     }
 
+    @Test
+    void atomicallyRoundTripsMachineWithoutBrowserOrApiSettings() {
+        var client = application().configureMachine(
+                new ApplicationClientId(CLIENT_ID),
+                new ApplicationClientKey("catalog-membership-provisioner"),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        var configuration = new ApplicationClientConfiguration(
+                client,
+                ApplicationClientProjection.pending(
+                        OPERATION_ID,
+                        client.id(),
+                        "jdbc-machine-projection",
+                        NOW));
+
+        repository.add(configuration);
+
+        var stored = repository.findById(new ApplicationClientId(CLIENT_ID)).orElseThrow();
+        var snapshot = ApplicationClientSnapshot.from(stored);
+        assertThat(snapshot.type()).isEqualTo("MACHINE");
+        assertThat(snapshot.audience()).isNull();
+        assertThat(snapshot.redirectUris()).isEmpty();
+        assertThat(snapshot.webOrigins()).isEmpty();
+        assertThat(numberOfOperations()).isOne();
+    }
+
     private ApplicationClientConfiguration configuration(
             UUID clientId,
             UUID operationId,

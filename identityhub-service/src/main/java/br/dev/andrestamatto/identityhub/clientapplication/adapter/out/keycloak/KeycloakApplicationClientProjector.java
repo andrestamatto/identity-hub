@@ -4,7 +4,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.Applicatio
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionFailureCode;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjector;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientSnapshot;
-import br.dev.andrestamatto.identityhub.clientapplication.application.BffClientSecretRotator;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfidentialClientSecretRotator;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfidentialClientSecret;
 import java.io.IOException;
 import java.net.URI;
@@ -23,7 +23,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 public final class KeycloakApplicationClientProjector
-        implements ApplicationClientProjector, BffClientSecretRotator {
+        implements ApplicationClientProjector, ConfidentialClientSecretRotator {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
@@ -84,8 +84,8 @@ public final class KeycloakApplicationClientProjector
     @Override
     public ConfidentialClientSecret rotate(ApplicationClientSnapshot client) {
         Objects.requireNonNull(client);
-        if (!client.type().equals("BFF")) {
-            throw new IllegalArgumentException("Only BFF clients have a rotatable browser secret");
+        if (!(client.type().equals("BFF") || client.type().equals("MACHINE"))) {
+            throw new IllegalArgumentException("Only confidential clients have a rotatable secret");
         }
         try {
             var accessToken = requestManagementToken();
@@ -221,20 +221,21 @@ public final class KeycloakApplicationClientProjector
         representation.put("clientId", keycloakClientId(client));
         var spa = client.type().equals("SPA");
         var bff = client.type().equals("BFF");
+        var machine = client.type().equals("MACHINE");
         var browserClient = spa || bff;
         representation.put("name", "IdentityHub " + client.type() + " " + client.key());
         representation.put("description", "Managed " + client.type() + " projection");
         representation.put("protocol", "openid-connect");
         representation.put("enabled", client.enabled());
-        representation.put("bearerOnly", !browserClient);
+        representation.put("bearerOnly", client.type().equals("API"));
         representation.put("publicClient", spa);
-        if (bff) {
+        if (bff || machine) {
             representation.put("clientAuthenticatorType", "client-secret");
         }
         representation.put("standardFlowEnabled", browserClient);
         representation.put("implicitFlowEnabled", false);
         representation.put("directAccessGrantsEnabled", false);
-        representation.put("serviceAccountsEnabled", false);
+        representation.put("serviceAccountsEnabled", machine);
         representation.put("authorizationServicesEnabled", false);
         representation.put("fullScopeAllowed", false);
         representation.put("redirectUris", client.redirectUris());
@@ -256,16 +257,18 @@ public final class KeycloakApplicationClientProjector
     private boolean matches(JsonNode existing, ApplicationClientSnapshot client) {
         var attributes = existing.path("attributes");
         var browserClient = client.type().equals("SPA") || client.type().equals("BFF");
+        var confidentialClient = client.type().equals("BFF") || client.type().equals("MACHINE");
         return existing.path("enabled").asBoolean() == client.enabled()
                 && existing.path("bearerOnly").asBoolean() == client.type().equals("API")
                 && existing.path("publicClient").asBoolean() == client.type().equals("SPA")
                 && existing.path("standardFlowEnabled").asBoolean() == browserClient
-                && (!client.type().equals("BFF")
+                && (!confidentialClient
                         || existing.path("clientAuthenticatorType").asString()
                                 .equals("client-secret"))
                 && !existing.path("implicitFlowEnabled").asBoolean()
                 && !existing.path("directAccessGrantsEnabled").asBoolean()
-                && !existing.path("serviceAccountsEnabled").asBoolean()
+                && existing.path("serviceAccountsEnabled").asBoolean()
+                        == client.type().equals("MACHINE")
                 && !existing.path("authorizationServicesEnabled").asBoolean()
                 && !existing.path("fullScopeAllowed").asBoolean()
                 && client.type().equals(attributes.path(CLIENT_TYPE_ATTRIBUTE).asString())
@@ -279,7 +282,7 @@ public final class KeycloakApplicationClientProjector
         attributes.put(CLIENT_TYPE_ATTRIBUTE, client.type());
         if (client.type().equals("API")) {
             attributes.put(AUDIENCE_ATTRIBUTE, client.audience());
-        } else {
+        } else if (!client.type().equals("MACHINE")) {
             attributes.put(PKCE_METHOD_ATTRIBUTE, "S256");
         }
         return Map.copyOf(attributes);
@@ -292,6 +295,10 @@ public final class KeycloakApplicationClientProjector
         if (client.type().equals("API")) {
             return client.audience().equals(attributes.path(AUDIENCE_ATTRIBUTE).asString())
                     && existing.path("redirectUris").isEmpty()
+                    && existing.path("webOrigins").isEmpty();
+        }
+        if (client.type().equals("MACHINE")) {
+            return existing.path("redirectUris").isEmpty()
                     && existing.path("webOrigins").isEmpty();
         }
         return "S256".equals(attributes.path(PKCE_METHOD_ATTRIBUTE).asString())

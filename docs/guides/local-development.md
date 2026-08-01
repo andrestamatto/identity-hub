@@ -51,7 +51,7 @@ local-env run
 # Em outro terminal, inicia o login administrativo hospedado
 local-env token
 
-# Valida aplicação, API, SPA, BFF, projeção, reconciliação e credencial
+# Valida aplicação, API, SPA, BFF, máquina, projeção e credenciais
 local-env smoke
 
 # Exibe os containers ou encerra a infraestrutura
@@ -103,8 +103,11 @@ A ação `smoke`:
 7. configura um BFF confidencial com redirect exato em loopback;
 8. aguarda o cliente Authorization Code + PKCE `S256` ficar `APPLIED`;
 9. solicita uma credencial gerada ao Keycloak e a descarta sem exibi-la.
+10. configura um cliente de máquina confidencial sem redirects ou origins;
+11. confirma somente Service Accounts habilitado e descarta sua credencial sem
+    exibi-la.
 
-O smoke nunca imprime nem persiste a credencial do BFF. Para uma integração
+O smoke nunca imprime nem persiste credenciais confidenciais. Para uma integração
 real, a resposta de emissão deve ser copiada diretamente para o secret manager
 do consumidor. Repetir a operação gera uma nova credencial e invalida a anterior;
 ela não funciona como recuperação.

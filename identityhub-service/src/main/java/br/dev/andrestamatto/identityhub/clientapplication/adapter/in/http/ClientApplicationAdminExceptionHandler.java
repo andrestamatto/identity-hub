@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = {
     ClientApplicationAdminController.class,
-    BffClientSecretAdminController.class
+    ConfidentialClientSecretAdminController.class
 })
 final class ClientApplicationAdminExceptionHandler {
 

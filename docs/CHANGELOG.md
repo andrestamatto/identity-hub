@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- Machine client configuration and Keycloak projection with Service Accounts,
+  confidential one-response secret issuance, and no browser flows or secret
+  persistence.
 - Confidential BFF client projection with exact browser redirects, Authorization
   Code plus PKCE `S256`, one-response Keycloak secret issuance, non-cacheable
   output, and no IdentityHub secret persistence.

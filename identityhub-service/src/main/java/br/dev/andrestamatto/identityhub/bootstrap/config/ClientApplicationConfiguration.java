@@ -6,6 +6,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.Applicatio
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureBffClient;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureMachineClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureProtectedApiClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSpaClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
@@ -71,6 +72,18 @@ class ClientApplicationConfiguration {
                 applicationRepository,
                 clientRepository,
                 transportPolicy,
+                clock,
+                UUID::randomUUID);
+    }
+
+    @Bean
+    ConfigureMachineClient configureMachineClient(
+            ClientApplicationRepository applicationRepository,
+            ApplicationClientConfigurationRepository clientRepository,
+            Clock clock) {
+        return new ConfigureMachineClient(
+                applicationRepository,
+                clientRepository,
                 clock,
                 UUID::randomUUID);
     }

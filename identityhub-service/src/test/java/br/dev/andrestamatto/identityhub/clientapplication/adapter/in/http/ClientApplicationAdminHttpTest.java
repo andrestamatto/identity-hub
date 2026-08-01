@@ -305,6 +305,29 @@ class ClientApplicationAdminHttpTest {
     }
 
     @Test
+    void adminConfiguresMachineThroughTypedContract() throws Exception {
+        when(repository.findById(any())).thenReturn(Optional.of(application()));
+        when(clientRepository.findById(any())).thenReturn(Optional.empty());
+        when(clientRepository.findByKey(any(), any())).thenReturn(Optional.empty());
+
+        mvc.perform(put(CLIENT_PATH)
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "MACHINE",
+                                  "key": "auto-radar-membership-provisioner"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("MACHINE"))
+                .andExpect(jsonPath("$.audience").doesNotExist())
+                .andExpect(jsonPath("$.redirectUris").isEmpty())
+                .andExpect(jsonPath("$.webOrigins").isEmpty())
+                .andExpect(jsonPath("$.projectionState").value("PENDING"));
+    }
+
+    @Test
     void rejectsFieldsIncompatibleWithDeclaredClientType() throws Exception {
         mvc.perform(put(CLIENT_PATH)
                         .with(adminWithTotp())
@@ -336,6 +359,24 @@ class ClientApplicationAdminHttpTest {
                                   "audience": "auto-radar-api",
                                   "redirectUris": [],
                                   "webOrigins": []
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid client application"));
+
+        verify(clientRepository, never()).add(any());
+    }
+
+    @Test
+    void rejectsBrowserOrAudienceFieldsForMachineType() throws Exception {
+        mvc.perform(put(CLIENT_PATH)
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "MACHINE",
+                                  "key": "auto-radar-membership-provisioner",
+                                  "audience": "auto-radar-api"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
