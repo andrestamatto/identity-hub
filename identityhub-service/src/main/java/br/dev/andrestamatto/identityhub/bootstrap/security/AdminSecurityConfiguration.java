@@ -26,6 +26,8 @@ class AdminSecurityConfiguration {
     private static final String ADMIN_RUNTIME_ENDPOINT = "/internal/admin/runtime";
     private static final String CLIENT_APPLICATION_ENDPOINTS =
             "/internal/admin/client-applications/**";
+    private static final String EMAIL_DELIVERY_ENDPOINTS =
+            "/internal/admin/communication/email-deliveries/**";
     private static final String ADMIN_ENDPOINTS = "/internal/admin/**";
 
     @Bean
@@ -56,6 +58,7 @@ class AdminSecurityConfiguration {
                         .requestMatchers(LIVENESS_ENDPOINT, READINESS_ENDPOINT).permitAll()
                         .requestMatchers(HttpMethod.GET, ADMIN_RUNTIME_ENDPOINT).access(readAccess)
                         .requestMatchers(HttpMethod.GET, CLIENT_APPLICATION_ENDPOINTS).access(readAccess)
+                        .requestMatchers(HttpMethod.GET, EMAIL_DELIVERY_ENDPOINTS).access(readAccess)
                         .requestMatchers(ADMIN_ENDPOINTS).access(mutationAccess)
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2

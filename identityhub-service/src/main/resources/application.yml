@@ -7,6 +7,14 @@ spring:
     password: ${IDENTITYHUB_DATABASE_PASSWORD}
   flyway:
     enabled: true
+  mail:
+    host: ${IDENTITYHUB_SMTP_HOST:}
+    port: ${IDENTITYHUB_SMTP_PORT:25}
+    username: ${IDENTITYHUB_SMTP_USERNAME:}
+    password: ${IDENTITYHUB_SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${IDENTITYHUB_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${IDENTITYHUB_SMTP_STARTTLS:false}
 
 identityhub:
   runtime:
@@ -27,6 +35,14 @@ identityhub:
       lease-duration: ${IDENTITYHUB_KEYCLOAK_MANAGEMENT_LEASE_DURATION:PT30S}
       initial-retry-delay: ${IDENTITYHUB_KEYCLOAK_MANAGEMENT_INITIAL_RETRY_DELAY:PT5S}
       max-attempts: ${IDENTITYHUB_KEYCLOAK_MANAGEMENT_MAX_ATTEMPTS:5}
+  communication:
+    email:
+      enabled: ${IDENTITYHUB_EMAIL_ENABLED:false}
+      from-address: ${IDENTITYHUB_EMAIL_FROM_ADDRESS:}
+      poll-interval: ${IDENTITYHUB_EMAIL_POLL_INTERVAL:PT2S}
+      lease-duration: ${IDENTITYHUB_EMAIL_LEASE_DURATION:PT30S}
+      initial-retry-delay: ${IDENTITYHUB_EMAIL_INITIAL_RETRY_DELAY:PT5S}
+      max-attempts: ${IDENTITYHUB_EMAIL_MAX_ATTEMPTS:5}
 
 management:
   endpoint:
