@@ -27,7 +27,23 @@ class ClientApplicationTest {
         assertThat(application.identifier()).isEqualTo(new ApplicationIdentifier("auto-radar"));
         assertThat(application.displayName()).isEqualTo(new DisplayName("Auto Radar"));
         assertThat(application.state()).isEqualTo(ClientApplicationState.DRAFT);
+        assertThat(application.selfRegistrationPolicy())
+                .isEqualTo(SelfRegistrationPolicy.DISABLED);
         assertThat(application.registeredAt()).isEqualTo(REGISTERED_AT);
+    }
+
+    @Test
+    void changesSelfRegistrationPolicyExplicitly() {
+        var application = ClientApplication.register(
+                new ClientApplicationId(APPLICATION_ID),
+                new ApplicationIdentifier("auto-radar"),
+                new DisplayName("Auto Radar"),
+                Clock.fixed(REGISTERED_AT, ZoneOffset.UTC));
+
+        application.configureSelfRegistration(SelfRegistrationPolicy.ENABLED);
+
+        assertThat(application.selfRegistrationPolicy())
+                .isEqualTo(SelfRegistrationPolicy.ENABLED);
     }
 
     @Test

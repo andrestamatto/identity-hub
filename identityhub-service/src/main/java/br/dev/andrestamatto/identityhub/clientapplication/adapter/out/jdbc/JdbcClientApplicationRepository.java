@@ -7,6 +7,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicati
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationState;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.SelfRegistrationPolicy;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
@@ -27,7 +28,8 @@ public final class JdbcClientApplicationRepository implements ClientApplicationR
     @Override
     public Optional<ClientApplication> findById(ClientApplicationId id) {
         return jdbcClient.sql("""
-                        select id, identifier, display_name, state, registered_at
+                        select id, identifier, display_name, state,
+                               self_registration_policy, registered_at
                         from client_application
                         where id = :id
                         """)
@@ -40,7 +42,8 @@ public final class JdbcClientApplicationRepository implements ClientApplicationR
     public Optional<ClientApplication> findByIdentifier(
             ApplicationIdentifier identifier) {
         return jdbcClient.sql("""
-                        select id, identifier, display_name, state, registered_at
+                        select id, identifier, display_name, state,
+                               self_registration_policy, registered_at
                         from client_application
                         where identifier = :identifier
                         """)
@@ -58,12 +61,14 @@ public final class JdbcClientApplicationRepository implements ClientApplicationR
                                 identifier,
                                 display_name,
                                 state,
+                                self_registration_policy,
                                 registered_at
                             ) values (
                                 :id,
                                 :identifier,
                                 :displayName,
                                 :state,
+                                :selfRegistrationPolicy,
                                 :registeredAt
                             )
                             """)
@@ -71,6 +76,9 @@ public final class JdbcClientApplicationRepository implements ClientApplicationR
                     .param("identifier", application.identifier().value())
                     .param("displayName", application.displayName().value())
                     .param("state", application.state().name())
+                    .param(
+                            "selfRegistrationPolicy",
+                            application.selfRegistrationPolicy().name())
                     .param(
                             "registeredAt",
                             OffsetDateTime.ofInstant(
@@ -84,6 +92,23 @@ public final class JdbcClientApplicationRepository implements ClientApplicationR
         }
     }
 
+    @Override
+    public void updateSelfRegistrationPolicy(ClientApplication application) {
+        var updated = jdbcClient.sql("""
+                        update client_application
+                        set self_registration_policy = :selfRegistrationPolicy
+                        where id = :id
+                        """)
+                .param("id", application.id().value())
+                .param(
+                        "selfRegistrationPolicy",
+                        application.selfRegistrationPolicy().name())
+                .update();
+        if (updated != 1) {
+            throw new IllegalStateException("Client application policy update was not applied");
+        }
+    }
+
     private ClientApplication mapApplication(ResultSet resultSet, int rowNumber)
             throws SQLException {
         return ClientApplication.reconstitute(
@@ -91,6 +116,8 @@ public final class JdbcClientApplicationRepository implements ClientApplicationR
                 new ApplicationIdentifier(resultSet.getString("identifier")),
                 new DisplayName(resultSet.getString("display_name")),
                 ClientApplicationState.valueOf(resultSet.getString("state")),
+                SelfRegistrationPolicy.valueOf(
+                        resultSet.getString("self_registration_policy")),
                 resultSet.getObject("registered_at", OffsetDateTime.class).toInstant());
     }
 }

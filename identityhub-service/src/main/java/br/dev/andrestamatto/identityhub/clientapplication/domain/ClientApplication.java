@@ -11,6 +11,7 @@ public final class ClientApplication {
     private final ApplicationIdentifier identifier;
     private final DisplayName displayName;
     private final ClientApplicationState state;
+    private SelfRegistrationPolicy selfRegistrationPolicy;
     private final Instant registeredAt;
 
     private ClientApplication(
@@ -18,11 +19,13 @@ public final class ClientApplication {
             ApplicationIdentifier identifier,
             DisplayName displayName,
             ClientApplicationState state,
+            SelfRegistrationPolicy selfRegistrationPolicy,
             Instant registeredAt) {
         this.id = Objects.requireNonNull(id);
         this.identifier = Objects.requireNonNull(identifier);
         this.displayName = Objects.requireNonNull(displayName);
         this.state = Objects.requireNonNull(state);
+        this.selfRegistrationPolicy = Objects.requireNonNull(selfRegistrationPolicy);
         this.registeredAt = Objects.requireNonNull(registeredAt);
     }
 
@@ -37,6 +40,7 @@ public final class ClientApplication {
                 identifier,
                 displayName,
                 ClientApplicationState.DRAFT,
+                SelfRegistrationPolicy.DISABLED,
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
     }
 
@@ -45,8 +49,34 @@ public final class ClientApplication {
             ApplicationIdentifier identifier,
             DisplayName displayName,
             ClientApplicationState state,
+            SelfRegistrationPolicy selfRegistrationPolicy,
             Instant registeredAt) {
-        return new ClientApplication(id, identifier, displayName, state, registeredAt);
+        return new ClientApplication(
+                id, identifier, displayName, state, selfRegistrationPolicy, registeredAt);
+    }
+
+    public static ClientApplication reconstitute(
+            ClientApplicationId id,
+            ApplicationIdentifier identifier,
+            DisplayName displayName,
+            ClientApplicationState state,
+            Instant registeredAt) {
+        return reconstitute(
+                id,
+                identifier,
+                displayName,
+                state,
+                SelfRegistrationPolicy.DISABLED,
+                registeredAt);
+    }
+
+    public boolean configureSelfRegistration(SelfRegistrationPolicy policy) {
+        Objects.requireNonNull(policy);
+        if (selfRegistrationPolicy == policy) {
+            return false;
+        }
+        selfRegistrationPolicy = policy;
+        return true;
     }
 
     public ApplicationClient configureProtectedApi(
@@ -122,6 +152,10 @@ public final class ClientApplication {
 
     public ClientApplicationState state() {
         return state;
+    }
+
+    public SelfRegistrationPolicy selfRegistrationPolicy() {
+        return selfRegistrationPolicy;
     }
 
     public Instant registeredAt() {
