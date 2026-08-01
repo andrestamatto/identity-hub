@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Per-application self-registration policy with fail-closed default,
+  idempotent administrative configuration, PostgreSQL isolation, and local
+  harness coverage.
 - Durable transactional email outbox for password-change notifications, with
   PostgreSQL leasing, controlled retry and terminal failure diagnostics,
   sanitized admin/auditor access, SMTP adapter, and real Mailpit evidence.
