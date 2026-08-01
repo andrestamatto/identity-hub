@@ -37,6 +37,9 @@ class FoundationArchitectureTest {
                         BASE_PACKAGE + ".identity.domain..",
                         BASE_PACKAGE + ".identity.application..",
                         BASE_PACKAGE + ".identity.adapter.out.clientapplication..",
+                        BASE_PACKAGE + ".identity.adapter.out.communication..",
+                        BASE_PACKAGE + ".identity.adapter.out.crypto..",
+                        BASE_PACKAGE + ".identity.adapter.out.jdbc..",
                         BASE_PACKAGE + ".identity.adapter.out.keycloak..")
                 .check(PRODUCTION_CLASSES);
     }

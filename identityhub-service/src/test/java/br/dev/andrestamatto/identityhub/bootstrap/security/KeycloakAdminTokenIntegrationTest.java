@@ -10,6 +10,7 @@ import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLo
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
+import br.dev.andrestamatto.identityhub.identity.domain.UserAccountRef;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -137,6 +138,9 @@ class KeycloakAdminTokenIntegrationTest {
         registry.add(
                 "identityhub.keycloak.management.client-secret",
                 () -> MANAGEMENT_CLIENT_SECRET);
+        registry.add(
+                "identityhub.keycloak.identity-management.public-base-uri",
+                () -> "http://127.0.0.1");
         registry.add("identityhub.keycloak.management.poll-interval", () -> "PT1S");
         registry.add("identityhub.keycloak.management.lease-duration", () -> "PT30S");
         registry.add("identityhub.keycloak.management.initial-retry-delay", () -> "PT1S");
@@ -310,6 +314,23 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(stored.path("email").asString()).isEqualTo("pending.user@example.test");
         assertThat(stored.path("enabled").asBoolean()).isFalse();
         assertThat(stored.path("emailVerified").asBoolean()).isFalse();
+
+        registrar.verifyAndEnable(
+                new UserAccountRef(createdUserId),
+                new LoginEmail("pending.user@example.test"));
+        registrar.verifyAndEnable(
+                new UserAccountRef(createdUserId),
+                new LoginEmail("pending.user@example.test"));
+        var verifiedLookup = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM
+                                        + "/users?username=pending.user%40example.test&exact=true"),
+                        bootstrapToken),
+                HttpResponse.BodyHandlers.ofString());
+        var verified = JSON.readTree(verifiedLookup.body()).required(0);
+        assertThat(verified.path("enabled").asBoolean()).isTrue();
+        assertThat(verified.path("emailVerified").asBoolean()).isTrue();
 
         var identityToken = requestServiceAccountToken(
                 IDENTITY_MANAGEMENT_CLIENT_ID, IDENTITY_MANAGEMENT_CLIENT_SECRET);

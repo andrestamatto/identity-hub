@@ -1,5 +1,6 @@
 package br.dev.andrestamatto.identityhub.communication.application;
 
 public enum EmailDeliveryPurpose {
-    PASSWORD_CHANGED
+    PASSWORD_CHANGED,
+    EMAIL_VERIFICATION
 }

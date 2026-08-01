@@ -5,10 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.dev.andrestamatto.identityhub.communication.adapter.out.jdbc.JdbcEmailDeliveryRepository;
 import br.dev.andrestamatto.identityhub.communication.adapter.out.smtp.SmtpEmailDeliverySender;
 import br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryResult;
+import br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryRenderer;
+import br.dev.andrestamatto.identityhub.communication.application.EmailVerificationEmailRenderer;
 import br.dev.andrestamatto.identityhub.communication.application.EmailOrigin;
 import br.dev.andrestamatto.identityhub.communication.application.PasswordChangedEmailRenderer;
 import br.dev.andrestamatto.identityhub.communication.application.ProcessEmailDelivery;
 import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordChangedEmail;
+import br.dev.andrestamatto.identityhub.communication.application.RequestEmailVerificationEmail;
+import br.dev.andrestamatto.identityhub.communication.domain.EmailDeliveryId;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -104,6 +108,54 @@ class EmailDeliveryIntegrationTest {
         assertThat(response.body())
                 .contains("andre@example.com")
                 .contains("[Auto Radar] Password changed");
+    }
+
+    @Test
+    void deliversVerificationLinkThenErasesSensitiveOutboxContent() throws Exception {
+        var deliveryId = UUID.fromString("87ba5cc1-ae98-4a85-aeb0-103103d5bd23");
+        var verificationUrl = "https://auth.dev.example.test/verify-email?token="
+                + deliveryId + ".test-only-verification-secret";
+        var clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        var request = new RequestEmailVerificationEmail(
+                repository,
+                id -> new EmailOrigin(id, "auto-radar", "Auto Radar", "development"),
+                clock);
+        request.execute(new RequestEmailVerificationEmail.Command(
+                deliveryId,
+                APPLICATION_ID,
+                "andre@example.com",
+                verificationUrl,
+                "verification-email"));
+
+        var javaMailSender = new JavaMailSenderImpl();
+        javaMailSender.setHost(MAILPIT.getHost());
+        javaMailSender.setPort(MAILPIT.getMappedPort(1025));
+        var processor = new ProcessEmailDelivery(
+                repository,
+                new SmtpEmailDeliverySender(javaMailSender, "identityhub@example.com"),
+                new EmailDeliveryRenderer(
+                        new PasswordChangedEmailRenderer(),
+                        new EmailVerificationEmailRenderer()),
+                clock,
+                Duration.ofSeconds(30),
+                Duration.ofSeconds(5),
+                3);
+
+        assertThat(processor.processNext(UUID.randomUUID()))
+                .isEqualTo(EmailDeliveryResult.DELIVERED);
+        assertThat(repository.find(new EmailDeliveryId(deliveryId))).get()
+                .satisfies(delivery -> {
+                    assertThat(delivery.sensitiveContent()).isNull();
+                    assertThat(delivery.toString()).doesNotContain("test-only-verification-secret");
+                });
+
+        var response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(mailpitUri("/api/v1/messages")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body())
+                .contains("andre@example.com")
+                .contains("[Auto Radar] Verify your email");
     }
 
     private URI mailpitUri(String path) {

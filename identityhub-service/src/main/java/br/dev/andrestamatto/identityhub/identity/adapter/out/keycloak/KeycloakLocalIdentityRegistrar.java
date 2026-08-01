@@ -4,7 +4,10 @@ import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegist
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationFailureCode;
+import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
+import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerifier;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
+import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
 import br.dev.andrestamatto.identityhub.identity.domain.UserAccountRef;
 import java.io.IOException;
 import java.net.URI;
@@ -25,7 +28,8 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-public final class KeycloakLocalIdentityRegistrar implements LocalIdentityRegistrar {
+public final class KeycloakLocalIdentityRegistrar
+        implements LocalIdentityRegistrar, LocalIdentityVerifier {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
@@ -71,6 +75,57 @@ public final class KeycloakLocalIdentityRegistrar implements LocalIdentityRegist
             throw exception;
         } catch (RuntimeException exception) {
             throw invalidResponse();
+        }
+    }
+
+    @Override
+    public void verifyAndEnable(UserAccountRef userAccountRef, LoginEmail expectedEmail) {
+        Objects.requireNonNull(userAccountRef);
+        Objects.requireNonNull(expectedEmail);
+        try {
+            var accessToken = requestManagementToken();
+            var response = sendAuthorized(
+                    HttpRequest.newBuilder(userUri(userAccountRef)).GET(), accessToken);
+            ensureSuccess(
+                    response.statusCode(),
+                    LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+            var user = objectMapper.readTree(response.body());
+            if (user.path("email").isMissingNode()
+                    || !new LoginEmail(user.path("email").asString()).equals(expectedEmail)) {
+                throw new LocalIdentityVerificationException(false);
+            }
+            if (user.path("enabled").asBoolean()
+                    && user.path("emailVerified").asBoolean()) {
+                return;
+            }
+            var representation = new LinkedHashMap<String, Object>();
+            representation.put("id", user.required("id").asString());
+            representation.put("username", user.required("username").asString());
+            if (!user.path("email").isMissingNode()) {
+                representation.put("email", user.path("email").asString());
+            }
+            representation.put("enabled", true);
+            representation.put("emailVerified", true);
+            var update = sendAuthorized(
+                    HttpRequest.newBuilder(userUri(userAccountRef))
+                            .header("Content-Type", "application/json")
+                            .PUT(HttpRequest.BodyPublishers.ofByteArray(
+                                    objectMapper.writeValueAsBytes(representation))),
+                    accessToken);
+            ensureSuccess(
+                    update.statusCode(),
+                    LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new LocalIdentityVerificationException(true);
+        } catch (IOException exception) {
+            throw new LocalIdentityVerificationException(true);
+        } catch (LocalIdentityRegistrationException exception) {
+            throw new LocalIdentityVerificationException(exception.retryable());
+        } catch (LocalIdentityVerificationException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new LocalIdentityVerificationException(true);
         }
     }
 
@@ -207,6 +262,10 @@ public final class KeycloakLocalIdentityRegistrar implements LocalIdentityRegist
     private URI userLookupUri(PendingLocalIdentity identity) {
         return URI.create(userCollectionUri() + "?username="
                 + encode(identity.email().normalizedValue()) + "&exact=true");
+    }
+
+    private URI userUri(UserAccountRef userAccountRef) {
+        return URI.create(userCollectionUri() + "/" + userAccountRef.value());
     }
 
     private static void ensureSuccess(

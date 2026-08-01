@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record IdentityManagementProperties(
         boolean enabled,
         URI baseUri,
+        URI publicBaseUri,
         String realm,
         String clientId,
         String clientSecret) {
@@ -17,6 +18,9 @@ public record IdentityManagementProperties(
             Objects.requireNonNull(
                     baseUri,
                     "identityhub.keycloak.identity-management.base-uri is required");
+            Objects.requireNonNull(
+                    publicBaseUri,
+                    "identityhub.keycloak.identity-management.public-base-uri is required");
             requireText(realm, "identityhub.keycloak.identity-management.realm");
             requireText(clientId, "identityhub.keycloak.identity-management.client-id");
             requireText(
