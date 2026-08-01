@@ -561,6 +561,7 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
         or registration_policy.get("selfRegistration") != "ENABLED"
     ):
         raise RuntimeError("A política explícita de autocadastro não foi aplicada.")
+    smoke_public_registration(application_identifier, env)
     client_id = uuid.uuid4()
     client_endpoint = f"{endpoint}/clients/{client_id}"
     client_body = json.dumps(
@@ -649,12 +650,47 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
     credential = None
     print(
         "Smoke test aprovado: aplicação idempotente, autocadastro habilitado, "
+        "cadastro público aceito com e-mail de verificação entregue, "
         "API protegida projetada "
         "e reconciliada, SPA pública, BFF confidencial e máquina projetados no "
         "Keycloak; credenciais confidenciais emitidas sem exibição; estados "
         f"{projected['projectionState']}, {projected_spa['projectionState']} e "
         f"{projected_bff['projectionState']}, {projected_machine['projectionState']}."
     )
+
+
+def smoke_public_registration(application_identifier: str, env: dict[str, str]) -> None:
+    registration_marker = uuid.uuid4().hex
+    email = f"local-smoke-{registration_marker}@example.test"
+    status, response = request_json(
+        "http://127.0.0.1:8080/public/v1/applications/"
+        f"{application_identifier}/local-registrations",
+        method="POST",
+        body={
+            "email": email,
+            "password": f"Local-smoke-registration-{registration_marker}",
+        },
+        expected=(202,),
+    )
+    if (
+        status != 202
+        or not isinstance(response, dict)
+        or set(response) != {"message"}
+        or "eligible" not in str(response["message"])
+    ):
+        raise RuntimeError("O cadastro público expôs um contrato inesperado.")
+
+    messages_endpoint = (
+        "http://127.0.0.1:"
+        f"{required(env, 'IDENTITYHUB_MAILPIT_HTTP_PORT')}/api/v1/messages"
+    )
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        _, messages = request_json(messages_endpoint)
+        if email in json.dumps(messages):
+            return
+        time.sleep(1)
+    raise RuntimeError("O e-mail do cadastro público não chegou ao Mailpit em 30 segundos.")
 
 
 def wait_for_projection(endpoint: str, token: str, expected_state: str) -> dict:
@@ -713,6 +749,7 @@ def main() -> None:
             "IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_ID": IDENTITY_MANAGEMENT_CLIENT,
             "IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_SECRET": identity_management_secret(),
             "IDENTITYHUB_PUBLIC_BASE_URI": "http://127.0.0.1:8080",
+            "IDENTITYHUB_PUBLIC_IDENTITY_ENABLED": "true",
         }
     )
 
