@@ -512,12 +512,37 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
     if not isinstance(credential, dict) or not credential.get("clientSecret"):
         raise RuntimeError("A credencial de uso único do BFF não foi emitida.")
     credential = None
+    machine_id = uuid.uuid4()
+    machine_endpoint = f"{endpoint}/clients/{machine_id}"
+    machine_body = json.dumps(
+        {
+            "type": "MACHINE",
+            "key": "local-smoke-membership-provisioner",
+        }
+    ).encode()
+    machine_status, machine_configured = put_application(
+        machine_endpoint, headers, machine_body
+    )
+    if (
+        machine_status != 201
+        or machine_configured.get("projectionState") != "PENDING"
+    ):
+        raise RuntimeError("A configuração inicial do cliente de máquina não foi aceita.")
+    projected_machine = wait_for_projection(machine_endpoint, token, "APPLIED")
+    _, credential = request_json(
+        f"{machine_endpoint}/credentials/client-secret",
+        method="POST",
+        token=token,
+    )
+    if not isinstance(credential, dict) or not credential.get("clientSecret"):
+        raise RuntimeError("A credencial de uso único da máquina não foi emitida.")
+    credential = None
     print(
         "Smoke test aprovado: aplicação idempotente, API protegida projetada "
-        "e reconciliada, SPA pública e BFF confidencial projetados no Keycloak; "
-        "credencial do BFF emitida sem exibição; estados "
+        "e reconciliada, SPA pública, BFF confidencial e máquina projetados no "
+        "Keycloak; credenciais confidenciais emitidas sem exibição; estados "
         f"{projected['projectionState']}, {projected_spa['projectionState']} e "
-        f"{projected_bff['projectionState']}."
+        f"{projected_bff['projectionState']}, {projected_machine['projectionState']}."
     )
 
 

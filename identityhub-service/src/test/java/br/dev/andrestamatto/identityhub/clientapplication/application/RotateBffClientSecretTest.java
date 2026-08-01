@@ -15,6 +15,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTranspor
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
 import java.time.Clock;
 import java.time.Instant;
@@ -34,9 +35,10 @@ class RotateBffClientSecretTest {
 
     private final ApplicationClientConfigurationRepository repository =
             org.mockito.Mockito.mock(ApplicationClientConfigurationRepository.class);
-    private final BffClientSecretRotator rotator =
-            org.mockito.Mockito.mock(BffClientSecretRotator.class);
-    private final RotateBffClientSecret rotate = new RotateBffClientSecret(repository, rotator);
+    private final ConfidentialClientSecretRotator rotator =
+            org.mockito.Mockito.mock(ConfidentialClientSecretRotator.class);
+    private final RotateConfidentialClientSecret rotate =
+            new RotateConfidentialClientSecret(repository, rotator);
 
     @Test
     void rotatesSecretOnlyForAppliedBff() {
@@ -48,6 +50,18 @@ class RotateBffClientSecretTest {
 
         assertThat(secret.value()).isEqualTo("one-time-secret");
         assertThat(secret.toString()).doesNotContain("one-time-secret");
+        verify(rotator).rotate(ApplicationClientSnapshot.from(configuration));
+    }
+
+    @Test
+    void rotatesSecretForAppliedMachineClient() {
+        var configuration = machineConfiguration();
+        when(repository.findById(any())).thenReturn(Optional.of(configuration));
+        when(rotator.rotate(any())).thenReturn(new ConfidentialClientSecret("one-time-secret"));
+
+        var secret = rotate.execute(APPLICATION_ID, CLIENT_ID);
+
+        assertThat(secret.value()).isEqualTo("one-time-secret");
         verify(rotator).rotate(ApplicationClientSnapshot.from(configuration));
     }
 
@@ -126,6 +140,28 @@ class RotateBffClientSecretTest {
                         clientId,
                         1,
                         "rotate-api-secret",
+                        ApplicationClientProjectionState.APPLIED,
+                        1,
+                        NOW,
+                        null,
+                        NOW,
+                        NOW));
+    }
+
+    private ApplicationClientConfiguration machineConfiguration() {
+        var clientId = new ApplicationClientId(CLIENT_ID);
+        var client = application().configureMachine(
+                clientId,
+                new ApplicationClientKey("social-catalog-membership-provisioner"),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        assertThat(client.settings()).isEqualTo(new MachineSettings());
+        return new ApplicationClientConfiguration(
+                client,
+                new ApplicationClientProjection(
+                        UUID.fromString("92390c62-b1f7-48d4-887a-d004a47faf8b"),
+                        clientId,
+                        1,
+                        "rotate-machine-secret",
                         ApplicationClientProjectionState.APPLIED,
                         1,
                         NOW,

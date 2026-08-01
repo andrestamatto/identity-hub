@@ -14,6 +14,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClie
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserRedirectUri;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
@@ -317,7 +318,7 @@ public final class JdbcApplicationClientConfigurationRepository
             }
             case BffSettings bff -> insertRedirectUris(client.id(), bff.redirectUris());
             default -> {
-                // API clients have no child settings.
+                // API and machine clients have no child settings.
             }
         }
     }
@@ -433,6 +434,9 @@ public final class JdbcApplicationClientConfigurationRepository
             String audience) {
         if (type == ApplicationClientType.API) {
             return new ProtectedApiSettings(new TokenAudience(audience));
+        }
+        if (type == ApplicationClientType.MACHINE) {
+            return new MachineSettings();
         }
         var redirects = jdbcClient.sql("""
                         select redirect_uri

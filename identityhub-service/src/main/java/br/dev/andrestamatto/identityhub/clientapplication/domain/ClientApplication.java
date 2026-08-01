@@ -94,6 +94,20 @@ public final class ClientApplication {
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
     }
 
+    public ApplicationClient configureMachine(
+            ApplicationClientId clientId,
+            ApplicationClientKey key,
+            Clock clock) {
+        Objects.requireNonNull(clock);
+        return new ApplicationClient(
+                clientId,
+                id,
+                key,
+                new MachineSettings(),
+                true,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
+    }
+
     public ClientApplicationId id() {
         return id;
     }

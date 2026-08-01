@@ -179,6 +179,29 @@ class KeycloakApplicationClientProjectorTest {
     }
 
     @Test
+    void createsConfidentialMachineWithOnlyServiceAccountsEnabled() {
+        projector().project(machineSnapshot());
+
+        assertThat(storedClient.path("clientId").asString())
+                .isEqualTo("ih-machine-72c43df3-9f34-4dc6-85cc-5d323762f299");
+        assertThat(storedClient.path("publicClient").asBoolean()).isFalse();
+        assertThat(storedClient.path("bearerOnly").asBoolean()).isFalse();
+        assertThat(storedClient.path("clientAuthenticatorType").asString())
+                .isEqualTo("client-secret");
+        assertThat(storedClient.path("standardFlowEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("implicitFlowEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("directAccessGrantsEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("serviceAccountsEnabled").asBoolean()).isTrue();
+        assertThat(storedClient.path("authorizationServicesEnabled").asBoolean()).isFalse();
+        assertThat(storedClient.path("fullScopeAllowed").asBoolean()).isFalse();
+        assertThat(storedClient.path("redirectUris")).isEmpty();
+        assertThat(storedClient.path("webOrigins")).isEmpty();
+        assertThat(storedClient.path("attributes")
+                .path("pkce.code.challenge.method").isMissingNode()).isTrue();
+        assertThat(storedClient.path("secret").isMissingNode()).isTrue();
+    }
+
+    @Test
     void rotatesBffSecretAndReturnsItOnlyToTheCaller() {
         var projector = projector();
         projector.project(bffSnapshot());
@@ -256,6 +279,26 @@ class KeycloakApplicationClientProjectorTest {
                 UUID.fromString("92390c62-b1f7-48d4-887a-d004a47faf8b"),
                 1,
                 "keycloak-bff-test",
+                ApplicationClientProjectionState.PENDING,
+                0,
+                Instant.parse("2026-08-01T14:00:00Z"),
+                null);
+    }
+
+    private ApplicationClientSnapshot machineSnapshot() {
+        return new ApplicationClientSnapshot(
+                UUID.fromString("72c43df3-9f34-4dc6-85cc-5d323762f299"),
+                UUID.fromString("184b5f54-1c97-4ea0-a6d7-8bad8f6d8ff0"),
+                "catalog-membership-provisioner",
+                "MACHINE",
+                null,
+                java.util.List.of(),
+                java.util.List.of(),
+                true,
+                Instant.parse("2026-08-01T14:00:00Z"),
+                UUID.fromString("92390c62-b1f7-48d4-887a-d004a47faf8b"),
+                1,
+                "keycloak-machine-test",
                 ApplicationClientProjectionState.PENDING,
                 0,
                 Instant.parse("2026-08-01T14:00:00Z"),

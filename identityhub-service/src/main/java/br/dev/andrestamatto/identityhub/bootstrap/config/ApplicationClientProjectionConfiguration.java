@@ -5,7 +5,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.Applicatio
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjector;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfigurationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ProcessApplicationClientProjection;
-import br.dev.andrestamatto.identityhub.clientapplication.application.RotateBffClientSecret;
+import br.dev.andrestamatto.identityhub.clientapplication.application.RotateConfidentialClientSecret;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.net.http.HttpClient;
 import java.time.Clock;
@@ -38,10 +38,10 @@ class ApplicationClientProjectionConfiguration {
     }
 
     @Bean
-    RotateBffClientSecret rotateBffClientSecret(
+    RotateConfidentialClientSecret rotateConfidentialClientSecret(
             ApplicationClientConfigurationRepository repository,
             KeycloakApplicationClientProjector projector) {
-        return new RotateBffClientSecret(repository, projector);
+        return new RotateConfidentialClientSecret(repository, projector);
     }
 
     @Bean

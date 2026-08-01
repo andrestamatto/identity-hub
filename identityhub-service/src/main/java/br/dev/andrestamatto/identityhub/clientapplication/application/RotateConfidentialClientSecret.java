@@ -2,17 +2,18 @@ package br.dev.andrestamatto.identityhub.clientapplication.application;
 
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import java.util.Objects;
 import java.util.UUID;
 
-public final class RotateBffClientSecret {
+public final class RotateConfidentialClientSecret {
 
     private final ApplicationClientConfigurationRepository repository;
-    private final BffClientSecretRotator rotator;
+    private final ConfidentialClientSecretRotator rotator;
 
-    public RotateBffClientSecret(
+    public RotateConfidentialClientSecret(
             ApplicationClientConfigurationRepository repository,
-            BffClientSecretRotator rotator) {
+            ConfidentialClientSecretRotator rotator) {
         this.repository = Objects.requireNonNull(repository);
         this.rotator = Objects.requireNonNull(rotator);
     }
@@ -26,13 +27,14 @@ public final class RotateBffClientSecret {
         if (!client.applicationId().value().equals(applicationId)) {
             throw new ApplicationClientNotFoundException(clientId);
         }
-        if (!(client.settings() instanceof BffSettings)) {
-            throw new IllegalArgumentException("Only a BFF client has a browser client secret");
+        if (!(client.settings() instanceof BffSettings
+                || client.settings() instanceof MachineSettings)) {
+            throw new IllegalArgumentException("Only a confidential client has a secret");
         }
         if (!client.enabled()
                 || configuration.projection().state() != ApplicationClientProjectionState.APPLIED) {
             throw new ClientApplicationConflictException(
-                    "BFF client must be enabled and projected before secret rotation");
+                    "Confidential client must be enabled and projected before secret rotation");
         }
         return rotator.rotate(ApplicationClientSnapshot.from(configuration));
     }

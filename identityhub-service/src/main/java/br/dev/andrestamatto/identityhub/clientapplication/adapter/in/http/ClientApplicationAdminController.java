@@ -4,6 +4,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.Applicatio
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfigurationResult;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationSnapshot;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureBffClient;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureMachineClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureProtectedApiClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureSpaClient;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
@@ -34,6 +35,7 @@ final class ClientApplicationAdminController {
     private final ConfigureProtectedApiClient configureProtectedApiClient;
     private final ConfigureSpaClient configureSpaClient;
     private final ConfigureBffClient configureBffClient;
+    private final ConfigureMachineClient configureMachineClient;
     private final GetApplicationClientConfiguration getApplicationClient;
     private final ReconcileApplicationClientProjection reconcileProjection;
     private final ApplicationClientManagementMetrics clientMetrics;
@@ -45,6 +47,7 @@ final class ClientApplicationAdminController {
             ConfigureProtectedApiClient configureProtectedApiClient,
             ConfigureSpaClient configureSpaClient,
             ConfigureBffClient configureBffClient,
+            ConfigureMachineClient configureMachineClient,
             GetApplicationClientConfiguration getApplicationClient,
             ReconcileApplicationClientProjection reconcileProjection,
             ApplicationClientManagementMetrics clientMetrics) {
@@ -54,6 +57,7 @@ final class ClientApplicationAdminController {
         this.configureProtectedApiClient = configureProtectedApiClient;
         this.configureSpaClient = configureSpaClient;
         this.configureBffClient = configureBffClient;
+        this.configureMachineClient = configureMachineClient;
         this.getApplicationClient = getApplicationClient;
         this.reconcileProjection = reconcileProjection;
         this.clientMetrics = clientMetrics;
@@ -93,6 +97,7 @@ final class ClientApplicationAdminController {
             case "API" -> configureApi(applicationId, applicationClientId, request);
             case "SPA" -> configureSpa(applicationId, applicationClientId, request);
             case "BFF" -> configureBff(applicationId, applicationClientId, request);
+            case "MACHINE" -> configureMachine(applicationId, applicationClientId, request);
             default -> throw new IllegalArgumentException("Unsupported application client type");
         });
         var response = ApplicationClientResponse.from(result.client());
@@ -152,6 +157,22 @@ final class ClientApplicationAdminController {
                 applicationClientId,
                 request.key(),
                 request.redirectUris(),
+                MDC.get("correlationId")));
+    }
+
+    private ApplicationClientConfigurationResult configureMachine(
+                    UUID applicationId,
+                    UUID applicationClientId,
+                    ConfigureApplicationClientRequest request) {
+        if (request.audience() != null
+                || request.redirectUris() != null
+                || request.webOrigins() != null) {
+            throw new IllegalArgumentException("Machine client contains incompatible fields");
+        }
+        return configureMachineClient.execute(new ConfigureMachineClient.Command(
+                applicationId,
+                applicationClientId,
+                request.key(),
                 MDC.get("correlationId")));
     }
 

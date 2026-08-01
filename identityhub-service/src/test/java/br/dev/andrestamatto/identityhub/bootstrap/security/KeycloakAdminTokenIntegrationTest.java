@@ -378,6 +378,7 @@ class KeycloakAdminTokenIntegrationTest {
         assertProtectedApiProjection(accessToken, applicationUri, applicationId);
         assertSpaProjection(accessToken, applicationUri, applicationId);
         assertBffProjectionAndSecretRotation(accessToken, applicationUri, applicationId);
+        assertMachineProjectionAndSecretIssuance(accessToken, applicationUri, applicationId);
     }
 
     private void assertProtectedApiProjection(
@@ -549,6 +550,55 @@ class KeycloakAdminTokenIntegrationTest {
                 HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
         return JSON.readTree(response.body()).required("value").asString();
+    }
+
+    private void assertMachineProjectionAndSecretIssuance(
+            String accessToken,
+            URI applicationUri,
+            UUID applicationId) throws Exception {
+        var clientId = UUID.fromString("04f4fc41-3ff0-42bb-91b6-76fc48d744b0");
+        var clientUri = URI.create(applicationUri + "/clients/" + clientId);
+        var response = HttpClient.newHttpClient().send(
+                authorizedPutJsonRequest(
+                        clientUri,
+                        accessToken,
+                        "configure-real-machine",
+                        """
+                                {
+                                  "type": "MACHINE",
+                                  "key": "real-membership-provisioner"
+                                }
+                                """),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(response.body()).contains(
+                "\"applicationId\":\"" + applicationId + "\"",
+                "\"type\":\"MACHINE\"",
+                "\"projectionState\":\"PENDING\"");
+
+        awaitAppliedProjection(clientId);
+
+        var projected = findKeycloakClient("ih-machine-" + clientId);
+        assertThat(projected.path("publicClient").asBoolean()).isFalse();
+        assertThat(projected.path("bearerOnly").asBoolean()).isFalse();
+        assertThat(projected.path("clientAuthenticatorType").asString())
+                .isEqualTo("client-secret");
+        assertThat(projected.path("standardFlowEnabled").asBoolean()).isFalse();
+        assertThat(projected.path("serviceAccountsEnabled").asBoolean()).isTrue();
+        assertThat(projected.path("directAccessGrantsEnabled").asBoolean()).isFalse();
+        assertThat(projected.path("redirectUris")).isEmpty();
+        assertThat(projected.path("webOrigins")).isEmpty();
+
+        var secretResponse = HttpClient.newHttpClient().send(
+                authorizedPostRequest(
+                        URI.create(clientUri + "/credentials/client-secret"),
+                        accessToken,
+                        "issue-real-machine-secret"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(secretResponse.statusCode()).isEqualTo(200);
+        assertThat(secretResponse.headers().firstValue("Cache-Control")).contains("no-store");
+        assertThat(JSON.readTree(secretResponse.body()).required("clientSecret").asString())
+                .isNotBlank();
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {

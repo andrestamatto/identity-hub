@@ -1,6 +1,6 @@
 package br.dev.andrestamatto.identityhub.clientapplication.adapter.in.http;
 
-import br.dev.andrestamatto.identityhub.clientapplication.application.RotateBffClientSecret;
+import br.dev.andrestamatto.identityhub.clientapplication.application.RotateConfidentialClientSecret;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.CacheControl;
@@ -16,11 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 @ConditionalOnProperty(
         name = "identityhub.keycloak.management.enabled",
         havingValue = "true")
-final class BffClientSecretAdminController {
+final class ConfidentialClientSecretAdminController {
 
-    private final RotateBffClientSecret rotateClientSecret;
+    private final RotateConfidentialClientSecret rotateClientSecret;
 
-    BffClientSecretAdminController(RotateBffClientSecret rotateClientSecret) {
+    ConfidentialClientSecretAdminController(RotateConfidentialClientSecret rotateClientSecret) {
         this.rotateClientSecret = rotateClientSecret;
     }
 
