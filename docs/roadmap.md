@@ -156,7 +156,7 @@ ser decomposto em uma fatia vertical pequena, orientada por um requisito
 3. implementação mínima;
 4. refatoração;
 5. atualização documental necessária;
-6. validação humana antes da próxima fatia.
+6. gate final supervisionado ou autônomo controlado antes da próxima fatia.
 
 Cada branch e PR deve possuir um contexto revisável. Infraestrutura compartilhada
 entra somente quando a fatia atual realmente precisar dela.
