@@ -99,17 +99,18 @@ impresso ou armazenado no repositório.
 A ação `smoke`:
 
 1. cadastra uma `ClientApplication` e confirma seu replay idempotente;
-2. configura uma API protegida com projeção `PENDING`;
-3. aguarda o worker criar o cliente bearer-only e registrar `APPLIED`;
-4. solicita reconciliação explícita e confirma nova aplicação idempotente;
-5. configura uma SPA pública com redirects e origins exatos em loopback;
-6. aguarda o worker criar o cliente Authorization Code com PKCE `S256` e
+2. habilita explicitamente a política de autocadastro da aplicação;
+3. configura uma API protegida com projeção `PENDING`;
+4. aguarda o worker criar o cliente bearer-only e registrar `APPLIED`;
+5. solicita reconciliação explícita e confirma nova aplicação idempotente;
+6. configura uma SPA pública com redirects e origins exatos em loopback;
+7. aguarda o worker criar o cliente Authorization Code com PKCE `S256` e
    registrar `APPLIED`;
-7. configura um BFF confidencial com redirect exato em loopback;
-8. aguarda o cliente Authorization Code + PKCE `S256` ficar `APPLIED`;
-9. solicita uma credencial gerada ao Keycloak e a descarta sem exibi-la.
-10. configura um cliente de máquina confidencial sem redirects ou origins;
-11. confirma somente Service Accounts habilitado e descarta sua credencial sem
+8. configura um BFF confidencial com redirect exato em loopback;
+9. aguarda o cliente Authorization Code + PKCE `S256` ficar `APPLIED`;
+10. solicita uma credencial gerada ao Keycloak e a descarta sem exibi-la.
+11. configura um cliente de máquina confidencial sem redirects ou origins;
+12. confirma somente Service Accounts habilitado e descarta sua credencial sem
     exibi-la.
 
 O smoke nunca imprime nem persiste credenciais confidenciais. Para uma integração

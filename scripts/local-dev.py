@@ -454,6 +454,16 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
         or replayed != created
     ):
         raise RuntimeError("O round-trip da aplicação não preservou o contrato esperado.")
+    registration_policy_status, registration_policy = put_application(
+        f"{endpoint}/registration-policy",
+        headers,
+        json.dumps({"selfRegistration": "ENABLED"}).encode(),
+    )
+    if (
+        registration_policy_status != 200
+        or registration_policy.get("selfRegistration") != "ENABLED"
+    ):
+        raise RuntimeError("A política explícita de autocadastro não foi aplicada.")
     client_id = uuid.uuid4()
     client_endpoint = f"{endpoint}/clients/{client_id}"
     client_body = json.dumps(
@@ -541,7 +551,8 @@ def smoke(args: argparse.Namespace, env: dict[str, str]) -> None:
         raise RuntimeError("A credencial de uso único da máquina não foi emitida.")
     credential = None
     print(
-        "Smoke test aprovado: aplicação idempotente, API protegida projetada "
+        "Smoke test aprovado: aplicação idempotente, autocadastro habilitado, "
+        "API protegida projetada "
         "e reconciliada, SPA pública, BFF confidencial e máquina projetados no "
         "Keycloak; credenciais confidenciais emitidas sem exibição; estados "
         f"{projected['projectionState']}, {projected_spa['projectionState']} e "
