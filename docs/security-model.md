@@ -656,6 +656,7 @@ Os valores são baselines iniciais e devem ser ajustados por métricas sem enfra
 |---|---|
 | Login por conta | Após 5 falhas, espera progressiva de 30 segundos até 15 minutos |
 | Login por IP | 20 tentativas em 5 minutos antes de limitação adicional |
+| Cadastro por IP | 20 solicitações em 15 minutos |
 | Recuperação por destino | 3 solicitações em 15 minutos |
 | Recuperação por IP | 20 solicitações em 15 minutos |
 | Reenvio de verificação | 3 solicitações em 15 minutos por destino |
