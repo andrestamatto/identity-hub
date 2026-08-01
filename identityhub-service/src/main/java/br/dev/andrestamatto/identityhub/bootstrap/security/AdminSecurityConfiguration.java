@@ -29,6 +29,10 @@ class AdminSecurityConfiguration {
     private static final String EMAIL_DELIVERY_ENDPOINTS =
             "/internal/admin/communication/email-deliveries/**";
     private static final String ADMIN_ENDPOINTS = "/internal/admin/**";
+    private static final String PUBLIC_REGISTRATION_ENDPOINTS =
+            "/public/v1/applications/*/local-registrations";
+    private static final String PUBLIC_EMAIL_VERIFICATION_ENDPOINT =
+            "/public/v1/email-verifications";
 
     @Bean
     JwtDecoder adminJwtDecoder(AdminSecurityProperties properties) {
@@ -56,6 +60,11 @@ class AdminSecurityConfiguration {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(LIVENESS_ENDPOINT, READINESS_ENDPOINT).permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                PUBLIC_REGISTRATION_ENDPOINTS,
+                                PUBLIC_EMAIL_VERIFICATION_ENDPOINT)
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, ADMIN_RUNTIME_ENDPOINT).access(readAccess)
                         .requestMatchers(HttpMethod.GET, CLIENT_APPLICATION_ENDPOINTS).access(readAccess)
                         .requestMatchers(HttpMethod.GET, EMAIL_DELIVERY_ENDPOINTS).access(readAccess)

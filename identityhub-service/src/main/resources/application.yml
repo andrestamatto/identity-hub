@@ -1,6 +1,11 @@
 spring:
   application:
     name: identityhub-service
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+    read:
+      strict-duplicate-detection: true
   datasource:
     url: ${IDENTITYHUB_DATABASE_URL}
     username: ${IDENTITYHUB_DATABASE_USERNAME}
@@ -19,6 +24,13 @@ spring:
 identityhub:
   runtime:
     environment: ${IDENTITYHUB_ENVIRONMENT:development}
+  public-identity:
+    enabled: ${IDENTITYHUB_PUBLIC_IDENTITY_ENABLED:false}
+    registration-request-limit: ${IDENTITYHUB_REGISTRATION_REQUEST_LIMIT:20}
+    registration-window: ${IDENTITYHUB_REGISTRATION_WINDOW:PT15M}
+    tracked-source-limit: ${IDENTITYHUB_REGISTRATION_TRACKED_SOURCE_LIMIT:10000}
+    minimum-response-time: ${IDENTITYHUB_REGISTRATION_MINIMUM_RESPONSE_TIME:PT0.75S}
+    maximum-request-bytes: ${IDENTITYHUB_PUBLIC_IDENTITY_MAXIMUM_REQUEST_BYTES:2048}
   security:
     admin:
       issuer-uri: ${IDENTITYHUB_ADMIN_ISSUER_URI}

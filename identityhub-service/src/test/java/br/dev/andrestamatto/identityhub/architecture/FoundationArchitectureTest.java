@@ -36,6 +36,7 @@ class FoundationArchitectureTest {
                         BASE_PACKAGE + ".communication.adapter.out.clientapplication..",
                         BASE_PACKAGE + ".identity.domain..",
                         BASE_PACKAGE + ".identity.application..",
+                        BASE_PACKAGE + ".identity.adapter.in.http..",
                         BASE_PACKAGE + ".identity.adapter.out.clientapplication..",
                         BASE_PACKAGE + ".identity.adapter.out.communication..",
                         BASE_PACKAGE + ".identity.adapter.out.crypto..",
