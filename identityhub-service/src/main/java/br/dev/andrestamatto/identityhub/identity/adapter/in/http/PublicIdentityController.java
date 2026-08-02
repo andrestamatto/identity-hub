@@ -1,9 +1,13 @@
 package br.dev.andrestamatto.identityhub.identity.adapter.in.http;
 
+import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationSnapshot;
+import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationUnavailableException;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplicationByIdentifier;
 import br.dev.andrestamatto.identityhub.identity.application.BeginLocalRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerification;
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRejectedException;
+import br.dev.andrestamatto.identityhub.identity.application.RequestPasswordRecovery;
+import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Objects;
@@ -25,24 +29,68 @@ final class PublicIdentityController {
 
     static final String ACCEPTED_MESSAGE =
             "If the request is eligible, verification instructions will be sent";
+    static final String RECOVERY_ACCEPTED_MESSAGE =
+            "If the account is eligible, password recovery instructions will be sent";
 
     private final GetClientApplicationByIdentifier getApplication;
     private final BeginLocalRegistration beginRegistration;
     private final ConfirmEmailVerification confirmVerification;
+    private final RequestPasswordRecovery requestPasswordRecovery;
     private final InMemoryRegistrationRateLimiter registrationRateLimiter;
+    private final InMemoryPasswordRecoveryRateLimiter recoveryRateLimiter;
     private final PublicResponseTiming responseTiming;
 
     PublicIdentityController(
             GetClientApplicationByIdentifier getApplication,
             BeginLocalRegistration beginRegistration,
             ConfirmEmailVerification confirmVerification,
+            RequestPasswordRecovery requestPasswordRecovery,
             InMemoryRegistrationRateLimiter registrationRateLimiter,
+            InMemoryPasswordRecoveryRateLimiter recoveryRateLimiter,
             PublicResponseTiming responseTiming) {
         this.getApplication = Objects.requireNonNull(getApplication);
         this.beginRegistration = Objects.requireNonNull(beginRegistration);
         this.confirmVerification = Objects.requireNonNull(confirmVerification);
+        this.requestPasswordRecovery = Objects.requireNonNull(requestPasswordRecovery);
         this.registrationRateLimiter = Objects.requireNonNull(registrationRateLimiter);
+        this.recoveryRateLimiter = Objects.requireNonNull(recoveryRateLimiter);
         this.responseTiming = Objects.requireNonNull(responseTiming);
+    }
+
+    @PostMapping("/applications/{applicationIdentifier}/password-recoveries")
+    ResponseEntity<RegistrationAcceptedResponse> recoverPassword(
+            @PathVariable String applicationIdentifier,
+            @RequestBody PasswordRecoveryRequest request,
+            HttpServletRequest servletRequest) {
+        recoveryRateLimiter.acquire(servletRequest.getRemoteAddr());
+        var email = recoveryEmail(request);
+        try (var ignored = responseTiming.begin()) {
+            var application = recoveryApplication(applicationIdentifier);
+            requestPasswordRecovery.execute(new RequestPasswordRecovery.Command(
+                    application.applicationId(), email, correlationId()));
+            return ResponseEntity.accepted()
+                    .cacheControl(CacheControl.noStore())
+                    .body(new RegistrationAcceptedResponse(RECOVERY_ACCEPTED_MESSAGE));
+        }
+    }
+
+    private ClientApplicationSnapshot recoveryApplication(String identifier) {
+        try {
+            return getApplication.execute(identifier);
+        } catch (ClientApplicationUnavailableException exception) {
+            throw new PasswordRecoveryUnavailableException();
+        }
+    }
+
+    private String recoveryEmail(PasswordRecoveryRequest request) {
+        try {
+            if (request == null || request.email() == null) {
+                throw new IllegalArgumentException("Missing email");
+            }
+            return new LoginEmail(request.email()).contactValue();
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidPasswordRecoveryRequestException();
+        }
     }
 
     @PostMapping("/applications/{applicationIdentifier}/local-registrations")
@@ -100,6 +148,13 @@ final class PublicIdentityController {
     }
 
     record RegistrationAcceptedResponse(String message) { }
+
+    record PasswordRecoveryRequest(String email) {
+        @Override
+        public String toString() {
+            return "PasswordRecoveryRequest[email=REDACTED]";
+        }
+    }
 
     record EmailVerificationRequest(String token) {
         @Override

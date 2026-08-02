@@ -447,6 +447,11 @@ class KeycloakAdminTokenIntegrationTest {
             throws Exception {
         projectLocalLoginSpa();
         var userAccountRef = registerVerifiedLocalLoginUser();
+        assertThat(localIdentityRegistrar().findEligible(
+                        new LoginEmail(LOCAL_LOGIN_USERNAME)))
+                .get()
+                .extracting(identity -> identity.userAccountRef().value())
+                .isEqualTo(userAccountRef.value());
 
         var tokens = authenticateLocalUser(
                 "ih-spa-" + LOCAL_LOGIN_CLIENT_ID,
@@ -485,6 +490,9 @@ class KeycloakAdminTokenIntegrationTest {
         registerPendingLocalLoginUser(
                 "disabled.user@example.test",
                 "test-only-disabled-user-password");
+        assertThat(localIdentityRegistrar().findEligible(
+                        new LoginEmail("disabled.user@example.test")))
+                .isEmpty();
         var clientId = "ih-spa-" + LOCAL_LOGIN_CLIENT_ID;
 
         var wrongPassword = attemptLocalLogin(

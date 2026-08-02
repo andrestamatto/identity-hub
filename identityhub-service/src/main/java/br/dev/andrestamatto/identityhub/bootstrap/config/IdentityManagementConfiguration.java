@@ -2,9 +2,13 @@ package br.dev.andrestamatto.identityhub.bootstrap.config;
 
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
 import br.dev.andrestamatto.identityhub.communication.application.RequestEmailVerificationEmail;
+import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordRecoveryEmail;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.communication.CommunicationRecoveryEmailRequester;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.communication.CommunicationVerificationEmailRequester;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.crypto.SecureRandomEmailVerificationSecretGenerator;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.crypto.SecureRandomPasswordRecoverySecretGenerator;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcEmailVerificationChallengeRepository;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcPasswordRecoveryChallengeRepository;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.SpringVerificationTransaction;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.clientapplication.ClientApplicationSelfRegistrationPolicyResolver;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityRegistrar;
@@ -12,6 +16,7 @@ import br.dev.andrestamatto.identityhub.identity.application.RegisterPendingLoca
 import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerification;
 import br.dev.andrestamatto.identityhub.identity.application.BeginLocalRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.RequestEmailVerification;
+import br.dev.andrestamatto.identityhub.identity.application.RequestPasswordRecovery;
 import java.net.http.HttpClient;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -98,6 +103,37 @@ class IdentityManagementConfiguration {
             SpringVerificationTransaction transaction,
             Clock clock) {
         return new ConfirmEmailVerification(repository, registrar, transaction, clock);
+    }
+
+    @Bean
+    JdbcPasswordRecoveryChallengeRepository passwordRecoveryChallengeRepository(
+            JdbcClient jdbcClient) {
+        return new JdbcPasswordRecoveryChallengeRepository(jdbcClient);
+    }
+
+    @Bean
+    CommunicationRecoveryEmailRequester recoveryEmailRequester(
+            RequestPasswordRecoveryEmail requestEmail) {
+        return new CommunicationRecoveryEmailRequester(requestEmail);
+    }
+
+    @Bean
+    RequestPasswordRecovery requestPasswordRecovery(
+            KeycloakLocalIdentityRegistrar identityFinder,
+            JdbcPasswordRecoveryChallengeRepository repository,
+            CommunicationRecoveryEmailRequester emailRequester,
+            SpringVerificationTransaction transaction,
+            Clock clock,
+            IdentityManagementProperties properties) {
+        return new RequestPasswordRecovery(
+                identityFinder,
+                repository,
+                emailRequester,
+                transaction,
+                new SecureRandomPasswordRecoverySecretGenerator(new SecureRandom()),
+                clock,
+                UUID::randomUUID,
+                properties.publicBaseUri());
     }
 
     @Bean

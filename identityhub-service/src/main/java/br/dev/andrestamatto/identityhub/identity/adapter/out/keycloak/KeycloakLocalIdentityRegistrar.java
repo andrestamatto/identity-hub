@@ -7,6 +7,9 @@ import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegist
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerifier;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentity;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentityFinder;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentityLookupException;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
 import br.dev.andrestamatto.identityhub.identity.domain.UserAccountRef;
 import java.io.IOException;
@@ -21,15 +24,15 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 public final class KeycloakLocalIdentityRegistrar
-        implements LocalIdentityRegistrar, LocalIdentityVerifier {
+        implements LocalIdentityRegistrar, LocalIdentityVerifier, PasswordRecoveryIdentityFinder {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
@@ -61,7 +64,7 @@ public final class KeycloakLocalIdentityRegistrar
         Objects.requireNonNull(identity);
         try {
             var accessToken = requestManagementToken();
-            var existing = findUser(identity, accessToken);
+            var existing = findUser(identity.email(), accessToken);
             if (existing != null) {
                 return registration(existing, false);
             }
@@ -75,6 +78,34 @@ public final class KeycloakLocalIdentityRegistrar
             throw exception;
         } catch (RuntimeException exception) {
             throw invalidResponse();
+        }
+    }
+
+    @Override
+    public Optional<PasswordRecoveryIdentity> findEligible(LoginEmail email) {
+        Objects.requireNonNull(email);
+        try {
+            var accessToken = requestManagementToken();
+            var user = findUser(email, accessToken);
+            if (!isEligibleIdentity(user, email)) {
+                return Optional.empty();
+            }
+            var userAccountRef = new UserAccountRef(
+                    UUID.fromString(user.required("id").asString()));
+            if (!hasPasswordCredential(userAccountRef, accessToken)) {
+                return Optional.empty();
+            }
+            return Optional.of(new PasswordRecoveryIdentity(
+                    userAccountRef,
+                    new LoginEmail(user.required("email").asString())));
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new PasswordRecoveryIdentityLookupException(exception);
+        } catch (IOException | RuntimeException exception) {
+            if (exception instanceof PasswordRecoveryIdentityLookupException lookupException) {
+                throw lookupException;
+            }
+            throw new PasswordRecoveryIdentityLookupException(exception);
         }
     }
 
@@ -103,6 +134,9 @@ public final class KeycloakLocalIdentityRegistrar
             representation.put("username", user.required("username").asString());
             if (!user.path("email").isMissingNode()) {
                 representation.put("email", user.path("email").asString());
+            }
+            if (!user.path("attributes").isMissingNode()) {
+                representation.put("attributes", user.path("attributes"));
             }
             representation.put("enabled", true);
             representation.put("emailVerified", true);
@@ -150,10 +184,10 @@ public final class KeycloakLocalIdentityRegistrar
         }
     }
 
-    private JsonNode findUser(PendingLocalIdentity identity, String accessToken)
+    private JsonNode findUser(LoginEmail email, String accessToken)
             throws IOException, InterruptedException {
         var response = sendAuthorized(
-                HttpRequest.newBuilder(userLookupUri(identity)).GET(), accessToken);
+                HttpRequest.newBuilder(userLookupUri(email)).GET(), accessToken);
         ensureSuccess(
                 response.statusCode(),
                 LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
@@ -164,7 +198,17 @@ public final class KeycloakLocalIdentityRegistrar
                 throw LocalIdentityRegistrationException.permanent(
                         LocalIdentityRegistrationFailureCode.IDENTITY_CONFLICT, null);
             }
-            return users.isEmpty() ? null : users.getFirst();
+            if (users.isEmpty()) {
+                return null;
+            }
+            var userAccountRef = new UserAccountRef(
+                    UUID.fromString(users.getFirst().required("id").asString()));
+            var fullUser = sendAuthorized(
+                    HttpRequest.newBuilder(userUri(userAccountRef)).GET(), accessToken);
+            ensureSuccess(
+                    fullUser.statusCode(),
+                    LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+            return objectMapper.readTree(fullUser.body());
         } catch (LocalIdentityRegistrationException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -185,7 +229,7 @@ public final class KeycloakLocalIdentityRegistrar
                             .POST(HttpRequest.BodyPublishers.ofByteArray(body)),
                     accessToken);
             if (response.statusCode() == 409) {
-                var racedUser = findUser(identity, accessToken);
+                var racedUser = findUser(identity.email(), accessToken);
                 if (racedUser != null) {
                     return registration(racedUser, false);
                 }
@@ -217,7 +261,6 @@ public final class KeycloakLocalIdentityRegistrar
         user.put("enabled", false);
         user.put("emailVerified", false);
         user.put("credentials", List.of(credential));
-        user.put("attributes", Map.of("identityhub.local-identity", List.of("true")));
         return objectMapper.writeValueAsBytes(user);
     }
 
@@ -259,9 +302,36 @@ public final class KeycloakLocalIdentityRegistrar
         return baseUri.resolve("/admin/realms/" + encode(realm) + "/users");
     }
 
-    private URI userLookupUri(PendingLocalIdentity identity) {
+    private URI userLookupUri(LoginEmail email) {
         return URI.create(userCollectionUri() + "?username="
-                + encode(identity.email().normalizedValue()) + "&exact=true");
+                + encode(email.normalizedValue()) + "&exact=true");
+    }
+
+    private boolean isEligibleIdentity(JsonNode user, LoginEmail expectedEmail) {
+        if (user == null || !user.path("enabled").asBoolean()
+                || !user.path("emailVerified").asBoolean()
+                || user.path("email").isMissingNode()
+                || !new LoginEmail(user.path("email").asString()).equals(expectedEmail)) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean hasPasswordCredential(UserAccountRef userAccountRef, String accessToken)
+            throws IOException, InterruptedException {
+        var response = sendAuthorized(
+                HttpRequest.newBuilder(credentialsUri(userAccountRef)).GET(), accessToken);
+        ensureSuccess(
+                response.statusCode(),
+                LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+        var credentials = objectMapper.readValue(
+                response.body(), new TypeReference<List<JsonNode>>() { });
+        return credentials.stream()
+                .anyMatch(credential -> "password".equals(credential.path("type").asString()));
+    }
+
+    private URI credentialsUri(UserAccountRef userAccountRef) {
+        return URI.create(userUri(userAccountRef) + "/credentials");
     }
 
     private URI userUri(UserAccountRef userAccountRef) {

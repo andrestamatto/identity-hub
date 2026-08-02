@@ -92,6 +92,31 @@ public record EmailDelivery(
                 now);
     }
 
+    public static EmailDelivery requestPasswordRecovery(
+            EmailDeliveryId id,
+            EmailOrigin origin,
+            EmailRecipient recipient,
+            String recoveryUrl,
+            String correlationId,
+            Instant now) {
+        return new EmailDelivery(
+                id,
+                origin.applicationId(),
+                origin.applicationIdentifier(),
+                origin.applicationDisplayName(),
+                origin.environment(),
+                recipient,
+                EmailDeliveryPurpose.PASSWORD_RECOVERY,
+                requireSensitiveContent(recoveryUrl),
+                EmailDeliveryState.PENDING,
+                0,
+                now,
+                null,
+                requireCorrelationId(correlationId),
+                now,
+                now);
+    }
+
     public static EmailDelivery reconstitute(
             EmailDeliveryId id,
             UUID applicationId,
@@ -145,6 +170,16 @@ public record EmailDelivery(
                 && purpose == EmailDeliveryPurpose.EMAIL_VERIFICATION;
     }
 
+    public boolean matchesPasswordRecovery(
+            UUID expectedApplicationId,
+            EmailRecipient expectedRecipient,
+            String expectedCorrelationId) {
+        return applicationId.equals(expectedApplicationId)
+                && recipient.equals(expectedRecipient)
+                && correlationId.equals(requireCorrelationId(expectedCorrelationId))
+                && purpose == EmailDeliveryPurpose.PASSWORD_RECOVERY;
+    }
+
     @Override
     public String toString() {
         return "EmailDelivery[id=" + id + ", purpose=" + purpose + ", state=" + state
@@ -184,14 +219,19 @@ public record EmailDelivery(
         if (purpose == EmailDeliveryPurpose.PASSWORD_CHANGED && sensitiveContent != null) {
             throw new IllegalArgumentException("Password email cannot contain sensitive content");
         }
-        if (purpose == EmailDeliveryPurpose.EMAIL_VERIFICATION
+        if (hasSensitiveLink(purpose)
                 && state == EmailDeliveryState.PENDING) {
             requireSensitiveContent(sensitiveContent);
         }
-        if (purpose == EmailDeliveryPurpose.EMAIL_VERIFICATION
+        if (hasSensitiveLink(purpose)
                 && state != EmailDeliveryState.PENDING
                 && sensitiveContent != null) {
             throw new IllegalArgumentException("Completed email cannot retain sensitive content");
         }
+    }
+
+    private static boolean hasSensitiveLink(EmailDeliveryPurpose purpose) {
+        return purpose == EmailDeliveryPurpose.EMAIL_VERIFICATION
+                || purpose == EmailDeliveryPurpose.PASSWORD_RECOVERY;
     }
 }
