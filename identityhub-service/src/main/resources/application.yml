@@ -31,11 +31,15 @@ identityhub:
     tracked-source-limit: ${IDENTITYHUB_REGISTRATION_TRACKED_SOURCE_LIMIT:10000}
     minimum-response-time: ${IDENTITYHUB_REGISTRATION_MINIMUM_RESPONSE_TIME:PT0.75S}
     maximum-request-bytes: ${IDENTITYHUB_PUBLIC_IDENTITY_MAXIMUM_REQUEST_BYTES:2048}
+  onboarding:
+    enabled: ${IDENTITYHUB_ONBOARDING_ENABLED:false}
   security:
     admin:
       issuer-uri: ${IDENTITYHUB_ADMIN_ISSUER_URI}
       jwk-set-uri: ${IDENTITYHUB_ADMIN_JWK_SET_URI}
       audience: ${IDENTITYHUB_ADMIN_AUDIENCE}
+    integration:
+      audience: ${IDENTITYHUB_INTEGRATION_AUDIENCE:identityhub-integration-api}
   keycloak:
     identity-management:
       enabled: ${IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_ENABLED:false}

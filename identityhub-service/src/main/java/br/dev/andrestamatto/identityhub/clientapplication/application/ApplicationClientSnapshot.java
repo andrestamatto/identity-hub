@@ -14,6 +14,7 @@ public record ApplicationClientSnapshot(
         String key,
         String type,
         String audience,
+        List<String> scopes,
         List<String> redirectUris,
         List<String> webOrigins,
         boolean enabled,
@@ -27,6 +28,7 @@ public record ApplicationClientSnapshot(
         String lastProjectionFailureCode) {
 
     public ApplicationClientSnapshot {
+        scopes = List.copyOf(Objects.requireNonNull(scopes));
         redirectUris = List.copyOf(Objects.requireNonNull(redirectUris));
         webOrigins = List.copyOf(Objects.requireNonNull(webOrigins));
     }
@@ -38,6 +40,10 @@ public record ApplicationClientSnapshot(
         var audience = client.settings() instanceof ProtectedApiSettings api
                 ? api.audience().value()
                 : null;
+        var scopes = client.settings() instanceof br.dev.andrestamatto.identityhub
+                        .clientapplication.domain.MachineSettings machine
+                ? machine.scopeValues()
+                : List.<String>of();
         var redirectUris = switch (client.settings()) {
             case SpaSettings spa -> spa.redirectUris().stream()
                     .map(uri -> uri.value())
@@ -56,6 +62,7 @@ public record ApplicationClientSnapshot(
                 client.key().value(),
                 client.type().name(),
                 audience,
+                scopes,
                 redirectUris,
                 webOrigins,
                 client.enabled(),
