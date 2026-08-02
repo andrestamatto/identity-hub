@@ -20,7 +20,6 @@ import uuid
 REALM = "identityhub-development"
 ADMIN_CLIENT = "identityhub-local-admin"
 ADMIN_AUDIENCE = "identityhub-admin-api"
-INTEGRATION_AUDIENCE = "identityhub-integration-api"
 MANAGEMENT_CLIENT = "identityhub-management"
 IDENTITY_MANAGEMENT_CLIENT = "identityhub-identity-management"
 ADMIN_ROLES = ("PLATFORM_ADMIN", "PLATFORM_AUDITOR")
@@ -170,27 +169,6 @@ def realm_representation(env: dict[str, str]) -> dict:
         "otpPolicyPeriod": 30,
         "passwordPolicy": "length(15) and maxLength(64)",
         "roles": {"realm": [{"name": role} for role in ADMIN_ROLES]},
-        "clientScopes": [
-            {
-                "name": "onboarding:write",
-                "protocol": "openid-connect",
-                "attributes": {
-                    "include.in.token.scope": "true",
-                    "display.on.consent.screen": "false",
-                },
-                "protocolMappers": [
-                    {
-                        "name": "identityhub-integration-audience",
-                        "protocol": "openid-connect",
-                        "protocolMapper": "oidc-audience-mapper",
-                        "config": {
-                            "included.custom.audience": INTEGRATION_AUDIENCE,
-                            "access.token.claim": "true",
-                        },
-                    }
-                ],
-            }
-        ],
         "clients": [
             management_client_representation(env),
             identity_management_client_representation(env),
@@ -772,7 +750,6 @@ def main() -> None:
             "IDENTITYHUB_KEYCLOAK_IDENTITY_MANAGEMENT_CLIENT_SECRET": identity_management_secret(),
             "IDENTITYHUB_PUBLIC_BASE_URI": "http://127.0.0.1:8080",
             "IDENTITYHUB_PUBLIC_IDENTITY_ENABLED": "true",
-            "IDENTITYHUB_ONBOARDING_ENABLED": "true",
         }
     )
 

@@ -4,14 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Changed
+- Acquisition correlation now uses standard OIDC Authorization Code with PKCE
+  in the consumer backend or BFF; the proprietary onboarding session, proof,
+  endpoint and machine scope were removed from runtime and public contracts.
 - Delivery governance now supports a revocable autonomous mode with mandatory
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
-- Backend-initiated `OnboardingSession` with machine-scoped Client Credentials,
-  exact browser redirect and PKCE binding, opaque ten-minute sessions,
-  PostgreSQL-backed idempotency, explicit `onboarding:write` projection, and a
-  default-off integration edge validated against real Keycloak and PostgreSQL.
 - Public local-registration and email-verification edge with generic
   anti-enumeration responses, stable application identifiers, strict JSON and
   2 KiB body limits, per-source rate limiting, bounded response timing,

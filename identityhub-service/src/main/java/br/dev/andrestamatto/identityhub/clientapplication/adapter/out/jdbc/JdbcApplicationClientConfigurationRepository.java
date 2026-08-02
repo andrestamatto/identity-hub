@@ -317,25 +317,9 @@ public final class JdbcApplicationClientConfigurationRepository
                 insertWebOrigins(client.id(), spa.webOrigins());
             }
             case BffSettings bff -> insertRedirectUris(client.id(), bff.redirectUris());
-            case MachineSettings machine -> insertMachineScopes(client.id(), machine);
             default -> {
                 // API and machine clients have no child settings.
             }
-        }
-    }
-
-    private void insertMachineScopes(ApplicationClientId clientId, MachineSettings settings) {
-        var scopes = settings.scopeValues();
-        for (var position = 0; position < scopes.size(); position++) {
-            jdbcClient.sql("""
-                            insert into application_client_machine_scope (
-                                application_client_id, position, scope
-                            ) values (:clientId, :position, :scope)
-                            """)
-                    .param("clientId", clientId.value())
-                    .param("position", position)
-                    .param("scope", scopes.get(position))
-                    .update();
         }
     }
 
@@ -452,16 +436,7 @@ public final class JdbcApplicationClientConfigurationRepository
             return new ProtectedApiSettings(new TokenAudience(audience));
         }
         if (type == ApplicationClientType.MACHINE) {
-            var scopes = jdbcClient.sql("""
-                            select scope
-                            from application_client_machine_scope
-                            where application_client_id = :clientId
-                            order by position
-                            """)
-                    .param("clientId", clientId.value())
-                    .query(String.class)
-                    .list();
-            return MachineSettings.create(scopes);
+            return new MachineSettings();
         }
         var redirects = jdbcClient.sql("""
                         select redirect_uri

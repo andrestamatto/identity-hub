@@ -26,6 +26,20 @@ Itens bloqueantes não entram aqui como forma de contornar uma parada obrigatór
 
 ## Pendências abertas
 
+### PD-003 — Remoção física das estruturas obsoletas de onboarding
+
+- Status: OPEN
+- Blocking: no
+- Detected in: SLICE-005C
+- Context: as migrations V11, V12 e V13 podem ter sido aplicadas e não devem ser
+  alteradas ou compensadas sem conhecer os bancos de destino.
+- Impact: colunas e tabelas inativas permanecem no PostgreSQL, sem acesso pelo
+  runtime e sem ampliar o contrato público.
+- Temporary choice: preservar as migrations e deixar as estruturas sem uso.
+- Resolution condition: inventariar os ambientes, confirmar que não há dados
+  necessários e autorizar explicitamente uma migration compensatória.
+- References: ADR-0014 e `assessments/slice-005c-standard-oidc-acquisition.md`.
+
 ### PD-001 — Provedor de e-mail de produção
 
 - Status: OPEN

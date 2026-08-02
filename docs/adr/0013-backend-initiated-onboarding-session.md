@@ -1,6 +1,6 @@
 # ADR-0013: Sessão de onboarding iniciada pelo backend consumidor
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0014](0014-standard-oidc-acquisition-correlation.md)
 - **Data:** 2026-08-01
 
 ## Contexto

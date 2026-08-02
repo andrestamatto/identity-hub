@@ -16,7 +16,6 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTranspor
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
-import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
 import java.time.Clock;
@@ -238,7 +237,6 @@ class JdbcApplicationClientConfigurationRepositoryTest {
         var client = application().configureMachine(
                 new ApplicationClientId(CLIENT_ID),
                 new ApplicationClientKey("catalog-membership-provisioner"),
-                MachineSettings.create(java.util.List.of("onboarding:write")),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         var configuration = new ApplicationClientConfiguration(
                 client,
@@ -256,7 +254,6 @@ class JdbcApplicationClientConfigurationRepositoryTest {
         assertThat(snapshot.audience()).isNull();
         assertThat(snapshot.redirectUris()).isEmpty();
         assertThat(snapshot.webOrigins()).isEmpty();
-        assertThat(snapshot.scopes()).containsExactly("onboarding:write");
         assertThat(numberOfOperations()).isOne();
     }
 

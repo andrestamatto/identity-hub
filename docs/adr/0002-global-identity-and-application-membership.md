@@ -26,7 +26,7 @@ Regras:
 - a concessão ocorre depois da decisão comercial do SaaS;
 - papéis são limitados à aplicação;
 - desabilitação global da conta é diferente de suspensão de uma membership;
-- `OnboardingIdentityProof` correlaciona aquisição sem autorizar API de negócio.
+- o backend do SaaS correlaciona aquisição ao `sub` obtido por OIDC validado.
 
 ## Consequências positivas
 

@@ -1,5 +1,8 @@
 # SLICE-005B — Núcleo da prova de identidade de onboarding
 
+> **Superseded:** o runtime e o contrato desta fatia foram removidos pela
+> SLICE-005C e pela ADR-0014. Este documento permanece como evidência histórica.
+
 > **Status:** completed under autonomous delivery governance
 >
 > **Data:** 2026-08-02

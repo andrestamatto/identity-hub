@@ -190,7 +190,7 @@ entra somente quando a fatia atual realmente precisar dela.
 
 #### Acesso e aquisição
 
-- `OnboardingIdentityProof`;
+- correlação de aquisição por OIDC no backend ou BFF consumidor;
 - provisionamento idempotente pela aplicação após sua decisão comercial;
 - concessão, suspensão e remoção de `Membership`;
 - papéis isolados por aplicação;

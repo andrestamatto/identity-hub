@@ -59,7 +59,6 @@ class LocalDevelopmentHarnessTest(unittest.TestCase):
             if configured["clientId"] == HARNESS.IDENTITY_MANAGEMENT_CLIENT
         )
         user = realm["users"][0]
-        onboarding_scope = realm["clientScopes"][0]
         self.assertFalse(client["directAccessGrantsEnabled"])
         self.assertEqual(
             "true",
@@ -72,13 +71,6 @@ class LocalDevelopmentHarnessTest(unittest.TestCase):
         self.assertTrue(identity_management["serviceAccountsEnabled"])
         self.assertFalse(identity_management["fullScopeAllowed"])
         self.assertEqual("length(15) and maxLength(64)", realm["passwordPolicy"])
-        self.assertEqual("onboarding:write", onboarding_scope["name"])
-        self.assertEqual(
-            HARNESS.INTEGRATION_AUDIENCE,
-            onboarding_scope["protocolMappers"][0]["config"][
-                "included.custom.audience"
-            ],
-        )
 
     @mock.patch.object(HARNESS.subprocess, "run")
     def test_uses_pinned_compose_fallback_when_plugin_is_absent(self, run_mock) -> None:
