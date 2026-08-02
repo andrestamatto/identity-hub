@@ -9,9 +9,11 @@ import br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryR
 import br.dev.andrestamatto.identityhub.communication.application.EmailVerificationEmailRenderer;
 import br.dev.andrestamatto.identityhub.communication.application.GetEmailDelivery;
 import br.dev.andrestamatto.identityhub.communication.application.PasswordChangedEmailRenderer;
+import br.dev.andrestamatto.identityhub.communication.application.PasswordRecoveryEmailRenderer;
 import br.dev.andrestamatto.identityhub.communication.application.ProcessEmailDelivery;
 import br.dev.andrestamatto.identityhub.communication.application.RequeueEmailDelivery;
 import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordChangedEmail;
+import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordRecoveryEmail;
 import br.dev.andrestamatto.identityhub.communication.application.RequestEmailVerificationEmail;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -59,6 +61,14 @@ class EmailDeliveryConfiguration {
     }
 
     @Bean
+    RequestPasswordRecoveryEmail requestPasswordRecoveryEmail(
+            EmailDeliveryRepository repository,
+            ClientApplicationEmailOriginResolver originResolver,
+            Clock clock) {
+        return new RequestPasswordRecoveryEmail(repository, originResolver, clock);
+    }
+
+    @Bean
     GetEmailDelivery getEmailDelivery(EmailDeliveryRepository repository) {
         return new GetEmailDelivery(repository);
     }
@@ -94,7 +104,8 @@ class EmailDeliveryConfiguration {
                 sender,
                 new EmailDeliveryRenderer(
                         new PasswordChangedEmailRenderer(),
-                        new EmailVerificationEmailRenderer()),
+                        new EmailVerificationEmailRenderer(),
+                        new PasswordRecoveryEmailRenderer()),
                 clock,
                 properties.leaseDuration(),
                 properties.initialRetryDelay(),

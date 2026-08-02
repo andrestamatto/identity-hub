@@ -46,7 +46,10 @@ public final class ProcessEmailDelivery {
         this(
                 repository,
                 sender,
-                new EmailDeliveryRenderer(renderer, new EmailVerificationEmailRenderer()),
+                new EmailDeliveryRenderer(
+                        renderer,
+                        new EmailVerificationEmailRenderer(),
+                        new PasswordRecoveryEmailRenderer()),
                 clock,
                 leaseDuration,
                 initialRetryDelay,

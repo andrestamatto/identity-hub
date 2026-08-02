@@ -37,6 +37,7 @@ class KeycloakLocalIdentityRegistrarTest {
     private JsonNode storedUser;
     private int managementStatus = 200;
     private int createStatus = 201;
+    private boolean passwordCredentialCreated;
 
     @BeforeEach
     void startServer() throws IOException {
@@ -135,6 +136,26 @@ class KeycloakLocalIdentityRegistrarTest {
         assertThat(storedUser.path("enabled").asBoolean()).isFalse();
     }
 
+    @Test
+    void findsOnlyEnabledVerifiedLocalIdentityForPasswordRecovery() {
+        var registrar = registrar();
+        var registration = register(registrar);
+
+        assertThat(registrar.findEligible(new LoginEmail("andre@example.com"))).isEmpty();
+
+        registrar.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+
+        assertThat(registrar.findEligible(new LoginEmail("Andre@Example.com")))
+                .get()
+                .satisfies(identity -> {
+                    assertThat(identity.userAccountRef()).isEqualTo(
+                            registration.userAccountRef());
+                    assertThat(identity.email().normalizedValue())
+                            .isEqualTo("andre@example.com");
+                });
+    }
+
     private KeycloakLocalIdentityRegistrar registrar() {
         return new KeycloakLocalIdentityRegistrar(
                 HttpClient.newHttpClient(),
@@ -163,6 +184,11 @@ class KeycloakLocalIdentityRegistrarTest {
             send(exchange, managementStatus, "provider-body-must-not-leak");
             return;
         }
+        if (exchange.getRequestURI().getPath().endsWith(USER_ID + "/credentials")) {
+            send(exchange, 200, passwordCredentialCreated
+                    ? "[{\"type\":\"password\"}]" : "[]");
+            return;
+        }
         if (exchange.getRequestURI().getPath().endsWith(USER_ID.toString())) {
             if (exchange.getRequestMethod().equals("GET")) {
                 send(exchange, 200, JSON.writeValueAsString(java.util.Map.of(
@@ -170,7 +196,8 @@ class KeycloakLocalIdentityRegistrarTest {
                         "username", storedUser.path("username").asString(),
                         "email", storedUser.path("email").asString(),
                         "enabled", storedUser.path("enabled").asBoolean(),
-                        "emailVerified", storedUser.path("emailVerified").asBoolean())));
+                        "emailVerified", storedUser.path("emailVerified").asBoolean(),
+                        "attributes", storedUser.path("attributes"))));
                 return;
             }
             storedUser = JSON.readTree(exchange.getRequestBody().readAllBytes());
@@ -181,7 +208,7 @@ class KeycloakLocalIdentityRegistrarTest {
         if (exchange.getRequestMethod().equals("GET")) {
             var response = storedUser == null
                     ? "[]"
-                    : "[{\"id\":\"" + USER_ID + "\",\"username\":\"andre@example.com\"}]";
+                    : "[" + JSON.writeValueAsString(storedUser) + "]";
             send(exchange, 200, response);
             return;
         }
@@ -190,6 +217,9 @@ class KeycloakLocalIdentityRegistrarTest {
             return;
         }
         storedUser = JSON.readTree(exchange.getRequestBody().readAllBytes());
+        passwordCredentialCreated = true;
+        ((tools.jackson.databind.node.ObjectNode) storedUser)
+                .put("id", USER_ID.toString());
         creates.incrementAndGet();
         exchange.getResponseHeaders().add(
                 "Location",

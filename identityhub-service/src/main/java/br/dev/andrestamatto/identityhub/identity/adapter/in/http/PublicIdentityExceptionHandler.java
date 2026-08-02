@@ -5,6 +5,8 @@ import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRa
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRejectedException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentityLookupException;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryRateLimitException;
 import br.dev.andrestamatto.identityhub.identity.application.SelfRegistrationDisabledException;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -33,6 +35,39 @@ final class PublicIdentityExceptionHandler {
                 .cacheControl(CacheControl.noStore())
                 .body(new PublicIdentityController.RegistrationAcceptedResponse(
                         PublicIdentityController.ACCEPTED_MESSAGE));
+    }
+
+    @ExceptionHandler(PasswordRecoveryRateLimitException.class)
+    ResponseEntity<PublicIdentityController.RegistrationAcceptedResponse>
+            recoveryDestinationLimitReached() {
+        return ResponseEntity.accepted()
+                .cacheControl(CacheControl.noStore())
+                .body(new PublicIdentityController.RegistrationAcceptedResponse(
+                        PublicIdentityController.RECOVERY_ACCEPTED_MESSAGE));
+    }
+
+    @ExceptionHandler(PasswordRecoveryIdentityLookupException.class)
+    ResponseEntity<ProblemDetail> recoveryProviderUnavailable() {
+        return problem(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Password recovery temporarily unavailable",
+                "Password recovery could not be started at this time");
+    }
+
+    @ExceptionHandler(PasswordRecoveryUnavailableException.class)
+    ResponseEntity<ProblemDetail> recoveryUnavailable() {
+        return problem(
+                HttpStatus.NOT_FOUND,
+                "Password recovery unavailable",
+                "Password recovery is unavailable");
+    }
+
+    @ExceptionHandler(InvalidPasswordRecoveryRequestException.class)
+    ResponseEntity<ProblemDetail> invalidRecoveryRequest() {
+        return problem(
+                HttpStatus.valueOf(422),
+                "Invalid password recovery request",
+                "Use a valid email address");
     }
 
     @ExceptionHandler({
@@ -88,6 +123,18 @@ final class PublicIdentityExceptionHandler {
                         HttpStatus.TOO_MANY_REQUESTS,
                         "Too many registration requests",
                         "Try the registration request again later"));
+    }
+
+    @ExceptionHandler(PublicPasswordRecoveryRateLimitException.class)
+    ResponseEntity<ProblemDetail> recoveryEdgeLimitReached(
+            PublicPasswordRecoveryRateLimitException exception) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(exception.retryAfterSeconds()))
+                .cacheControl(CacheControl.noStore())
+                .body(problemDetail(
+                        HttpStatus.TOO_MANY_REQUESTS,
+                        "Too many password recovery requests",
+                        "Try the password recovery request again later"));
     }
 
     private ResponseEntity<ProblemDetail> problem(

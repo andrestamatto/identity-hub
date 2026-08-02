@@ -17,9 +17,12 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicati
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SelfRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.identity.adapter.in.http
         .InMemoryRegistrationRateLimiter;
+import br.dev.andrestamatto.identityhub.identity.adapter.in.http
+        .InMemoryPasswordRecoveryRateLimiter;
 import br.dev.andrestamatto.identityhub.identity.adapter.in.http.PublicResponseTiming;
 import br.dev.andrestamatto.identityhub.identity.application.BeginLocalRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerification;
+import br.dev.andrestamatto.identityhub.identity.application.RequestPasswordRecovery;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,7 +81,13 @@ class PublicIdentityHttpSecurityTest {
     private ConfirmEmailVerification confirmVerification;
 
     @MockitoBean
+    private RequestPasswordRecovery requestPasswordRecovery;
+
+    @MockitoBean
     private InMemoryRegistrationRateLimiter rateLimiter;
+
+    @MockitoBean
+    private InMemoryPasswordRecoveryRateLimiter recoveryRateLimiter;
 
     @MockitoBean
     private PublicResponseTiming responseTiming;
@@ -113,6 +122,11 @@ class PublicIdentityHttpSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"token\":\"challenge.secret\"}"))
                 .andExpect(status().isNoContent());
+
+        mvc.perform(post("/public/v1/applications/auto-radar/password-recoveries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"andre@example.com\"}"))
+                .andExpect(status().isAccepted());
 
         mvc.perform(get(REGISTRATION_ENDPOINT))
                 .andExpect(status().isUnauthorized());

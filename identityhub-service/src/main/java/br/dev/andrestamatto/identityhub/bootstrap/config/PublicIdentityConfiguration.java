@@ -1,10 +1,12 @@
 package br.dev.andrestamatto.identityhub.bootstrap.config;
 
 import br.dev.andrestamatto.identityhub.identity.adapter.in.http.InMemoryRegistrationRateLimiter;
+import br.dev.andrestamatto.identityhub.identity.adapter.in.http.InMemoryPasswordRecoveryRateLimiter;
 import br.dev.andrestamatto.identityhub.identity.adapter.in.http.MinimumPublicResponseTiming;
 import br.dev.andrestamatto.identityhub.identity.adapter.in.http.PublicIdentityRequestSizeFilter;
 import br.dev.andrestamatto.identityhub.identity.adapter.in.http.PublicResponseTiming;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.concurrent.locks.LockSupport;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +23,17 @@ class PublicIdentityConfiguration {
         return new InMemoryRegistrationRateLimiter(
                 properties.registrationRequestLimit(),
                 properties.registrationWindow(),
+                properties.trackedSourceLimit(),
+                clock);
+    }
+
+    @Bean
+    InMemoryPasswordRecoveryRateLimiter publicPasswordRecoveryRateLimiter(
+            PublicIdentityProperties properties,
+            Clock clock) {
+        return new InMemoryPasswordRecoveryRateLimiter(
+                20,
+                Duration.ofMinutes(15),
                 properties.trackedSourceLimit(),
                 clock);
     }

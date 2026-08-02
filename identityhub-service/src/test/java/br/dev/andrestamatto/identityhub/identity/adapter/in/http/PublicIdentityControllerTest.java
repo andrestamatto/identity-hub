@@ -19,6 +19,8 @@ import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerific
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRejectedException;
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRateLimitException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryRateLimitException;
+import br.dev.andrestamatto.identityhub.identity.application.RequestPasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.application.SelfRegistrationDisabledException;
 import java.time.Clock;
 import java.time.Duration;
@@ -38,28 +40,116 @@ class PublicIdentityControllerTest {
             "/public/v1/applications/auto-radar/local-registrations";
     private static final String ACCEPTED_MESSAGE =
             "If the request is eligible, verification instructions will be sent";
+    private static final String RECOVERY_ENDPOINT =
+            "/public/v1/applications/auto-radar/password-recoveries";
+    private static final String RECOVERY_ACCEPTED_MESSAGE =
+            "If the account is eligible, password recovery instructions will be sent";
 
     private final GetClientApplicationByIdentifier getApplication =
             mock(GetClientApplicationByIdentifier.class);
     private final BeginLocalRegistration beginRegistration = mock(BeginLocalRegistration.class);
     private final ConfirmEmailVerification confirmVerification =
             mock(ConfirmEmailVerification.class);
+    private final RequestPasswordRecovery requestPasswordRecovery =
+            mock(RequestPasswordRecovery.class);
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         var limiter = new InMemoryRegistrationRateLimiter(
                 20, Duration.ofMinutes(15), 100, Clock.systemUTC());
+        var recoveryLimiter = new InMemoryPasswordRecoveryRateLimiter(
+                20, Duration.ofMinutes(15), 100, Clock.systemUTC());
         var controller = new PublicIdentityController(
                 getApplication,
                 beginRegistration,
                 confirmVerification,
+                requestPasswordRecovery,
                 limiter,
+                recoveryLimiter,
                 PublicResponseTiming.none());
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new PublicIdentityExceptionHandler())
                 .build();
         when(getApplication.execute("auto-radar")).thenReturn(application());
+    }
+
+    @Test
+    void acceptsPasswordRecoveryWithoutRevealingAccountEligibility() throws Exception {
+        var first = mvc.perform(recoveryRequest("existing@example.test"))
+                .andReturn().getResponse();
+        var second = mvc.perform(recoveryRequest("unknown@example.test"))
+                .andReturn().getResponse();
+
+        org.assertj.core.api.Assertions.assertThat(first.getStatus()).isEqualTo(202);
+        org.assertj.core.api.Assertions.assertThat(second.getStatus()).isEqualTo(first.getStatus());
+        org.assertj.core.api.Assertions.assertThat(second.getContentAsString())
+                .isEqualTo(first.getContentAsString())
+                .contains(RECOVERY_ACCEPTED_MESSAGE);
+        org.assertj.core.api.Assertions.assertThat(second.getHeader("Cache-Control"))
+                .isEqualTo(first.getHeader("Cache-Control"));
+    }
+
+    @Test
+    void hidesPasswordRecoveryDestinationLimitBehindAcceptedResponse() throws Exception {
+        org.mockito.Mockito.doThrow(new PasswordRecoveryRateLimitException())
+                .when(requestPasswordRecovery).execute(any());
+
+        mvc.perform(recoveryRequest("andre@example.test"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.message").value(RECOVERY_ACCEPTED_MESSAGE));
+    }
+
+    @Test
+    void rejectsMalformedRecoveryRequestWithoutEchoingEmail() throws Exception {
+        mvc.perform(recoveryRequest("not-an-email"))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.detail").value("Use a valid email address"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("not-an-email"))));
+    }
+
+    @Test
+    void hidesUnknownApplicationBehindRecoveryUnavailable() throws Exception {
+        when(getApplication.execute("auto-radar"))
+                .thenThrow(new ClientApplicationUnavailableException());
+
+        mvc.perform(recoveryRequest("andre@example.test"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("Password recovery is unavailable"));
+    }
+
+    @Test
+    void limitsPasswordRecoveryByRemoteAddressAndIgnoresForwardedSpoofing()
+            throws Exception {
+        var controller = new PublicIdentityController(
+                getApplication,
+                beginRegistration,
+                confirmVerification,
+                requestPasswordRecovery,
+                new InMemoryRegistrationRateLimiter(
+                        20, Duration.ofMinutes(15), 100, Clock.systemUTC()),
+                new InMemoryPasswordRecoveryRateLimiter(
+                        1, Duration.ofMinutes(15), 100, Clock.systemUTC()),
+                PublicResponseTiming.none());
+        mvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new PublicIdentityExceptionHandler())
+                .build();
+
+        mvc.perform(recoveryRequest("first@example.test")
+                        .with(request -> {
+                            request.setRemoteAddr("192.0.2.20");
+                            return request;
+                        }))
+                .andExpect(status().isAccepted());
+        mvc.perform(recoveryRequest("second@example.test")
+                        .header("X-Forwarded-For", "198.51.100.25")
+                        .with(request -> {
+                            request.setRemoteAddr("192.0.2.20");
+                            return request;
+                        }))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "900"));
     }
 
     @Test
@@ -200,11 +290,15 @@ class PublicIdentityControllerTest {
                 "andre@example.com", "correct-horse-battery".toCharArray());
         var verification = new PublicIdentityController.EmailVerificationRequest(
                 "challenge.secret");
+        var recovery = new PublicIdentityController.PasswordRecoveryRequest(
+                "andre@example.com");
 
         org.assertj.core.api.Assertions.assertThat(registration.toString())
                 .doesNotContain("andre@example.com", "correct-horse-battery");
         org.assertj.core.api.Assertions.assertThat(verification.toString())
                 .doesNotContain("challenge.secret");
+        org.assertj.core.api.Assertions.assertThat(recovery.toString())
+                .doesNotContain("andre@example.com");
         registration.close();
     }
 
@@ -216,7 +310,10 @@ class PublicIdentityControllerTest {
                 getApplication,
                 beginRegistration,
                 confirmVerification,
+                requestPasswordRecovery,
                 limiter,
+                new InMemoryPasswordRecoveryRateLimiter(
+                        20, Duration.ofMinutes(15), 100, Clock.systemUTC()),
                 PublicResponseTiming.none());
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new PublicIdentityExceptionHandler())
@@ -236,6 +333,13 @@ class PublicIdentityControllerTest {
                         }))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string("Retry-After", "900"));
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+            recoveryRequest(String email) {
+        return post(RECOVERY_ENDPOINT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\"}");
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder

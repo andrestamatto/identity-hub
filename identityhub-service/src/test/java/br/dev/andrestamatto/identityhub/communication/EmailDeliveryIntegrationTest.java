@@ -9,9 +9,11 @@ import br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryR
 import br.dev.andrestamatto.identityhub.communication.application.EmailVerificationEmailRenderer;
 import br.dev.andrestamatto.identityhub.communication.application.EmailOrigin;
 import br.dev.andrestamatto.identityhub.communication.application.PasswordChangedEmailRenderer;
+import br.dev.andrestamatto.identityhub.communication.application.PasswordRecoveryEmailRenderer;
 import br.dev.andrestamatto.identityhub.communication.application.ProcessEmailDelivery;
 import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordChangedEmail;
 import br.dev.andrestamatto.identityhub.communication.application.RequestEmailVerificationEmail;
+import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordRecoveryEmail;
 import br.dev.andrestamatto.identityhub.communication.domain.EmailDeliveryId;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -135,7 +137,8 @@ class EmailDeliveryIntegrationTest {
                 new SmtpEmailDeliverySender(javaMailSender, "identityhub@example.com"),
                 new EmailDeliveryRenderer(
                         new PasswordChangedEmailRenderer(),
-                        new EmailVerificationEmailRenderer()),
+                        new EmailVerificationEmailRenderer(),
+                        new PasswordRecoveryEmailRenderer()),
                 clock,
                 Duration.ofSeconds(30),
                 Duration.ofSeconds(5),
@@ -156,6 +159,52 @@ class EmailDeliveryIntegrationTest {
         assertThat(response.body())
                 .contains("andre@example.com")
                 .contains("[Auto Radar] Verify your email");
+    }
+
+    @Test
+    void deliversPasswordRecoveryLinkThenErasesSensitiveOutboxContent() throws Exception {
+        var deliveryId = UUID.fromString("ae085b16-b097-41e2-88a7-540d89cc8c59");
+        var recoveryUrl = "https://auth.dev.example.test/recover-password#token="
+                + deliveryId + ".test-only-recovery-secret";
+        var clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        var request = new RequestPasswordRecoveryEmail(
+                repository,
+                id -> new EmailOrigin(id, "auto-radar", "Auto Radar", "development"),
+                clock);
+        request.execute(new RequestPasswordRecoveryEmail.Command(
+                deliveryId,
+                APPLICATION_ID,
+                "andre@example.com",
+                recoveryUrl,
+                "recovery-email"));
+
+        var javaMailSender = new JavaMailSenderImpl();
+        javaMailSender.setHost(MAILPIT.getHost());
+        javaMailSender.setPort(MAILPIT.getMappedPort(1025));
+        var processor = new ProcessEmailDelivery(
+                repository,
+                new SmtpEmailDeliverySender(javaMailSender, "identityhub@example.com"),
+                new EmailDeliveryRenderer(
+                        new PasswordChangedEmailRenderer(),
+                        new EmailVerificationEmailRenderer(),
+                        new PasswordRecoveryEmailRenderer()),
+                clock,
+                Duration.ofSeconds(30),
+                Duration.ofSeconds(5),
+                3);
+
+        assertThat(processor.processNext(UUID.randomUUID()))
+                .isEqualTo(EmailDeliveryResult.DELIVERED);
+        assertThat(repository.find(new EmailDeliveryId(deliveryId))).get()
+                .satisfies(delivery -> assertThat(delivery.sensitiveContent()).isNull());
+
+        var response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(mailpitUri("/api/v1/messages")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body())
+                .contains("andre@example.com")
+                .contains("[Auto Radar] Reset your password");
     }
 
     private URI mailpitUri(String path) {
