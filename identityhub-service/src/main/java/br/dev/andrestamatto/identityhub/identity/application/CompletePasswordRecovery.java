@@ -15,7 +15,7 @@ public final class CompletePasswordRecovery {
     private final PasswordRecoveryChallengeRepository repository;
     private final LocalPasswordResetter resetter;
     private final PasswordChangedNotifier notifier;
-    private final VerificationTransaction transaction;
+    private final IdentityTransaction transaction;
     private final Clock clock;
     private final Supplier<UUID> idGenerator;
 
@@ -23,7 +23,7 @@ public final class CompletePasswordRecovery {
             PasswordRecoveryChallengeRepository repository,
             LocalPasswordResetter resetter,
             PasswordChangedNotifier notifier,
-            VerificationTransaction transaction,
+            IdentityTransaction transaction,
             Clock clock,
             Supplier<UUID> idGenerator) {
         this.repository = Objects.requireNonNull(repository);

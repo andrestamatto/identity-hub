@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Changed
+- Platform-role assignments now use Keycloak as their MVP source of truth while
+  IdentityHub retains the administrative contracts, authorization policies and
+  audit boundary, avoiding an unsafe authoritative replica.
 - Acquisition correlation now uses standard OIDC Authorization Code with PKCE
   in the consumer backend or BFF; the proprietary onboarding session, proof,
   endpoint and machine scope were removed from runtime and public contracts.
@@ -11,6 +14,9 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Durable global-account disablement with recent TOTP administration,
+  idempotency, fail-closed last-administrator protection based on effective
+  Keycloak roles, session revocation, PostgreSQL evidence and safe retry.
 - Public password-recovery completion with a 15–64 character/common-password
   policy, single-use proof consumption, fail-secure Keycloak identity
   revalidation, session revocation before credential reset, durable

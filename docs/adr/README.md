@@ -37,6 +37,7 @@ feitas no documento original.
 | [ADR-0012](0012-supported-platform-baseline.md) | Accepted | Baseline suportada da plataforma |
 | [ADR-0013](0013-backend-initiated-onboarding-session.md) | Superseded | Sessão proprietária de onboarding |
 | [ADR-0014](0014-standard-oidc-acquisition-correlation.md) | Accepted | Correlação de aquisição com OIDC padrão |
+| [ADR-0015](0015-keycloak-owned-platform-role-assignments.md) | Accepted | Keycloak como fonte das atribuições de papéis de plataforma no MVP |
 
 ## Decisões pendentes
 
