@@ -19,7 +19,7 @@ public final class RequestEmailVerification {
 
     private final EmailVerificationChallengeRepository repository;
     private final VerificationEmailRequester emailRequester;
-    private final VerificationTransaction transaction;
+    private final IdentityTransaction transaction;
     private final EmailVerificationSecretGenerator secretGenerator;
     private final Clock clock;
     private final Supplier<UUID> idGenerator;
@@ -28,7 +28,7 @@ public final class RequestEmailVerification {
     public RequestEmailVerification(
             EmailVerificationChallengeRepository repository,
             VerificationEmailRequester emailRequester,
-            VerificationTransaction transaction,
+            IdentityTransaction transaction,
             EmailVerificationSecretGenerator secretGenerator,
             Clock clock,
             Supplier<UUID> idGenerator,

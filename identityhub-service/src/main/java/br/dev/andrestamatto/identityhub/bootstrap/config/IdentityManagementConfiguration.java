@@ -10,11 +10,13 @@ import br.dev.andrestamatto.identityhub.identity.adapter.out.communication.Commu
 import br.dev.andrestamatto.identityhub.identity.adapter.out.crypto.SecureRandomEmailVerificationSecretGenerator;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.crypto.SecureRandomPasswordRecoverySecretGenerator;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcEmailVerificationChallengeRepository;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcGlobalAccountDisableOperationRepository;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcPasswordRecoveryChallengeRepository;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.SpringVerificationTransaction;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.clientapplication.ClientApplicationSelfRegistrationPolicyResolver;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityGateway;
 import br.dev.andrestamatto.identityhub.identity.application.RegisterPendingLocalIdentity;
+import br.dev.andrestamatto.identityhub.identity.application.DisableGlobalAccount;
 import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerification;
 import br.dev.andrestamatto.identityhub.identity.application.CompletePasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.application.BeginLocalRegistration;
@@ -74,6 +76,22 @@ class IdentityManagementConfiguration {
     SpringVerificationTransaction verificationTransaction(
             TransactionOperations transactions) {
         return new SpringVerificationTransaction(transactions);
+    }
+
+    @Bean
+    JdbcGlobalAccountDisableOperationRepository globalAccountDisableOperationRepository(
+            JdbcClient jdbcClient) {
+        return new JdbcGlobalAccountDisableOperationRepository(jdbcClient);
+    }
+
+    @Bean
+    DisableGlobalAccount disableGlobalAccount(
+            JdbcGlobalAccountDisableOperationRepository repository,
+            KeycloakLocalIdentityGateway disabler,
+            SpringVerificationTransaction transaction,
+            Clock clock) {
+        return new DisableGlobalAccount(
+                repository, disabler, transaction, clock, UUID::randomUUID);
     }
 
     @Bean

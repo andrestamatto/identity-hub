@@ -8,6 +8,8 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.Applicatio
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientSnapshot;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityGateway;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistration;
+import br.dev.andrestamatto.identityhub.identity.application.GlobalAccountDisableGatewayRejection;
+import br.dev.andrestamatto.identityhub.identity.application.GlobalAccountDisableRejection;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
@@ -58,6 +60,8 @@ import tools.jackson.databind.node.ObjectNode;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class KeycloakAdminTokenIntegrationTest {
 
+    private static long lastTotpCounter = -1;
+
     private static final String REALM = "identityhub-test";
     private static final String CLIENT_ID = "identityhub-admin-login";
     private static final String ADMIN_AUDIENCE = "identityhub-admin-api";
@@ -79,6 +83,8 @@ class KeycloakAdminTokenIntegrationTest {
     private static final String RESET_USERNAME = "password.reset.user@example.test";
     private static final String RESET_OLD_PASSWORD = "test-only-password-before-reset";
     private static final String RESET_NEW_PASSWORD = "test-only-password-after-reset";
+    private static final String DISABLE_USERNAME = "globally.disabled.user@example.test";
+    private static final String DISABLE_PASSWORD = "test-only-globally-disabled-user-password";
     private static final String LOCAL_LOGIN_REDIRECT_URI =
             "http://127.0.0.1:5173/auth/callback";
     private static final String LOCAL_LOGIN_PKCE_VERIFIER =
@@ -159,6 +165,17 @@ class KeycloakAdminTokenIntegrationTest {
         registry.add(
                 "identityhub.keycloak.identity-management.public-base-uri",
                 () -> "http://127.0.0.1");
+        registry.add("identityhub.keycloak.identity-management.enabled", () -> "true");
+        registry.add(
+                "identityhub.keycloak.identity-management.base-uri",
+                () -> keycloakBaseUri().toString());
+        registry.add("identityhub.keycloak.identity-management.realm", () -> REALM);
+        registry.add(
+                "identityhub.keycloak.identity-management.client-id",
+                () -> IDENTITY_MANAGEMENT_CLIENT_ID);
+        registry.add(
+                "identityhub.keycloak.identity-management.client-secret",
+                () -> IDENTITY_MANAGEMENT_CLIENT_SECRET);
         registry.add("identityhub.keycloak.management.poll-interval", () -> "PT1S");
         registry.add("identityhub.keycloak.management.lease-duration", () -> "PT30S");
         registry.add("identityhub.keycloak.management.initial-retry-delay", () -> "PT1S");
@@ -543,6 +560,102 @@ class KeycloakAdminTokenIntegrationTest {
     }
 
     @Test
+    void disablesGlobalAccountAndRevokesExistingSessionUsingOfficialAdminApi()
+            throws Exception {
+        projectLocalLoginSpa();
+        var userAccountRef = registerVerifiedLocalLoginUser(
+                DISABLE_USERNAME, DISABLE_PASSWORD);
+        var clientId = "ih-spa-" + LOCAL_LOGIN_CLIENT_ID;
+        var tokens = authenticateLocalUser(
+                clientId,
+                LOCAL_LOGIN_REDIRECT_URI,
+                DISABLE_USERNAME,
+                DISABLE_PASSWORD,
+                LOCAL_LOGIN_PKCE_VERIFIER);
+
+        var adminToken = authenticateThroughHostedLogin();
+        var idempotencyKey = "disable-real-account-001";
+        var correlationId = "disable-real-account-correlation";
+        var request = HttpRequest.newBuilder(
+                        URI.create("http://127.0.0.1:" + servicePort
+                                + "/internal/admin/user-accounts/" + userAccountRef.value()
+                                + "/disable"))
+                .header("Authorization", "Bearer " + adminToken)
+                .header("Idempotency-Key", idempotencyKey)
+                .header("X-Correlation-ID", correlationId)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        "{\"reason\":\"Confirmed account compromise\"}"))
+                .build();
+        var disableResponse = HttpClient.newHttpClient().send(
+                request, HttpResponse.BodyHandlers.ofString());
+        var replayResponse = HttpClient.newHttpClient().send(
+                request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(disableResponse.statusCode()).isEqualTo(200);
+        assertThat(replayResponse.statusCode()).isEqualTo(200);
+        assertThat(replayResponse.body()).isEqualTo(disableResponse.body());
+        assertThat(disableResponse.body()).contains(
+                userAccountRef.value().toString(), "COMPLETED");
+        var storedOperation = jdbcClient.sql("""
+                        select actor_subject, reason, correlation_id, status
+                        from global_account_disable_operation
+                        where idempotency_key = :idempotencyKey
+                        """)
+                .param("idempotencyKey", idempotencyKey)
+                .query(GlobalAccountDisableAuditRow.class)
+                .single();
+        assertThat(storedOperation.reason()).isEqualTo("Confirmed account compromise");
+        assertThat(storedOperation.correlationId()).isEqualTo(correlationId);
+        assertThat(storedOperation.status()).isEqualTo("COMPLETED");
+        assertThat(storedOperation.actorSubject()).isNotBlank();
+
+        assertGenericLoginFailure(attemptLocalLogin(
+                clientId,
+                LOCAL_LOGIN_REDIRECT_URI,
+                DISABLE_USERNAME,
+                DISABLE_PASSWORD,
+                LOCAL_LOGIN_PKCE_VERIFIER));
+        var refreshResponse = httpClient(HttpClient.Redirect.NORMAL).send(
+                formRequest(
+                        keycloakBaseUri.resolve(
+                                "/realms/" + REALM + "/protocol/openid-connect/token"),
+                        Map.of(
+                                "grant_type", "refresh_token",
+                                "client_id", clientId,
+                                "refresh_token", tokens.required("refresh_token").asString())),
+                HttpResponse.BodyHandlers.discarding());
+        assertThat(refreshResponse.statusCode()).isEqualTo(400);
+
+        var stored = getUser(userAccountRef, requestBootstrapAdminToken());
+        assertThat(stored.path("enabled").asBoolean()).isFalse();
+        var adminEvents = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM + "/admin-events"),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(adminEvents.statusCode()).isEqualTo(200);
+        assertThat(adminEvents.body()).contains(userAccountRef.value().toString());
+        assertThat(adminEvents.body()).doesNotContain(DISABLE_PASSWORD);
+    }
+
+    @Test
+    void refusesToDisableTheOnlyEnabledPlatformAdministrator() throws Exception {
+        var administrator = userAccountRefByUsername(USERNAME);
+
+        assertThatThrownBy(() -> localIdentityGateway().disable(administrator))
+                .isInstanceOfSatisfying(
+                        GlobalAccountDisableGatewayRejection.class,
+                        exception -> assertThat(exception.rejection())
+                                .isEqualTo(GlobalAccountDisableRejection
+                                        .LAST_ENABLED_PLATFORM_ADMIN));
+        assertThat(getUser(administrator, requestBootstrapAdminToken())
+                        .path("enabled").asBoolean())
+                .isTrue();
+    }
+
+    @Test
     void rejectsLocalLoginGenericallyAndActivatesTemporaryBruteForceProtection()
             throws Exception {
         projectLocalLoginSpa();
@@ -678,6 +791,39 @@ class KeycloakAdminTokenIntegrationTest {
                 REALM,
                 IDENTITY_MANAGEMENT_CLIENT_ID,
                 IDENTITY_MANAGEMENT_CLIENT_SECRET);
+    }
+
+    private static UserAccountRef userAccountRefByUsername(String username) throws Exception {
+        var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM + "/users?username="
+                                        + encode(username) + "&exact=true"),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        return new UserAccountRef(UUID.fromString(
+                JSON.readTree(response.body()).required(0).required("id").asString()));
+    }
+
+    private static JsonNode getUser(UserAccountRef userAccountRef, String adminToken)
+            throws Exception {
+        var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM + "/users/"
+                                        + userAccountRef.value()),
+                        adminToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        return JSON.readTree(response.body());
+    }
+
+    private record GlobalAccountDisableAuditRow(
+            String actorSubject,
+            String reason,
+            String correlationId,
+            String status) {
     }
 
     private static JsonNode authenticateLocalUser(
@@ -1438,8 +1584,15 @@ class KeycloakAdminTokenIntegrationTest {
                 .orElse("");
     }
 
-    private static String currentTotp() throws Exception {
-        var counter = Instant.now().getEpochSecond() / 30;
+    private static synchronized String currentTotp() throws Exception {
+        var now = Instant.now();
+        var counter = now.getEpochSecond() / 30;
+        var secondInWindow = Math.floorMod(now.getEpochSecond(), 30);
+        if (counter <= lastTotpCounter || secondInWindow >= 28) {
+            Thread.sleep((31 - secondInWindow) * 1_000L);
+            counter = Instant.now().getEpochSecond() / 30;
+        }
+        lastTotpCounter = counter;
         var mac = Mac.getInstance("HmacSHA1");
         mac.init(new SecretKeySpec(decodeBase32(OTP_SECRET), "HmacSHA1"));
         var hash = mac.doFinal(ByteBuffer.allocate(Long.BYTES).putLong(counter).array());

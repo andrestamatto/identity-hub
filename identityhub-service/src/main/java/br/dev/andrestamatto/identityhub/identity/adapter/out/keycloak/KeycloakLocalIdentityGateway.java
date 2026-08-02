@@ -1,6 +1,10 @@
 package br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak;
 
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrar;
+import br.dev.andrestamatto.identityhub.identity.application.GlobalAccountDisabler;
+import br.dev.andrestamatto.identityhub.identity.application.GlobalAccountDisableGatewayException;
+import br.dev.andrestamatto.identityhub.identity.application.GlobalAccountDisableGatewayRejection;
+import br.dev.andrestamatto.identityhub.identity.application.GlobalAccountDisableRejection;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationFailureCode;
@@ -36,7 +40,7 @@ import tools.jackson.databind.ObjectMapper;
 
 public final class KeycloakLocalIdentityGateway
         implements LocalIdentityRegistrar, LocalIdentityVerifier, PasswordRecoveryIdentityFinder,
-                LocalPasswordResetter {
+                LocalPasswordResetter, GlobalAccountDisabler {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
@@ -198,6 +202,112 @@ public final class KeycloakLocalIdentityGateway
         } catch (RuntimeException exception) {
             throw new LocalIdentityVerificationException(true);
         }
+    }
+
+    @Override
+    public void disable(UserAccountRef userAccountRef) {
+        Objects.requireNonNull(userAccountRef);
+        try {
+            var accessToken = requestManagementToken();
+            var response = sendAuthorized(
+                    HttpRequest.newBuilder(userUri(userAccountRef)).GET(), accessToken);
+            if (response.statusCode() == 404) {
+                throw new GlobalAccountDisableGatewayRejection(
+                        GlobalAccountDisableRejection.ACCOUNT_NOT_FOUND);
+            }
+            ensureSuccess(
+                    response.statusCode(),
+                    LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+            var user = objectMapper.readTree(response.body());
+            if (hasPlatformAdminRole(userAccountRef, accessToken)
+                    && !hasAnotherEnabledPlatformAdmin(userAccountRef, accessToken)) {
+                throw new GlobalAccountDisableGatewayRejection(
+                        GlobalAccountDisableRejection.LAST_ENABLED_PLATFORM_ADMIN);
+            }
+            if (user.path("enabled").asBoolean()) {
+                disableUser(userAccountRef, accessToken);
+            }
+            revokeSessions(userAccountRef, accessToken);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new GlobalAccountDisableGatewayException(exception);
+        } catch (IOException exception) {
+            throw new GlobalAccountDisableGatewayException(exception);
+        } catch (GlobalAccountDisableGatewayRejection
+                | GlobalAccountDisableGatewayException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new GlobalAccountDisableGatewayException(exception);
+        }
+    }
+
+    private boolean hasPlatformAdminRole(
+            UserAccountRef userAccountRef,
+            String accessToken) throws IOException, InterruptedException {
+        var response = sendAuthorized(
+                HttpRequest.newBuilder(URI.create(
+                                userUri(userAccountRef)
+                                        + "/role-mappings/realm/composite"))
+                        .GET(),
+                accessToken);
+        ensureSuccess(
+                response.statusCode(),
+                LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+        var roles = objectMapper.readValue(
+                response.body(), new TypeReference<List<JsonNode>>() { });
+        return roles.stream()
+                .anyMatch(role -> "PLATFORM_ADMIN".equals(role.path("name").asString()));
+    }
+
+    private boolean hasAnotherEnabledPlatformAdmin(
+            UserAccountRef userAccountRef,
+            String accessToken) throws IOException, InterruptedException {
+        var first = 0;
+        var pageSize = 100;
+        while (true) {
+            var response = sendAuthorized(
+                    HttpRequest.newBuilder(userPageUri(first, pageSize)).GET(), accessToken);
+            ensureSuccess(
+                    response.statusCode(),
+                    LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+            var users = objectMapper.readValue(
+                    response.body(), new TypeReference<List<JsonNode>>() { });
+            for (var candidate : users) {
+                if (!candidate.path("enabled").asBoolean()
+                        || userAccountRef.value().toString()
+                                .equals(candidate.path("id").asString())) {
+                    continue;
+                }
+                var candidateRef = new UserAccountRef(
+                        UUID.fromString(candidate.required("id").asString()));
+                if (hasPlatformAdminRole(candidateRef, accessToken)) {
+                    return true;
+                }
+            }
+            if (users.size() < pageSize) {
+                return false;
+            }
+            first += pageSize;
+        }
+    }
+
+    private void disableUser(UserAccountRef userAccountRef, String accessToken)
+            throws IOException, InterruptedException {
+        var representation = objectMapper.createObjectNode().put("enabled", false);
+        var response = sendAuthorized(
+                HttpRequest.newBuilder(userUri(userAccountRef))
+                        .header("Content-Type", "application/json")
+                        .PUT(HttpRequest.BodyPublishers.ofByteArray(
+                                objectMapper.writeValueAsBytes(representation))),
+                accessToken);
+        ensureSuccess(
+                response.statusCode(),
+                LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+    }
+
+    private URI userPageUri(int first, int maximum) {
+        return URI.create(userCollectionUri() + "?briefRepresentation=true&first="
+                + first + "&max=" + maximum);
     }
 
     private String requestManagementToken() throws IOException, InterruptedException {
@@ -423,11 +533,14 @@ public final class KeycloakLocalIdentityGateway
         if (statusCode == 400 || statusCode == 401 || statusCode == 403) {
             throw LocalIdentityRegistrationException.permanent(
                     permanentFailureCode,
-                    new IllegalStateException("Identity provider rejected management request"));
+                    new IllegalStateException(
+                            "Identity provider rejected management request with status "
+                                    + statusCode));
         }
         throw retryable(
                 LocalIdentityRegistrationFailureCode.PROVIDER_UNAVAILABLE,
-                new IllegalStateException("Identity provider management request failed"));
+                new IllegalStateException(
+                        "Identity provider management request failed with status " + statusCode));
     }
 
     private static LocalIdentityRegistrationException retryable(

@@ -7,6 +7,8 @@ import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegist
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationFailureCode;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalPasswordResetException;
+import br.dev.andrestamatto.identityhub.identity.application.GlobalAccountDisableGatewayRejection;
+import br.dev.andrestamatto.identityhub.identity.application.GlobalAccountDisableRejection;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
@@ -32,6 +34,8 @@ class KeycloakLocalIdentityGatewayTest {
     private static final String REALM = "identityhub-test";
     private static final UUID USER_ID =
             UUID.fromString("9bc4a8c9-405b-4f4a-b443-3c2012369264");
+    private static final UUID OTHER_ADMIN_ID =
+            UUID.fromString("350b22ca-4080-4c2e-805d-e8fed57a978d");
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final AtomicInteger creates = new AtomicInteger();
@@ -43,6 +47,8 @@ class KeycloakLocalIdentityGatewayTest {
     private int createStatus = 201;
     private int logoutStatus = 204;
     private boolean passwordCredentialCreated;
+    private boolean platformAdmin;
+    private boolean anotherEnabledPlatformAdmin;
 
     @BeforeEach
     void startServer() throws IOException {
@@ -52,6 +58,9 @@ class KeycloakLocalIdentityGatewayTest {
                 this::token);
         server.createContext(
                 "/admin/realms/" + REALM + "/users",
+                this::users);
+        server.createContext(
+                "/admin/realms/" + REALM + "/roles",
                 this::users);
         server.start();
     }
@@ -216,6 +225,57 @@ class KeycloakLocalIdentityGatewayTest {
         assertThat(credentialMutations).containsExactly("logout");
     }
 
+    @Test
+    void disablesAccountBeforeRevokingItsSessionsAndReplaysSafely() {
+        var gateway = registrar();
+        var registration = register(gateway);
+        gateway.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+        credentialMutations.clear();
+
+        gateway.disable(registration.userAccountRef());
+        gateway.disable(registration.userAccountRef());
+
+        assertThat(storedUser.path("enabled").asBoolean()).isFalse();
+        assertThat(credentialMutations)
+                .containsExactly("disable", "logout", "logout");
+    }
+
+    @Test
+    void refusesToDisableTheLastEnabledPlatformAdministrator() {
+        var gateway = registrar();
+        var registration = register(gateway);
+        gateway.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+        credentialMutations.clear();
+        platformAdmin = true;
+
+        assertThatThrownBy(() -> gateway.disable(registration.userAccountRef()))
+                .isInstanceOfSatisfying(
+                        GlobalAccountDisableGatewayRejection.class,
+                        exception -> assertThat(exception.rejection())
+                                .isEqualTo(GlobalAccountDisableRejection
+                                        .LAST_ENABLED_PLATFORM_ADMIN));
+        assertThat(storedUser.path("enabled").asBoolean()).isTrue();
+        assertThat(credentialMutations).isEmpty();
+    }
+
+    @Test
+    void disablesPlatformAdministratorWhenAnotherOneRemainsEnabled() {
+        var gateway = registrar();
+        var registration = register(gateway);
+        gateway.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+        credentialMutations.clear();
+        platformAdmin = true;
+        anotherEnabledPlatformAdmin = true;
+
+        gateway.disable(registration.userAccountRef());
+
+        assertThat(storedUser.path("enabled").asBoolean()).isFalse();
+        assertThat(credentialMutations).containsExactly("disable", "logout");
+    }
+
     private KeycloakLocalIdentityGateway registrar() {
         return new KeycloakLocalIdentityGateway(
                 HttpClient.newHttpClient(),
@@ -249,6 +309,17 @@ class KeycloakLocalIdentityGatewayTest {
                     ? "[{\"type\":\"password\"}]" : "[]");
             return;
         }
+        if (exchange.getRequestURI().getPath()
+                .endsWith(USER_ID + "/role-mappings/realm/composite")) {
+            send(exchange, 200, platformAdmin
+                    ? "[{\"name\":\"PLATFORM_ADMIN\"}]" : "[]");
+            return;
+        }
+        if (exchange.getRequestURI().getPath()
+                .endsWith(OTHER_ADMIN_ID + "/role-mappings/realm/composite")) {
+            send(exchange, 200, "[{\"name\":\"PLATFORM_ADMIN\"}]");
+            return;
+        }
         if (exchange.getRequestURI().getPath().endsWith(USER_ID + "/logout")) {
             credentialMutations.add("logout");
             send(exchange, logoutStatus, "");
@@ -277,13 +348,22 @@ class KeycloakLocalIdentityGatewayTest {
             }
             storedUser = JSON.readTree(exchange.getRequestBody().readAllBytes());
             updates.incrementAndGet();
+            if (!storedUser.path("enabled").asBoolean()) {
+                credentialMutations.add("disable");
+            }
             send(exchange, 204, "");
             return;
         }
         if (exchange.getRequestMethod().equals("GET")) {
-            var response = storedUser == null
+            var current = storedUser == null
+                    ? null
+                    : JSON.writeValueAsString(storedUser);
+            var other = "{\"id\":\"" + OTHER_ADMIN_ID + "\",\"enabled\":true}";
+            var response = current == null
                     ? "[]"
-                    : "[" + JSON.writeValueAsString(storedUser) + "]";
+                    : anotherEnabledPlatformAdmin
+                            ? "[" + current + "," + other + "]"
+                            : "[" + current + "]";
             send(exchange, 200, response);
             return;
         }

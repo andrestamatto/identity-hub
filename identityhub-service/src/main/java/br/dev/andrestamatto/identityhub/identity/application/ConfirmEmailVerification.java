@@ -11,13 +11,13 @@ public final class ConfirmEmailVerification {
 
     private final EmailVerificationChallengeRepository repository;
     private final LocalIdentityVerifier verifier;
-    private final VerificationTransaction transaction;
+    private final IdentityTransaction transaction;
     private final Clock clock;
 
     public ConfirmEmailVerification(
             EmailVerificationChallengeRepository repository,
             LocalIdentityVerifier verifier,
-            VerificationTransaction transaction,
+            IdentityTransaction transaction,
             Clock clock) {
         this.repository = Objects.requireNonNull(repository);
         this.verifier = Objects.requireNonNull(verifier);

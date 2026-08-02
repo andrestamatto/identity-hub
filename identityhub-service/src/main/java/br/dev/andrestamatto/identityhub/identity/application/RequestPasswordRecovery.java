@@ -19,7 +19,7 @@ public final class RequestPasswordRecovery {
     private final PasswordRecoveryIdentityFinder identityFinder;
     private final PasswordRecoveryChallengeRepository repository;
     private final RecoveryEmailRequester emailRequester;
-    private final VerificationTransaction transaction;
+    private final IdentityTransaction transaction;
     private final PasswordRecoverySecretGenerator secretGenerator;
     private final Clock clock;
     private final Supplier<UUID> idGenerator;
@@ -29,7 +29,7 @@ public final class RequestPasswordRecovery {
             PasswordRecoveryIdentityFinder identityFinder,
             PasswordRecoveryChallengeRepository repository,
             RecoveryEmailRequester emailRequester,
-            VerificationTransaction transaction,
+            IdentityTransaction transaction,
             PasswordRecoverySecretGenerator secretGenerator,
             Clock clock,
             Supplier<UUID> idGenerator,
