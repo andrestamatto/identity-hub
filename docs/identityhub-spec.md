@@ -112,6 +112,7 @@ Aplicação não humana autorizada a obter acesso para comunicação entre siste
 - **ClientApplication:** representação lógica de um SaaS no IdentityHub.
 - **ApplicationClient:** credencial ou configuração de protocolo para um canal de uma `ClientApplication`, como SPA, BFF, API ou máquina.
 - **Membership:** relação explícita que permite a um `UserAccount` acessar uma `ClientApplication`.
+- **OnboardingSession:** intenção temporária de aquisição criada pelo backend da aplicação antes da autenticação humana.
 - **OnboardingIdentityProof:** prova temporária e restrita de identidade, destinada a correlacionar o usuário com uma aquisição sem autorizar recursos protegidos da aplicação.
 - **Role:** papel geral atribuído dentro dos limites de uma `ClientApplication`.
 - **AuthSession:** sessão autenticada de uma pessoa, com início, expiração e revogação.
@@ -226,7 +227,7 @@ Quando `REQUIRED` estiver habilitado, deve existir um meio transacional mínimo,
 
 ### IH-MVP-006 — Autenticar com e-mail e senha
 
-Um usuário deve poder autenticar-se com e-mail e senha. Se possuir `Membership` ativa, poderá continuar o fluxo de acesso da aplicação. Se ainda não possuir acesso, a autenticação poderá produzir somente uma `OnboardingIdentityProof` vinculada à aplicação e à aquisição em andamento.
+Um usuário deve poder autenticar-se com e-mail e senha. Se possuir `Membership` ativa, poderá continuar o fluxo de acesso da aplicação. Se ainda não possuir acesso, a autenticação poderá produzir somente uma `OnboardingIdentityProof` vinculada a uma `OnboardingSession` previamente iniciada pelo backend da aplicação para a aquisição em andamento.
 
 #### Critérios de aceitação
 
@@ -238,6 +239,7 @@ Um usuário deve poder autenticar-se com e-mail e senha. Se possuir `Membership`
 - Autenticar-se em uma aplicação não deve conceder acesso a outra.
 - Autenticar-se sem acesso não deve criar `Membership`.
 - A prova de onboarding deve identificar o usuário de forma opaca, possuir finalidade e validade limitadas e não deve conter sua senha.
+- O navegador não deve poder escolher ou substituir a aplicação, a aquisição, o cliente de máquina ou a redirect URI vinculados à `OnboardingSession`.
 
 ### IH-MVP-007 — Autenticar com provedor social
 
@@ -309,6 +311,7 @@ Um cliente de máquina autorizado deve poder obter token por Client Credentials 
 - Tokens de máquina não devem representar um `UserAccount` nem herdar papéis de usuário.
 - Client Credentials não deve produzir refresh token.
 - Um cliente autorizado a provisionar acesso deve atuar somente sobre sua própria `ClientApplication`.
+- Um cliente com `onboarding:write` deve iniciar `OnboardingSession` somente para browser client e redirect URI ativos da própria `ClientApplication`.
 
 ### IH-MVP-012 — Emitir access token
 
@@ -379,7 +382,7 @@ O usuário deve poder solicitar recuperação de senha e definir nova senha por 
 
 Uma aplicação consumidora deve poder conceder, suspender e remover `Memberships` da própria aplicação por meio de um cliente de máquina autorizado. Um `PLATFORM_ADMIN` também deve poder executar essas operações, além de atribuir e remover papéis definidos para a aplicação.
 
-Antes de uma aquisição, a aplicação poderá obter uma `OnboardingIdentityProof` para correlacionar a transação a um `UserAccount`. Após confirmar pagamento ou outra regra própria de aquisição, seu backend deverá solicitar a concessão usando o identificador opaco do usuário e suas próprias credenciais de máquina.
+Antes de uma aquisição, o backend da aplicação deverá iniciar uma `OnboardingSession` autenticada para correlacionar a transação a um futuro `UserAccount`. Após a autenticação e as verificações obrigatórias, a aplicação poderá obter uma `OnboardingIdentityProof` vinculada a essa sessão. Depois de confirmar pagamento ou outra regra própria de aquisição, seu backend deverá solicitar a concessão usando a prova e suas próprias credenciais de máquina.
 
 O IdentityHub deve fornecer apenas autorização geral de acesso e papéis da aplicação. Pagamento, plano, assinatura, preço e decisões sobre recursos do negócio permanecem fora do IdentityHub.
 
