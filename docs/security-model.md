@@ -614,11 +614,17 @@ Pode executar somente operações documentadas pelo IdentityHub. Não recebe ace
 
 ### 19.2 Plataforma
 
+- no MVP, atribuições de papéis de plataforma têm o Keycloak como fonte de
+  verdade e não possuem réplica autoritativa no banco do IdentityHub;
 - papéis de plataforma usam audience administrativo;
 - não são incluídos em tokens de SaaS;
 - não podem ser solicitados por cliente consumidor;
 - alteração exige `PLATFORM_ADMIN` com autenticação recente;
 - concessão e remoção são auditadas.
+- invariantes dependentes dessas atribuições consultam o Keycloak e falham de
+  forma fechada quando a autoridade não pode ser verificada;
+- somente os papéis de plataforma definidos pelo IdentityHub são convertidos em
+  authorities administrativas.
 
 ### 19.3 Domínio consumidor
 

@@ -408,7 +408,8 @@ Regras de simplicidade:
 | Configuração desejada de `ApplicationClient` | IdentityHub | Cliente operacional no Keycloak |
 | `Membership` e concessão pretendida | IdentityHub | Papéis/atributos necessários à emissão no Keycloak |
 | Definição lógica de papel | IdentityHub | Client roles no Keycloak |
-| Papéis de plataforma | IdentityHub | Authorities administrativas no Keycloak |
+| Definições normativas dos papéis de plataforma | Documentação do IdentityHub | Realm roles administrativas no Keycloak |
+| Atribuições dos papéis de plataforma no MVP | Keycloak | Authorities administrativas validadas pelo IdentityHub |
 | Branding e políticas | IdentityHub | Snapshot seguro consumido pelo tema |
 | Logotipos e artefatos | Armazenamento de objetos | Referência no IdentityHub e leitura pelo tema |
 | Eventos de autenticação e sessão | Keycloak | Visão normalizada do módulo `audit` |
@@ -416,6 +417,15 @@ Regras de simplicidade:
 | Entregas pendentes | IdentityHub | Provedores externos |
 
 Quando uma projeção divergir, a fonte de verdade indicada deve prevalecer por meio de reconciliação autorizada.
+
+Papéis de plataforma não são projeções do plano de controle no MVP. O Keycloak
+mantém suas atribuições e é consultado como autoridade para invariantes que
+dependam delas, inclusive a preservação do último `PLATFORM_ADMIN` habilitado. O
+IdentityHub continua sendo a superfície cotidiana para operações administrativas,
+valida audience, MFA e autenticação recente, restringe quais papéis reconhece e
+audita suas próprias operações. Bootstrap e recuperação emergencial usam
+procedimento interno restrito; aplicações consumidoras nunca recebem permissão
+para atribuir papéis de plataforma.
 
 ## 12. Persistência
 
