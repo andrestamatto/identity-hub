@@ -71,6 +71,45 @@ class LocalDevelopmentHarnessTest(unittest.TestCase):
         self.assertTrue(identity_management["serviceAccountsEnabled"])
         self.assertFalse(identity_management["fullScopeAllowed"])
         self.assertEqual("length(15) and maxLength(64)", realm["passwordPolicy"])
+        self.assertTrue(realm["internationalizationEnabled"])
+        self.assertEqual(["en", "pt-BR"], realm["supportedLocales"])
+        self.assertTrue(realm["bruteForceProtected"])
+        self.assertFalse(realm["permanentLockout"])
+        self.assertEqual(5, realm["failureFactor"])
+        self.assertEqual(0, realm["quickLoginCheckMilliSeconds"])
+        self.assertEqual(30, realm["waitIncrementSeconds"])
+        self.assertEqual(900, realm["maxFailureWaitSeconds"])
+        self.assertTrue(realm["eventsEnabled"])
+        self.assertEqual(
+            ["LOGIN", "LOGIN_ERROR"],
+            realm["enabledEventTypes"],
+        )
+
+    def test_email_only_profile_does_not_invent_personal_names(self) -> None:
+        profile = {
+            "attributes": [
+                {"name": "username", "required": {"roles": ["user"]}},
+                {"name": "email", "required": {"roles": ["user"]}},
+                {"name": "firstName", "required": {"roles": ["user"]}},
+                {"name": "lastName", "required": {"roles": ["user"]}},
+            ]
+        }
+
+        configured = HARNESS.allow_email_only_profile(profile)
+
+        required = {
+            attribute["name"]: "required" in attribute
+            for attribute in configured["attributes"]
+        }
+        self.assertEqual(
+            {
+                "username": True,
+                "email": True,
+                "firstName": False,
+                "lastName": False,
+            },
+            required,
+        )
 
     @mock.patch.object(HARNESS.subprocess, "run")
     def test_uses_pinned_compose_fallback_when_plugin_is_absent(self, run_mock) -> None:

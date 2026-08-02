@@ -7,6 +7,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.keycloak.K
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionState;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientSnapshot;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityRegistrar;
+import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
@@ -35,8 +36,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -48,6 +52,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -67,6 +72,16 @@ class KeycloakAdminTokenIntegrationTest {
     private static final String REDIRECT_URI = "http://127.0.0.1/callback";
     private static final String PKCE_VERIFIER =
             "test-only-verifier-identityhub-admin-login-0001";
+    private static final String LOCAL_LOGIN_USERNAME = "verified.user@example.test";
+    private static final String LOCAL_LOGIN_PASSWORD = "test-only-verified-user-password";
+    private static final String BRUTE_FORCE_USERNAME = "brute.force.user@example.test";
+    private static final String BRUTE_FORCE_PASSWORD = "test-only-brute-force-user-password";
+    private static final String LOCAL_LOGIN_REDIRECT_URI =
+            "http://127.0.0.1:5173/auth/callback";
+    private static final String LOCAL_LOGIN_PKCE_VERIFIER =
+            "test-only-verifier-identityhub-local-login-0001";
+    private static final UUID LOCAL_LOGIN_CLIENT_ID =
+            UUID.fromString("7167c098-8e18-4356-8fa2-2b3425273257");
     private static final String BOOTSTRAP_ADMIN = "test-bootstrap-admin";
     private static final String BOOTSTRAP_PASSWORD = syntheticPassword();
     private static final Network NETWORK = Network.newNetwork();
@@ -152,6 +167,8 @@ class KeycloakAdminTokenIntegrationTest {
         keycloakBaseUri = keycloakBaseUri();
         var adminToken = requestBootstrapAdminToken();
         createRealm(adminToken);
+        configureEmailOnlyUserProfile(adminToken);
+        configureGenericLoginMessages(adminToken);
         grantClientManagement(adminToken);
         grantIdentityManagement(adminToken);
         configureAuthenticationMethodReferences(adminToken);
@@ -400,6 +417,285 @@ class KeycloakAdminTokenIntegrationTest {
                 .isEqualTo("S256");
         assertThat(projected.path("attributes").path("identityhub.audience").isMissingNode())
                 .isTrue();
+    }
+
+    @Test
+    void enforcesLocalLoginSecurityBaselineInRealKeycloak() throws Exception {
+        var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve("/admin/realms/" + REALM),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        var realm = JSON.readTree(response.body());
+        assertThat(realm.path("bruteForceProtected").asBoolean()).isTrue();
+        assertThat(realm.path("permanentLockout").asBoolean()).isFalse();
+        assertThat(realm.path("failureFactor").asInt()).isEqualTo(5);
+        assertThat(realm.path("quickLoginCheckMilliSeconds").asInt()).isZero();
+        assertThat(realm.path("waitIncrementSeconds").asInt()).isEqualTo(30);
+        assertThat(realm.path("maxFailureWaitSeconds").asInt()).isEqualTo(900);
+        assertThat(realm.path("eventsEnabled").asBoolean()).isTrue();
+        assertThat(realm.path("enabledEventTypes"))
+                .containsExactlyInAnyOrder(
+                        JSON.valueToTree("LOGIN"),
+                        JSON.valueToTree("LOGIN_ERROR"));
+    }
+
+    @Test
+    void authenticatesVerifiedLocalIdentityThroughHostedOidcWithoutBusinessAccess()
+            throws Exception {
+        projectLocalLoginSpa();
+        var userAccountRef = registerVerifiedLocalLoginUser();
+
+        var tokens = authenticateLocalUser(
+                "ih-spa-" + LOCAL_LOGIN_CLIENT_ID,
+                LOCAL_LOGIN_REDIRECT_URI,
+                LOCAL_LOGIN_USERNAME,
+                LOCAL_LOGIN_PASSWORD,
+                LOCAL_LOGIN_PKCE_VERIFIER);
+        var decoder = oidcDecoder();
+        var idToken = decoder.decode(tokens.required("id_token").asString());
+        var accessToken = decoder.decode(tokens.required("access_token").asString());
+
+        assertThat(idToken.getSubject()).isEqualTo(userAccountRef.value().toString());
+        assertThat(idToken.getAudience()).containsExactly("ih-spa-" + LOCAL_LOGIN_CLIENT_ID);
+        assertThat(accessToken.getAudience()).isNullOrEmpty();
+        assertThat(accessToken.getClaims()).doesNotContainKey("resource_access");
+
+        var eventsResponse = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM + "/events?client="
+                                        + encode("ih-spa-" + LOCAL_LOGIN_CLIENT_ID)),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(eventsResponse.statusCode()).isEqualTo(200);
+        assertThat(eventsResponse.body()).contains("LOGIN");
+        assertThat(eventsResponse.body()).doesNotContain(LOCAL_LOGIN_PASSWORD);
+    }
+
+    @Test
+    void rejectsLocalLoginGenericallyAndActivatesTemporaryBruteForceProtection()
+            throws Exception {
+        projectLocalLoginSpa();
+        var userAccountRef = registerVerifiedLocalLoginUser(
+                BRUTE_FORCE_USERNAME,
+                BRUTE_FORCE_PASSWORD);
+        registerPendingLocalLoginUser(
+                "disabled.user@example.test",
+                "test-only-disabled-user-password");
+        var clientId = "ih-spa-" + LOCAL_LOGIN_CLIENT_ID;
+
+        var wrongPassword = attemptLocalLogin(
+                clientId,
+                LOCAL_LOGIN_REDIRECT_URI,
+                BRUTE_FORCE_USERNAME,
+                "test-only-wrong-password",
+                LOCAL_LOGIN_PKCE_VERIFIER);
+        var unknownAccount = attemptLocalLogin(
+                clientId,
+                LOCAL_LOGIN_REDIRECT_URI,
+                "unknown.user@example.test",
+                "test-only-wrong-password",
+                LOCAL_LOGIN_PKCE_VERIFIER);
+        var disabledAccount = attemptLocalLogin(
+                clientId,
+                LOCAL_LOGIN_REDIRECT_URI,
+                "disabled.user@example.test",
+                "test-only-disabled-user-password",
+                LOCAL_LOGIN_PKCE_VERIFIER);
+
+        assertGenericLoginFailure(wrongPassword);
+        assertGenericLoginFailure(unknownAccount);
+        assertGenericLoginFailure(disabledAccount);
+        for (var attempt = 1; attempt < 5; attempt++) {
+            assertGenericLoginFailure(attemptLocalLogin(
+                    clientId,
+                    LOCAL_LOGIN_REDIRECT_URI,
+                    BRUTE_FORCE_USERNAME,
+                    "test-only-wrong-password-" + attempt,
+                    LOCAL_LOGIN_PKCE_VERIFIER));
+        }
+
+        var bruteForceStatus = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM
+                                        + "/attack-detection/brute-force/users/"
+                                        + userAccountRef.value()),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(bruteForceStatus.statusCode()).isEqualTo(200);
+        var detection = JSON.readTree(bruteForceStatus.body());
+        assertThat(detection.path("numFailures").asInt()).isGreaterThanOrEqualTo(5);
+        assertThat(detection.path("disabled").asBoolean()).isTrue();
+
+        var eventsResponse = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM + "/events?client="
+                                        + encode(clientId)),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(eventsResponse.statusCode()).isEqualTo(200);
+        var serializedEvents = eventsResponse.body();
+        assertThat(serializedEvents).contains("LOGIN_ERROR");
+        assertThat(serializedEvents)
+                .doesNotContain("test-only-wrong-password", BRUTE_FORCE_PASSWORD);
+    }
+
+    private static void projectLocalLoginSpa() {
+        var snapshot = new ApplicationClientSnapshot(
+                LOCAL_LOGIN_CLIENT_ID,
+                UUID.fromString("ee551ec6-5f78-45ed-bd13-f02becf0fc62"),
+                "local-login-spa",
+                "SPA",
+                null,
+                List.of(LOCAL_LOGIN_REDIRECT_URI),
+                List.of("http://127.0.0.1:5173"),
+                true,
+                Instant.parse("2026-08-02T12:00:00Z"),
+                UUID.fromString("553738ed-8d46-46bc-ac3a-2af435a14ac4"),
+                1,
+                "hosted-local-login-test",
+                ApplicationClientProjectionState.PENDING,
+                0,
+                Instant.parse("2026-08-02T12:00:00Z"),
+                null);
+        new KeycloakApplicationClientProjector(
+                        HttpClient.newHttpClient(),
+                        JSON,
+                        keycloakBaseUri,
+                        REALM,
+                        MANAGEMENT_CLIENT_ID,
+                        MANAGEMENT_CLIENT_SECRET)
+                .project(snapshot);
+    }
+
+    private static UserAccountRef registerVerifiedLocalLoginUser() {
+        return registerVerifiedLocalLoginUser(LOCAL_LOGIN_USERNAME, LOCAL_LOGIN_PASSWORD);
+    }
+
+    private static UserAccountRef registerVerifiedLocalLoginUser(
+            String username,
+            String rawPassword) {
+        var registration = registerPendingLocalLoginUser(
+                username,
+                rawPassword);
+        var registrar = localIdentityRegistrar();
+        registrar.verifyAndEnable(registration, new LoginEmail(username));
+        return registration;
+    }
+
+    private static UserAccountRef registerPendingLocalLoginUser(
+            String username,
+            String rawPassword) {
+        var registrar = localIdentityRegistrar();
+        var email = new LoginEmail(username);
+        LocalIdentityRegistration registration;
+        try (var password = new LocalPassword(rawPassword.toCharArray())) {
+            registration = registrar.register(new PendingLocalIdentity(email, password));
+        }
+        return registration.userAccountRef();
+    }
+
+    private static KeycloakLocalIdentityRegistrar localIdentityRegistrar() {
+        return new KeycloakLocalIdentityRegistrar(
+                HttpClient.newHttpClient(),
+                JSON,
+                keycloakBaseUri(),
+                REALM,
+                IDENTITY_MANAGEMENT_CLIENT_ID,
+                IDENTITY_MANAGEMENT_CLIENT_SECRET);
+    }
+
+    private static JsonNode authenticateLocalUser(
+            String clientId,
+            String redirectUri,
+            String username,
+            String password,
+            String verifier) throws Exception {
+        var client = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
+        var loginResponse = attemptLocalLogin(
+                clientId,
+                redirectUri,
+                username,
+                password,
+                verifier);
+        assertThat(loginResponse.statusCode()).isEqualTo(302);
+        var location = loginResponse.headers().firstValue("Location").orElseThrow();
+        assertThat(location)
+                .describedAs("Hosted local login redirect")
+                .contains("code=");
+        assertThat(queryParameter(location, "state")).isEqualTo("local-login-state");
+        var code = queryParameter(location, "code");
+
+        var tokenResponse = client.send(
+                formRequest(
+                        keycloakBaseUri.resolve(
+                                "/realms/" + REALM + "/protocol/openid-connect/token"),
+                        Map.of(
+                                "grant_type", "authorization_code",
+                                "client_id", clientId,
+                                "redirect_uri", redirectUri,
+                                "code_verifier", verifier,
+                                "code", code)),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(tokenResponse.statusCode()).isEqualTo(200);
+        return JSON.readTree(tokenResponse.body());
+    }
+
+    private static HttpResponse<String> attemptLocalLogin(
+            String clientId,
+            String redirectUri,
+            String username,
+            String password,
+            String verifier) throws Exception {
+        var client = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
+        var authorizationUri = keycloakBaseUri.resolve(
+                "/realms/" + REALM + "/protocol/openid-connect/auth"
+                        + "?client_id=" + encode(clientId)
+                        + "&response_type=code"
+                        + "&scope=openid"
+                        + "&state=local-login-state"
+                        + "&nonce=local-login-nonce"
+                        + "&code_challenge_method=S256"
+                        + "&code_challenge=" + encode(pkceChallenge(verifier))
+                        + "&redirect_uri=" + encode(redirectUri));
+        var loginPage = client.send(
+                HttpRequest.newBuilder(authorizationUri).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(loginPage.statusCode()).isEqualTo(200);
+
+        return client.send(
+                formRequest(
+                        formAction(loginPage.body()),
+                        Map.of(
+                                "username", username,
+                                "password", password,
+                                "credentialId", ""),
+                        cookies(loginPage)),
+                HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static void assertGenericLoginFailure(HttpResponse<String> response) {
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("Invalid username or password.");
+        assertThat(response.headers().firstValue("Location")).isEmpty();
+    }
+
+    private static NimbusJwtDecoder oidcDecoder() {
+        var decoder = NimbusJwtDecoder.withJwkSetUri(
+                        realmIssuer() + "/protocol/openid-connect/certs")
+                .jwsAlgorithm(SignatureAlgorithm.RS256)
+                .build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(realmIssuer().toString()));
+        return decoder;
     }
 
     private static JsonNode findKeycloakClient(String clientId) throws Exception {
@@ -1105,10 +1401,64 @@ class KeycloakAdminTokenIntegrationTest {
     }
 
     private static String pkceChallenge() throws Exception {
+        return pkceChallenge(PKCE_VERIFIER);
+    }
+
+    private static void configureEmailOnlyUserProfile(String adminToken) throws Exception {
+        var profileUri = keycloakBaseUri.resolve(
+                "/admin/realms/" + REALM + "/users/profile");
+        var lookup = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(profileUri, adminToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(lookup.statusCode()).isEqualTo(200);
+        var profile = JSON.readTree(lookup.body());
+        for (var attribute : profile.required("attributes")) {
+            if (attribute instanceof ObjectNode object
+                    && List.of("firstName", "lastName")
+                            .contains(attribute.path("name").asString())) {
+                object.remove("required");
+            }
+        }
+        var update = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedPutJsonRequest(
+                        profileUri,
+                        adminToken,
+                        "configure-email-only-profile",
+                        JSON.writeValueAsString(profile)),
+                HttpResponse.BodyHandlers.discarding());
+        assertThat(update.statusCode()).isIn(200, 204);
+    }
+
+    private static void configureGenericLoginMessages(String adminToken) throws Exception {
+        var messages = Map.of(
+                "en", Map.of(
+                        "accountDisabledMessage", "Invalid username or password.",
+                        "accountTemporarilyDisabledMessage", "Invalid username or password."),
+                "pt-BR", Map.of(
+                        "accountDisabledMessage", "E-mail ou senha inválidos.",
+                        "accountTemporarilyDisabledMessage", "E-mail ou senha inválidos."));
+        for (var localized : messages.entrySet()) {
+            for (var message : localized.getValue().entrySet()) {
+                var uri = keycloakBaseUri.resolve(
+                        "/admin/realms/" + REALM + "/localization/"
+                                + encode(localized.getKey()) + "/" + message.getKey());
+                var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                        HttpRequest.newBuilder(uri)
+                                .header("Authorization", "Bearer " + adminToken)
+                                .header("Content-Type", "text/plain; charset=UTF-8")
+                                .PUT(HttpRequest.BodyPublishers.ofString(message.getValue()))
+                                .build(),
+                        HttpResponse.BodyHandlers.discarding());
+                assertThat(response.statusCode()).isEqualTo(204);
+            }
+        }
+    }
+
+    private static String pkceChallenge(String verifier) throws Exception {
         return Base64.getUrlEncoder()
                 .withoutPadding()
                 .encodeToString(MessageDigest.getInstance("SHA-256")
-                        .digest(PKCE_VERIFIER.getBytes(StandardCharsets.US_ASCII)));
+                        .digest(verifier.getBytes(StandardCharsets.US_ASCII)));
     }
 
     private static String realmRepresentation() {
@@ -1122,6 +1472,19 @@ class KeycloakAdminTokenIntegrationTest {
                   "otpPolicyDigits": 6,
                   "otpPolicyPeriod": 30,
                   "passwordPolicy": "length(15) and maxLength(64)",
+                  "internationalizationEnabled": true,
+                  "supportedLocales": ["en", "pt-BR"],
+                  "defaultLocale": "en",
+                  "bruteForceProtected": true,
+                  "permanentLockout": false,
+                  "failureFactor": 5,
+                  "quickLoginCheckMilliSeconds": 0,
+                  "waitIncrementSeconds": 30,
+                  "maxFailureWaitSeconds": 900,
+                  "maxDeltaTimeSeconds": 43200,
+                  "eventsEnabled": true,
+                  "eventsExpiration": 2592000,
+                  "enabledEventTypes": ["LOGIN", "LOGIN_ERROR"],
                   "roles": {
                     "realm": [
                       {"name": "PLATFORM_ADMIN"},
