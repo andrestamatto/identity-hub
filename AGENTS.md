@@ -21,6 +21,16 @@ Read the relevant documents before changing behavior:
 When code and documentation disagree, stop and request human direction. Do not
 silently reinterpret an accepted decision.
 
+## Context recovery
+
+After any conversation context compaction or when continuity is uncertain, do
+not rely on the summary alone. Before planning or changing behavior, reread the
+relevant sources of truth listed above and inspect the current branch, working
+tree, latest completed slice and `docs/pending-decisions.md`. Reconfirm the
+current objective against the approved delivery sequence. Treat uncertainty
+about product intent, security posture or simplicity as a reason to return to
+brainstorming, not as permission to invent a contract.
+
 ## Delivery workflow
 
 - Work in a branch created from an updated `develop`.

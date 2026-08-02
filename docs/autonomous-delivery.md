@@ -102,3 +102,19 @@ Cada PR registra resumo, critérios, testes, riscos, rollback e pendências. O
 agente fornece atualizações periódicas durante uma execução longa. O mantenedor
 pode acompanhar sem que isso suspenda o mandato e pode intervir ou revogá-lo a
 qualquer momento.
+
+## 8. Recuperação após compactação de contexto
+
+Quando houver compactação do contexto da conversa ou dúvida sobre continuidade,
+o agente não deve decidir apenas pelo resumo recebido. Antes de planejar ou alterar
+comportamento, deve:
+
+1. reler as fontes normativas relevantes listadas em `AGENTS.md`;
+2. inspecionar branch, working tree e última fatia concluída;
+3. reler `pending-decisions.md` e a sequência aprovada de migração;
+4. reconfirmar objetivo, critérios, postura de segurança e regra de simplicidade;
+5. interromper para novo brainstorming se a mudança pretendida alterar contrato,
+   produto ou segurança sem decisão documental vigente.
+
+Essa revisão é um gate de recuperação de contexto e deve ser registrada na
+evidência da fatia em andamento.
