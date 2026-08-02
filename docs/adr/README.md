@@ -35,7 +35,8 @@ feitas no documento original.
 | [ADR-0010](0010-data-ownership-and-runtime-projections.md) | Accepted | Propriedade de dados e projeções operacionais |
 | [ADR-0011](0011-communication-capability-name.md) | Accepted | `communication` como nome canônico da capacidade |
 | [ADR-0012](0012-supported-platform-baseline.md) | Accepted | Baseline suportada da plataforma |
-| [ADR-0013](0013-backend-initiated-onboarding-session.md) | Accepted | Sessão de onboarding iniciada pelo backend consumidor |
+| [ADR-0013](0013-backend-initiated-onboarding-session.md) | Superseded | Sessão proprietária de onboarding |
+| [ADR-0014](0014-standard-oidc-acquisition-correlation.md) | Accepted | Correlação de aquisição com OIDC padrão |
 
 ## Decisões pendentes
 

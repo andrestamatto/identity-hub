@@ -36,7 +36,6 @@ Cada dado possui proprietário explícito.
 - branding;
 - intenção e lifecycle de `Membership`;
 - definições de roles por aplicação;
-- `OnboardingIdentityProof`;
 - idempotência;
 - outbox;
 - auditoria de produto e reconciliação.

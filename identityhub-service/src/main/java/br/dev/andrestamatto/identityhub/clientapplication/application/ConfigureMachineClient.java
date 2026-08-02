@@ -34,28 +34,26 @@ public final class ConfigureMachineClient {
         var applicationId = new ClientApplicationId(command.applicationId());
         var clientId = new ApplicationClientId(command.applicationClientId());
         var key = new ApplicationClientKey(command.key());
-        var settings = MachineSettings.create(command.scopes());
         var application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ClientApplicationNotFoundException(applicationId.value()));
 
         var existing = clientRepository.findById(clientId);
         if (existing.isPresent()) {
-            return replay(existing.orElseThrow(), applicationId, key, settings);
+            return replay(existing.orElseThrow(), applicationId, key);
         }
         if (clientRepository.findByKey(applicationId, key).isPresent()) {
             throw new ClientApplicationConflictException(
                     "Application client key is already assigned inside the application");
         }
-        return create(application, clientId, key, settings, command.correlationId());
+        return create(application, clientId, key, command.correlationId());
     }
 
     private ApplicationClientConfigurationResult create(
             ClientApplication application,
             ApplicationClientId clientId,
             ApplicationClientKey key,
-            MachineSettings settings,
             String correlationId) {
-        var client = application.configureMachine(clientId, key, settings, clock);
+        var client = application.configureMachine(clientId, key, clock);
         var now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         var projection = ApplicationClientProjection.pending(
                 operationIdGenerator.get(), clientId, correlationId, now);
@@ -68,12 +66,11 @@ public final class ConfigureMachineClient {
     private ApplicationClientConfigurationResult replay(
             ApplicationClientConfiguration existing,
             ClientApplicationId applicationId,
-            ApplicationClientKey key,
-            MachineSettings settings) {
+            ApplicationClientKey key) {
         var client = existing.client();
         if (client.applicationId().equals(applicationId)
                 && client.key().equals(key)
-                && client.settings().equals(settings)) {
+                && client.settings().equals(new MachineSettings())) {
             return new ApplicationClientConfigurationResult(
                     ApplicationClientSnapshot.from(existing), false);
         }
@@ -85,11 +82,6 @@ public final class ConfigureMachineClient {
             UUID applicationId,
             UUID applicationClientId,
             String key,
-            java.util.List<String> scopes,
             String correlationId) {
-
-        public Command {
-            scopes = scopes == null ? java.util.List.of() : java.util.List.copyOf(scopes);
-        }
     }
 }

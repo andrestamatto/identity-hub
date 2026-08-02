@@ -126,7 +126,6 @@ final class ClientApplicationAdminController {
                     UUID applicationClientId,
                     ConfigureApplicationClientRequest request) {
         if (request.audience() == null
-                || request.scopes() != null
                 || request.redirectUris() != null
                 || request.webOrigins() != null) {
             throw new IllegalArgumentException("API client contains incompatible fields");
@@ -144,7 +143,6 @@ final class ClientApplicationAdminController {
                     UUID applicationClientId,
                     ConfigureApplicationClientRequest request) {
         if (request.audience() != null
-                || request.scopes() != null
                 || request.redirectUris() == null
                 || request.webOrigins() == null) {
             throw new IllegalArgumentException("SPA client contains incompatible fields");
@@ -163,7 +161,6 @@ final class ClientApplicationAdminController {
                     UUID applicationClientId,
                     ConfigureApplicationClientRequest request) {
         if (request.audience() != null
-                || request.scopes() != null
                 || request.redirectUris() == null
                 || request.webOrigins() != null) {
             throw new IllegalArgumentException("BFF client contains incompatible fields");
@@ -189,7 +186,6 @@ final class ClientApplicationAdminController {
                 applicationId,
                 applicationClientId,
                 request.key(),
-                request.scopes(),
                 MDC.get("correlationId")));
     }
 
@@ -229,7 +225,6 @@ final class ClientApplicationAdminController {
             String type,
             String key,
             String audience,
-            List<String> scopes,
             List<String> redirectUris,
             List<String> webOrigins) {
     }
@@ -259,7 +254,6 @@ final class ClientApplicationAdminController {
             String key,
             String type,
             String audience,
-            List<String> scopes,
             List<String> redirectUris,
             List<String> webOrigins,
             boolean enabled,
@@ -279,7 +273,6 @@ final class ClientApplicationAdminController {
                     client.key(),
                     client.type(),
                     client.audience(),
-                    client.scopes(),
                     client.redirectUris(),
                     client.webOrigins(),
                     client.enabled(),

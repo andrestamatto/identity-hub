@@ -240,9 +240,6 @@ public final class KeycloakApplicationClientProjector
         representation.put("fullScopeAllowed", false);
         representation.put("redirectUris", client.redirectUris());
         representation.put("webOrigins", client.webOrigins());
-        if (machine) {
-            representation.put("defaultClientScopes", client.scopes());
-        }
         representation.put("attributes", managedAttributes(client));
         return objectMapper.writeValueAsString(representation);
     }
@@ -302,9 +299,7 @@ public final class KeycloakApplicationClientProjector
         }
         if (client.type().equals("MACHINE")) {
             return existing.path("redirectUris").isEmpty()
-                    && existing.path("webOrigins").isEmpty()
-                    && jsonStrings(existing.path("defaultClientScopes"))
-                            .equals(client.scopes());
+                    && existing.path("webOrigins").isEmpty();
         }
         return "S256".equals(attributes.path(PKCE_METHOD_ATTRIBUTE).asString())
                 && jsonStrings(existing.path("redirectUris")).equals(client.redirectUris())

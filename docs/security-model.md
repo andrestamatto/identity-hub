@@ -66,7 +66,7 @@ O IdentityHub deve preservar:
 | Refresh tokens e sessões | Persistência de acesso indevido |
 | Access tokens e ID tokens | Acesso temporário ou exposição de identidade |
 | Segredos de clientes e provedores | Personificação de aplicação ou abuso de integração |
-| `OnboardingIdentityProof` | Provisionamento indevido de membership |
+| Correlação OIDC de aquisição | Provisionamento indevido de membership |
 | Identidade global e contatos | Fraude, privacidade e correlação entre produtos |
 | Memberships e papéis | Elevação de privilégio e acesso entre SaaS |
 | Configuração de aplicações | Redirect malicioso, audience confusion e sequestro de fluxo |
@@ -143,8 +143,8 @@ Toda seta que cruza uma fronteira exige autenticação, autorização, validaç�
 |---|---|
 | Alteração de JWT | Assinatura assimétrica e allowlist de algoritmo |
 | Alteração de configuração | Autorização, versionamento, idempotência, auditoria e reconciliação |
-| Membership forjada | Client Credentials, prova vinculada, escopo por aplicação e papéis permitidos |
-| Replay de onboarding | Prova aleatória, expiração, uso único e binding à aquisição |
+| Membership forjada | Client Credentials, `sub` obtido de OIDC validado, escopo por aplicação e papéis permitidos |
+| Replay na aquisição | Authorization code de uso único, `state`, `nonce`, PKCE e correlação server-side |
 | Upload malicioso | Tipos raster permitidos, reprocessamento, limites e storage isolado |
 
 ### 7.3 Repudiation
@@ -260,67 +260,21 @@ Toda seta que cruza uma fronteira exige autenticação, autorização, validaç�
 - audience e scopes mínimos;
 - sem refresh token e sem sessão humana.
 
-## 9. Onboarding seguro
+## 9. Correlação segura de aquisição
 
-### 9.1 `OnboardingSession`
+O MVP usa apenas OpenID Connect Authorization Code com PKCE para correlacionar
+uma pessoa autenticada a uma aquisição. Não existe prova, sessão ou token de
+onboarding proprietário.
 
-A sessão de onboarding é criada exclusivamente por cliente de máquina autenticado
-com audience `identityhub-integration-api` e scope `onboarding:write`.
+Controles adicionais ao perfil da seção 8:
 
-Ela mantém no servidor:
-
-- identificador opaco aleatório;
-- `ClientApplication` derivada do token, nunca do corpo;
-- cliente de máquina iniciador e browser client autorizado;
-- digest da referência opaca de aquisição;
-- redirect URI exata;
-- PKCE challenge `S256`;
-- digest da idempotency key e hash semântico da solicitação;
-- criação, expiração, estado e correlação.
-
-Controles:
-
-- validade inicial de dez minutos;
-- browser client ativo, projetado e pertencente à mesma aplicação;
-- redirect URI comparada exatamente à configuração projetada;
-- repetição idêntica retorna a mesma sessão;
-- conteúdo diferente com a mesma idempotency key é rejeitado;
-- identificador de sessão isolado não conclui autenticação nem emite prova;
-- `state`, `nonce` e PKCE são validados nas etapas de navegador;
-- sessão expirada, consumida ou com binding incompatível falha fechada;
-- nenhum dado de pagamento, plano, senha ou usuário é aceito nessa criação.
-- métricas registram apenas resultado e duração, sem identificadores ou valores
-  de aquisição e idempotência.
-
-### 9.2 `OnboardingIdentityProof`
-
-A prova de onboarding será um identificador opaco, aleatório e de uso único. Ela não será um access token de negócio.
-
-#### 9.2.1 Conteúdo mantido no servidor
-
-- hash da prova;
-- `UserAccount` opaco;
-- `ClientApplication`;
-- aquisição ou transaction reference;
-- verificações concluídas;
-- instante de emissão e expiração;
-- estado de consumo;
-- correlação;
-- hash semântico da operação quando aplicável.
-
-#### 9.2.2 Controles
-
-- mínimo de 128 bits de entropia, preferencialmente 256;
-- transmitida apenas por TLS;
-- validade inicial de 30 minutos;
-- vinculada à aplicação e à aquisição;
-- não contém senha, plano ou detalhes de pagamento;
-- armazenada somente em hash quando tecnicamente possível;
-- uso único;
-- consumo atômico com a solicitação idempotente;
-- repetição idêntica retorna resultado estável;
-- conteúdo diferente com a mesma idempotency key é rejeitado;
-- prova expirada ou consumida não pode criar nova concessão.
+- backend ou BFF mantém a aquisição em sessão server-side;
+- o callback aceita somente authorization code na redirect URI registrada;
+- `sub` é aceito somente após validar a resposta OIDC completa;
+- o navegador não declara `sub`, aplicação ou aquisição como autoridade;
+- autenticação sem `Membership` não concede audience nem papéis de negócio;
+- provisionamento posterior usa Client Credentials e idempotency key;
+- pagamento, plano e assinatura não são enviados ao IdentityHub.
 
 ## 10. Perfil de tokens
 
@@ -386,8 +340,6 @@ Os valores abaixo formam a baseline do MVP. Exceções exigem justificativa, tes
 | Access token humano | 10 minutos |
 | Access token de máquina | 5 minutos |
 | Clock skew aceito | 60 segundos |
-| `OnboardingSession` | 10 minutos |
-| `OnboardingIdentityProof` | 30 minutos |
 | Código de verificação de e-mail | 30 minutos |
 | Prova de recuperação de senha | 15 minutos |
 | Código de verificação telefônica | 5 minutos |
@@ -885,7 +837,7 @@ Nunca registrar:
 - refresh token;
 - access token completo;
 - authorization code;
-- `OnboardingIdentityProof`;
+- ID token completo ou claims de identidade recebidos no callback;
 - client secret;
 - provider secret;
 - código de verificação ou recuperação.
@@ -996,7 +948,7 @@ Pentest grey-box deve cobrir:
 - OAuth e OpenID Connect;
 - JWT e confusion attacks;
 - sessão, refresh e logout;
-- onboarding e replay;
+- aquisição, callback OIDC e replay;
 - isolamento entre aplicações;
 - provisionamento e idempotência;
 - administração e MFA;

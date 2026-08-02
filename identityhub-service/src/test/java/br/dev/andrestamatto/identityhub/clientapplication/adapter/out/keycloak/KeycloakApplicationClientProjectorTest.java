@@ -196,8 +196,6 @@ class KeycloakApplicationClientProjectorTest {
         assertThat(storedClient.path("fullScopeAllowed").asBoolean()).isFalse();
         assertThat(storedClient.path("redirectUris")).isEmpty();
         assertThat(storedClient.path("webOrigins")).isEmpty();
-        assertThat(storedClient.path("defaultClientScopes"))
-                .containsExactly(JSON.valueToTree("onboarding:write"));
         assertThat(storedClient.path("attributes")
                 .path("pkce.code.challenge.method").isMissingNode()).isTrue();
         assertThat(storedClient.path("secret").isMissingNode()).isTrue();
@@ -235,7 +233,6 @@ class KeycloakApplicationClientProjectorTest {
                 "catalog-api",
                 java.util.List.of(),
                 java.util.List.of(),
-                java.util.List.of(),
                 true,
                 Instant.parse("2026-07-31T16:00:00Z"),
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
@@ -254,7 +251,6 @@ class KeycloakApplicationClientProjectorTest {
                 "catalog-web",
                 "SPA",
                 null,
-                java.util.List.of(),
                 java.util.List.of("https://app.example.com/auth/callback"),
                 java.util.List.of("https://app.example.com"),
                 true,
@@ -275,7 +271,6 @@ class KeycloakApplicationClientProjectorTest {
                 "catalog-bff",
                 "BFF",
                 null,
-                java.util.List.of(),
                 java.util.List.of(
                         "https://app.example.com/login/oauth2/code/identityhub"),
                 java.util.List.of(),
@@ -297,7 +292,6 @@ class KeycloakApplicationClientProjectorTest {
                 "catalog-membership-provisioner",
                 "MACHINE",
                 null,
-                java.util.List.of("onboarding:write"),
                 java.util.List.of(),
                 java.util.List.of(),
                 true,

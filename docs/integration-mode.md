@@ -576,32 +576,24 @@ Não existe seletor livre de URL do servidor na interface.
 
 O cliente de máquina é habilitado separadamente do Resource Server.
 
-No Service Mode, `POST /integration/v1/onboarding-sessions` recebe
-`Idempotency-Key`, browser client, referência opaca de aquisição, redirect URI
-exata e PKCE challenge `S256`. A resposta contém somente a sessão opaca e sua
-expiração. Criação responde `201`; replay idêntico responde `200` com o mesmo
-resultado. O edge permanece desabilitado até
-`IDENTITYHUB_ONBOARDING_ENABLED=true` ser definido no ambiente do IdentityHub.
-
 O contrato inicial pode oferecer:
 
-- iniciar `OnboardingSession` com aquisição opaca, browser client e PKCE;
 - conceder membership;
 - suspender membership;
 - remover membership;
 - atribuir ou remover role permitida;
 - consultar o resultado de operação própria;
-- trocar `OnboardingIdentityProof` no fluxo autorizado.
+- provisionar acesso usando o `sub` obtido pelo backend em um fluxo OIDC validado.
 
 Regras:
 
 - usa somente APIs públicas do IdentityHub;
 - obtém token por Client Credentials;
 - não representa usuário;
+- nunca aceita do navegador um identificador humano como autoridade;
 - não recebe refresh token;
 - propaga `traceparent` e correlation ID;
 - exige idempotency key nas mutações;
-- deriva a aplicação do cliente autenticado, sem aceitar application id no corpo;
 - possui timeout;
 - não repete automaticamente mutação não idempotente;
 - não registra payload sensível;

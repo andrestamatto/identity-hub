@@ -37,7 +37,6 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -146,7 +145,6 @@ class KeycloakAdminTokenIntegrationTest {
         registry.add("identityhub.keycloak.management.lease-duration", () -> "PT30S");
         registry.add("identityhub.keycloak.management.initial-retry-delay", () -> "PT1S");
         registry.add("identityhub.keycloak.management.max-attempts", () -> "5");
-        registry.add("identityhub.onboarding.enabled", () -> "true");
     }
 
     @BeforeAll
@@ -154,7 +152,6 @@ class KeycloakAdminTokenIntegrationTest {
         keycloakBaseUri = keycloakBaseUri();
         var adminToken = requestBootstrapAdminToken();
         createRealm(adminToken);
-        createOnboardingClientScope(adminToken);
         grantClientManagement(adminToken);
         grantIdentityManagement(adminToken);
         configureAuthenticationMethodReferences(adminToken);
@@ -238,7 +235,6 @@ class KeycloakAdminTokenIntegrationTest {
                 "catalog-api",
                 "API",
                 "catalog-api",
-                List.of(),
                 List.of(),
                 List.of(),
                 true,
@@ -366,7 +362,6 @@ class KeycloakAdminTokenIntegrationTest {
                 "catalog-web",
                 "SPA",
                 null,
-                List.of(),
                 List.of(redirectUri),
                 List.of(webOrigin),
                 true,
@@ -658,8 +653,7 @@ class KeycloakAdminTokenIntegrationTest {
                         """
                                 {
                                   "type": "MACHINE",
-                                  "key": "real-membership-provisioner",
-                                  "scopes": ["onboarding:write"]
+                                  "key": "real-membership-provisioner"
                                 }
                                 """),
                 HttpResponse.BodyHandlers.ofString());
@@ -681,8 +675,6 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(projected.path("directAccessGrantsEnabled").asBoolean()).isFalse();
         assertThat(projected.path("redirectUris")).isEmpty();
         assertThat(projected.path("webOrigins")).isEmpty();
-        assertThat(projected.path("defaultClientScopes"))
-                .contains(JSON.valueToTree("onboarding:write"));
 
         var secretResponse = HttpClient.newHttpClient().send(
                 authorizedPostRequest(
@@ -692,75 +684,8 @@ class KeycloakAdminTokenIntegrationTest {
                 HttpResponse.BodyHandlers.ofString());
         assertThat(secretResponse.statusCode()).isEqualTo(200);
         assertThat(secretResponse.headers().firstValue("Cache-Control")).contains("no-store");
-        var clientSecret = JSON.readTree(secretResponse.body())
-                .required("clientSecret")
-                .asString();
-        assertThat(clientSecret).isNotBlank();
-
-        var tokenResponse = httpClient(HttpClient.Redirect.NORMAL).send(
-                formRequest(
-                        URI.create(realmIssuer() + "/protocol/openid-connect/token"),
-                        Map.of(
-                                "grant_type", "client_credentials",
-                                "client_id", "ih-machine-" + clientId,
-                                "client_secret", clientSecret)),
-                HttpResponse.BodyHandlers.ofString());
-        assertThat(tokenResponse.statusCode()).isEqualTo(200);
-        var tokenPayload = JSON.readTree(tokenResponse.body());
-        assertThat(tokenPayload.path("refresh_token").isMissingNode()).isTrue();
-        var machineAccessToken = tokenPayload.required("access_token").asString();
-        var machineToken = NimbusJwtDecoder.withJwkSetUri(
-                        realmIssuer() + "/protocol/openid-connect/certs")
-                .jwsAlgorithm(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256)
-                .build()
-                .decode(machineAccessToken);
-        assertThat(machineToken.getAudience()).containsExactly("identityhub-integration-api");
-        assertThat(machineToken.getClaimAsString("scope")).contains("onboarding:write");
-        assertOnboardingSessionContract(machineAccessToken, clientId);
-    }
-
-    private void assertOnboardingSessionContract(String machineAccessToken, UUID machineClientId)
-            throws Exception {
-        var endpoint = URI.create("http://127.0.0.1:" + servicePort
-                + "/integration/v1/onboarding-sessions");
-        var requestBody = """
-                {
-                  "browserClientId": "72c43df3-9f34-4dc6-85cc-5d323762f299",
-                  "acquisitionReference": "real-order-2026-0001",
-                  "redirectUri": "http://127.0.0.1:5173/auth/callback",
-                  "codeChallenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
-                }
-                """;
-        var request = HttpRequest.newBuilder(endpoint)
-                .header("Authorization", "Bearer " + machineAccessToken)
-                .header("Content-Type", "application/json")
-                .header("Idempotency-Key", "real-purchase-2026-0001")
-                .header("X-Correlation-ID", "real-onboarding-session")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-
-        var created = HttpClient.newHttpClient().send(
-                request, HttpResponse.BodyHandlers.ofString());
-        assertThat(created.statusCode()).isEqualTo(201);
-        assertThat(created.headers().firstValue("Cache-Control")).contains("no-store");
-        assertThat(created.body())
-                .contains("\"onboardingSession\"")
-                .doesNotContain("real-order-2026-0001", "applicationId", "machineClientId");
-
-        var replay = HttpClient.newHttpClient().send(
-                request, HttpResponse.BodyHandlers.ofString());
-        assertThat(replay.statusCode()).isEqualTo(200);
-        assertThat(replay.body()).isEqualTo(created.body());
-        assertThat(jdbcClient.sql("""
-                            select count(*)
-                            from onboarding_session
-                            where machine_client_id = :machineClientId
-                              and correlation_id = 'real-onboarding-session'
-                            """)
-                .param("machineClientId", machineClientId)
-                .query(Integer.class)
-                .single())
-                .isOne();
+        assertThat(JSON.readTree(secretResponse.body()).required("clientSecret").asString())
+                .isNotBlank();
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {
@@ -855,39 +780,6 @@ class KeycloakAdminTokenIntegrationTest {
                 HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode())
                 .describedAs("Keycloak realm creation response: %s", response.body())
-                .isEqualTo(201);
-    }
-
-    private static void createOnboardingClientScope(String adminToken) throws Exception {
-        var body = """
-                {
-                  "name": "onboarding:write",
-                  "protocol": "openid-connect",
-                  "attributes": {
-                    "include.in.token.scope": "true",
-                    "display.on.consent.screen": "false"
-                  },
-                  "protocolMappers": [
-                    {
-                      "name": "identityhub-integration-audience",
-                      "protocol": "openid-connect",
-                      "protocolMapper": "oidc-audience-mapper",
-                      "config": {
-                        "included.custom.audience": "identityhub-integration-api",
-                        "access.token.claim": "true"
-                      }
-                    }
-                  ]
-                }
-                """;
-        var response = httpClient(HttpClient.Redirect.NORMAL).send(
-                authorizedJsonRequest(
-                        keycloakBaseUri.resolve("/admin/realms/" + REALM + "/client-scopes"),
-                        adminToken,
-                        body),
-                HttpResponse.BodyHandlers.ofString());
-        assertThat(response.statusCode())
-                .describedAs("Keycloak onboarding client scope response: %s", response.body())
                 .isEqualTo(201);
     }
 

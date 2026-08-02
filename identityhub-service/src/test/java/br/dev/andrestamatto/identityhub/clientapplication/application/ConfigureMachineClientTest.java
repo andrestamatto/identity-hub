@@ -57,7 +57,6 @@ class ConfigureMachineClientTest {
         assertThat(result.client().audience()).isNull();
         assertThat(result.client().redirectUris()).isEmpty();
         assertThat(result.client().webOrigins()).isEmpty();
-        assertThat(result.client().scopes()).containsExactly("onboarding:write");
         assertThat(result.client().projectionState())
                 .isEqualTo(ApplicationClientProjectionState.PENDING);
         verify(clientRepository).add(any(ApplicationClientConfiguration.class));
@@ -70,7 +69,6 @@ class ConfigureMachineClientTest {
                 application().configureMachine(
                         clientId,
                         new ApplicationClientKey("social-catalog-membership-provisioner"),
-                        MachineSettings.create(java.util.List.of("onboarding:write")),
                         Clock.fixed(NOW, ZoneOffset.UTC)),
                 ApplicationClientProjection.pending(
                         OPERATION_ID,
@@ -83,7 +81,6 @@ class ConfigureMachineClientTest {
 
         assertThat(replay.created()).isFalse();
         assertThat(replay.client().type()).isEqualTo(new MachineSettings().type().name());
-        assertThat(replay.client().scopes()).containsExactly("onboarding:write");
         verify(clientRepository, never()).add(any());
     }
 
@@ -92,7 +89,6 @@ class ConfigureMachineClientTest {
                 APPLICATION_ID,
                 CLIENT_ID,
                 "social-catalog-membership-provisioner",
-                java.util.List.of("onboarding:write"),
                 "configure-machine");
     }
 

@@ -112,8 +112,6 @@ Aplicação não humana autorizada a obter acesso para comunicação entre siste
 - **ClientApplication:** representação lógica de um SaaS no IdentityHub.
 - **ApplicationClient:** credencial ou configuração de protocolo para um canal de uma `ClientApplication`, como SPA, BFF, API ou máquina.
 - **Membership:** relação explícita que permite a um `UserAccount` acessar uma `ClientApplication`.
-- **OnboardingSession:** intenção temporária de aquisição criada pelo backend da aplicação antes da autenticação humana.
-- **OnboardingIdentityProof:** prova temporária e restrita de identidade, destinada a correlacionar o usuário com uma aquisição sem autorizar recursos protegidos da aplicação.
 - **Role:** papel geral atribuído dentro dos limites de uma `ClientApplication`.
 - **AuthSession:** sessão autenticada de uma pessoa, com início, expiração e revogação.
 - **TokenFamily:** sequência de refresh tokens originada por uma autenticação e invalidada em conjunto quando houver logout ou reutilização indevida.
@@ -184,7 +182,7 @@ Quando o cadastro autônomo estiver habilitado para uma aplicação, um visitant
 
 O e-mail deve ser tratado de forma normalizada para comparação, sem alterar o valor apropriado para comunicação. A senha deve ser validada segundo a política de segurança vigente e nunca deve ser exposta após o recebimento.
 
-O cadastro deve criar ou reutilizar com segurança a identidade global. Ele não deve conceder `Membership` automaticamente. Quando o fluxo fizer parte da aquisição de um SaaS, a aplicação de origem poderá receber uma `OnboardingIdentityProof` somente após as verificações obrigatórias.
+O cadastro deve criar ou reutilizar com segurança a identidade global. Ele não deve conceder `Membership` automaticamente.
 
 #### Critérios de aceitação
 
@@ -194,7 +192,6 @@ O cadastro deve criar ou reutilizar com segurança a identidade global. Ele não
 - O cadastro não deve conceder acesso automático à aplicação de origem nem a outra aplicação.
 - Se o cadastro autônomo estiver desabilitado, a tentativa deve ser recusada.
 - Nenhum token capaz de autorizar recursos protegidos deve ser emitido sem `Membership` ativa.
-- Uma `OnboardingIdentityProof` não deve autorizar APIs de negócio.
 
 ### IH-MVP-004 — Verificar e-mail
 
@@ -227,19 +224,18 @@ Quando `REQUIRED` estiver habilitado, deve existir um meio transacional mínimo,
 
 ### IH-MVP-006 — Autenticar com e-mail e senha
 
-Um usuário deve poder autenticar-se com e-mail e senha. Se possuir `Membership` ativa, poderá continuar o fluxo de acesso da aplicação. Se ainda não possuir acesso, a autenticação poderá produzir somente uma `OnboardingIdentityProof` vinculada a uma `OnboardingSession` previamente iniciada pelo backend da aplicação para a aquisição em andamento.
+Um usuário deve poder autenticar-se com e-mail e senha. Se possuir `Membership` ativa, poderá continuar o fluxo de acesso da aplicação. Sem `Membership`, a identidade autenticada poderá ser usada pelo backend ou BFF da aplicação somente para correlacionar uma aquisição mantida server-side; o resultado não autoriza APIs de negócio.
 
 #### Critérios de aceitação
 
 - Credenciais válidas, conta habilitada e `Membership` ativa devem permitir a continuidade do fluxo de acesso.
-- Credenciais válidas sem `Membership` ativa devem permitir somente o fluxo de onboarding autorizado.
+- Credenciais válidas sem `Membership` ativa não devem produzir autorização para APIs de negócio.
 - Credenciais inválidas, conta inexistente e conta desabilitada devem produzir resposta pública genérica.
 - Tentativas repetidas devem sofrer limitação e proteção contra força bruta.
 - Uma autenticação bem-sucedida ou falha deve gerar registro de auditoria sem armazenar a senha.
 - Autenticar-se em uma aplicação não deve conceder acesso a outra.
 - Autenticar-se sem acesso não deve criar `Membership`.
-- A prova de onboarding deve identificar o usuário de forma opaca, possuir finalidade e validade limitadas e não deve conter sua senha.
-- O navegador não deve poder escolher ou substituir a aplicação, a aquisição, o cliente de máquina ou a redirect URI vinculados à `OnboardingSession`.
+- O backend ou BFF deve obter o `sub` opaco somente de um resultado OIDC validado.
 
 ### IH-MVP-007 — Autenticar com provedor social
 
@@ -257,7 +253,7 @@ O usuário deve ser redirecionado ao provedor escolhido e retornar ao fluxo da a
 - Para vincular uma nova identidade externa a uma conta existente, o usuário deve comprovar controle da conta existente em um fluxo autenticado.
 - Cancelamento, erro ou recusa do provedor deve retornar uma mensagem segura e permitir nova tentativa.
 - Segredos dos provedores não devem ser expostos à aplicação consumidora nem ao navegador.
-- Sem `Membership` ativa, a autenticação social deve produzir no máximo a mesma prova restrita de onboarding permitida ao login local.
+- Sem `Membership` ativa, a autenticação social não deve autorizar APIs de negócio.
 
 ### IH-MVP-008 — Hospedar a experiência de autenticação
 
@@ -298,7 +294,7 @@ SPAs, aplicações web e BFFs devem autenticar usuários por Authorization Code.
 - Um verificador PKCE ausente ou incorreto deve impedir a troca do código.
 - Um código reutilizado, expirado ou emitido para outro cliente deve ser rejeitado.
 - O fluxo Implicit e o fluxo baseado no envio direto de usuário e senha pela aplicação consumidora não devem estar disponíveis.
-- Sem `Membership` ativa, o resultado do fluxo não deve autorizar recursos protegidos e deve permanecer restrito ao onboarding.
+- Sem `Membership` ativa, o resultado do fluxo não deve autorizar recursos protegidos da aplicação.
 
 ### IH-MVP-011 — Autorizar comunicação entre sistemas
 
@@ -311,7 +307,6 @@ Um cliente de máquina autorizado deve poder obter token por Client Credentials 
 - Tokens de máquina não devem representar um `UserAccount` nem herdar papéis de usuário.
 - Client Credentials não deve produzir refresh token.
 - Um cliente autorizado a provisionar acesso deve atuar somente sobre sua própria `ClientApplication`.
-- Um cliente com `onboarding:write` deve iniciar `OnboardingSession` somente para browser client e redirect URI ativos da própria `ClientApplication`.
 
 ### IH-MVP-012 — Emitir access token
 
@@ -382,7 +377,7 @@ O usuário deve poder solicitar recuperação de senha e definir nova senha por 
 
 Uma aplicação consumidora deve poder conceder, suspender e remover `Memberships` da própria aplicação por meio de um cliente de máquina autorizado. Um `PLATFORM_ADMIN` também deve poder executar essas operações, além de atribuir e remover papéis definidos para a aplicação.
 
-Antes de uma aquisição, o backend da aplicação deverá iniciar uma `OnboardingSession` autenticada para correlacionar a transação a um futuro `UserAccount`. Após a autenticação e as verificações obrigatórias, a aplicação poderá obter uma `OnboardingIdentityProof` vinculada a essa sessão. Depois de confirmar pagamento ou outra regra própria de aquisição, seu backend deverá solicitar a concessão usando a prova e suas próprias credenciais de máquina.
+O backend ou BFF da aplicação deve manter a referência de aquisição em sessão server-side e correlacioná-la ao `sub` opaco obtido por Authorization Code com PKCE. Após confirmar pagamento ou outra regra própria de aquisição, deverá solicitar a concessão usando esse identificador e suas próprias credenciais de máquina.
 
 O IdentityHub deve fornecer apenas autorização geral de acesso e papéis da aplicação. Pagamento, plano, assinatura, preço e decisões sobre recursos do negócio permanecem fora do IdentityHub.
 
@@ -390,9 +385,9 @@ O IdentityHub deve fornecer apenas autorização geral de acesso e papéis da ap
 
 - Uma solicitação válida da aplicação deve conceder acesso somente à própria aplicação.
 - A solicitação deve usar o identificador opaco do usuário; credenciais humanas não devem ser aceitas.
+- O identificador do usuário não deve ser aceito do navegador como autoridade; deve ser derivado de um resultado OIDC validado pelo backend ou BFF.
 - A mesma solicitação de provisionamento repetida com a mesma chave de idempotência não deve criar `Membership` nem atribuições duplicadas.
 - Falha temporária após a confirmação comercial deve permitir retentativa e reconciliação pela aplicação.
-- Uma `OnboardingIdentityProof` inválida, expirada, emitida para outra aplicação ou desvinculada da aquisição deve ser rejeitada.
 - Suspender ou remover uma `Membership` deve impedir novos tokens e renovações para aquela aplicação.
 - Atribuir um papel deve exigir que o papel pertença à mesma aplicação da `Membership`.
 - Uma tentativa de atribuição entre aplicações deve ser rejeitada e auditada.
@@ -571,8 +566,8 @@ O papel `PLATFORM_ADMIN` deve permitir as operações cotidianas previstas nesta
 O MVP estará funcionalmente concluído quando os seguintes percursos forem demonstrados em ambiente equivalente ao de produção:
 
 1. Um operador cadastra duas aplicações isoladas, cada uma com branding e políticas próprias.
-2. Um usuário se cadastra com e-mail e senha durante a aquisição da primeira aplicação, verifica os dados exigidos e recebe apenas uma prova restrita de identidade.
-3. A primeira aplicação confirma sua regra comercial e provisiona a `Membership` usando o identificador opaco do usuário, suas próprias credenciais e uma chave de idempotência.
+2. Um usuário se cadastra com e-mail e senha durante a aquisição da primeira aplicação, verifica os dados exigidos e autentica-se por Authorization Code com PKCE sem obter acesso de negócio.
+3. O backend ou BFF da primeira aplicação valida o resultado OIDC, correlaciona o `sub` opaco à aquisição server-side e, após confirmar sua regra comercial, provisiona a `Membership` usando suas próprias credenciais e uma chave de idempotência.
 4. Antes do provisionamento, o usuário não acessa recursos protegidos; depois dele, um novo token concede acesso somente à primeira aplicação.
 5. O mesmo usuário adquire a segunda aplicação e recebe acesso somente após o provisionamento correspondente feito por ela.
 6. Um usuário autentica-se por Google, GitHub e Facebook nos provedores habilitados.

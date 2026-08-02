@@ -187,7 +187,7 @@ Responsabilidades:
 - políticas de cadastro e contato;
 - branding;
 - memberships e papéis gerais;
-- onboarding e provisionamento;
+- aquisição e provisionamento;
 - administração da plataforma;
 - notificações;
 - auditoria suplementar;
@@ -251,8 +251,7 @@ Responsável por orquestrar capacidades de identidade sem duplicar credenciais o
 - login local e social;
 - recuperação e alteração de senha;
 - referência opaca ao usuário global;
-- `OnboardingSession` iniciada por backend consumidor;
-- criação e troca de `OnboardingIdentityProof`.
+- provisionamento idempotente de `Membership`.
 
 O módulo trabalha com `UserAccountRef`, não com uma cópia local completa do usuário.
 
@@ -466,8 +465,6 @@ API versionada do IdentityHub para:
 
 - configuração e consulta de `ClientApplication`;
 - comparação e aplicação de estado desejado;
-- criação idempotente de `OnboardingSession`;
-- troca ou validação de prova de onboarding;
 - provisionamento idempotente de `Membership`;
 - suspensão e remoção de acesso;
 - consulta de status de operação.
@@ -510,12 +507,13 @@ sequenceDiagram
     participant P as Provedor de pagamento
 
     U->>S: Escolhe produto ou plano
-    S->>I: Cria OnboardingSession com Client Credentials, aquisição e PKCE
-    I-->>S: Sessão opaca temporária
-    S-->>U: Inicia fluxo hospedado com sessão e state
+    S->>S: Mantém aquisição em sessão server-side
+    S->>I: Inicia Authorization Code com state, nonce e PKCE
     I->>K: Delega autenticação
     K-->>I: Identidade autenticada
-    I-->>S: OnboardingIdentityProof restrita
+    I-->>S: Authorization code no callback registrado
+    S->>I: Troca code e valida resposta OIDC
+    I-->>S: sub opaco autenticado
     S->>P: Processa pagamento
     P-->>S: Confirmação autenticada
     S->>I: Provisiona Membership com Client Credentials e idempotency key
@@ -531,8 +529,8 @@ Regras:
 
 - o IdentityHub não recebe detalhes de pagamento;
 - o SaaS não recebe senha nem credencial humana;
-- aplicação e aquisição são fixadas pelo backend autenticado antes do login;
-- a prova é vinculada à aplicação, aquisição, finalidade e prazo;
+- o backend valida issuer, audience, assinatura, tempo, `state`, `nonce` e PKCE;
+- o navegador não escolhe o `sub`, a aplicação nem a aquisição;
 - a decisão comercial pertence ao SaaS;
 - repetição da mesma concessão não duplica acesso;
 - até a projeção ser confirmada, não há token capaz de autorizar recursos protegidos;
@@ -828,7 +826,7 @@ Containers compartilham ciclo adequado por suíte; versões de imagens são fixa
 ### 21.4 Ponta a ponta
 
 - cadastro e verificação;
-- onboarding e pagamento simulado;
+- correlação de aquisição e pagamento simulado;
 - provisionamento;
 - login local e social simulado;
 - PKCE;

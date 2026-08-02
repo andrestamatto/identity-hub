@@ -127,23 +127,15 @@ public final class ClientApplication {
     public ApplicationClient configureMachine(
             ApplicationClientId clientId,
             ApplicationClientKey key,
-            MachineSettings settings,
             Clock clock) {
         Objects.requireNonNull(clock);
         return new ApplicationClient(
                 clientId,
                 id,
                 key,
-                settings,
+                new MachineSettings(),
                 true,
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
-    }
-
-    public ApplicationClient configureMachine(
-            ApplicationClientId clientId,
-            ApplicationClientKey key,
-            Clock clock) {
-        return configureMachine(clientId, key, new MachineSettings(), clock);
     }
 
     public ClientApplicationId id() {
