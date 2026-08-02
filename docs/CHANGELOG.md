@@ -11,6 +11,11 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Public password-recovery completion with a 15–64 character/common-password
+  policy, single-use proof consumption, fail-secure Keycloak identity
+  revalidation, session revocation before credential reset, durable
+  password-change notification, sanitized administrative events, and real
+  PostgreSQL/Keycloak evidence.
 - Public password-recovery request foundation with account-enumeration-resistant
   responses, eligible local-credential lookup through supported Keycloak Admin
   REST APIs, hashed 15-minute proofs, per-destination and per-source limits, and
