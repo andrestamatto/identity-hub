@@ -4,9 +4,9 @@
 
 O harness local permite executar e verificar as APIs administrativas das
 `SLICE-001`, os incrementos `SLICE-002A` a `SLICE-002C`, a entrega SMTP da
-`SLICE-003A`, a fundação de identidade local da `SLICE-004B` e a baseline de
-login hospedado da `SLICE-005D` com PostgreSQL 17, Keycloak 26.7 e Mailpit
-1.30.6 reais. A aplicação
+`SLICE-003A`, a fundação de identidade local da `SLICE-004B`, a baseline de
+login hospedado da `SLICE-005D` e a solicitação de recuperação da `SLICE-006A`
+com PostgreSQL 17, Keycloak 26.7 e Mailpit 1.30.6 reais. A aplicação
 continua sendo iniciada pelo Gradle no WSL; somente as dependências de
 infraestrutura usam containers.
 
@@ -96,6 +96,13 @@ mantém idempotentemente a política de 15 a 64 caracteres, perfil que não exig
 nomes além do e-mail, mensagens públicas genéricas, espera progressiva após cinco
 falhas e eventos `LOGIN`/`LOGIN_ERROR`. Não existe endpoint do IdentityHub que
 receba a senha nem comando de Resource Owner Password Credentials.
+
+A solicitação de recuperação usa
+`POST /public/v1/applications/{applicationIdentifier}/password-recoveries` e
+recebe somente `email`. Conta elegível e inexistente retornam o mesmo `202`, sem
+IDs ou prova. Quando elegível, o link de finalidade única chega ao Mailpit, expira
+em 15 minutos e permanece no outbox apenas até a entrega. A definição da nova
+senha pertence à próxima subfatia e ainda não está disponível neste ponto.
 
 ## 5. Projeção dos clientes da aplicação
 

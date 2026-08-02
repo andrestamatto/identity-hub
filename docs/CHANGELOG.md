@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Public password-recovery request foundation with account-enumeration-resistant
+  responses, eligible local-credential lookup through supported Keycloak Admin
+  REST APIs, hashed 15-minute proofs, per-destination and per-source limits, and
+  transactional durable email delivery that erases the sensitive link.
 - Hosted local login proof using OIDC Authorization Code with PKCE, generic
   authentication failures, email-only user profiles, five-failure progressive
   brute-force protection, retained authentication events, and no business API
