@@ -6,10 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import br.dev.andrestamatto.identityhub.communication.adapter.out.jdbc.JdbcEmailDeliveryRepository;
 import br.dev.andrestamatto.identityhub.communication.application.EmailOrigin;
 import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordRecoveryEmail;
+import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordChangedEmail;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.communication.CommunicationPasswordChangedNotifier;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.communication.CommunicationRecoveryEmailRequester;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcPasswordRecoveryChallengeRepository;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.SpringVerificationTransaction;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentity;
+import br.dev.andrestamatto.identityhub.identity.application.CompletePasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryRateLimitException;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoverySecret;
 import br.dev.andrestamatto.identityhub.identity.application.RecoveryEmailRequester;
@@ -47,6 +50,8 @@ class PasswordRecoveryPersistenceIntegrationTest {
             UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779");
     private static final Instant NOW = Instant.parse("2026-08-02T16:00:00Z");
     private static final String SECRET = "test-only-password-recovery-secret";
+    private static final UUID PASSWORD_CHANGED_DELIVERY_ID =
+            UUID.fromString("c0616535-c869-4554-8df8-c220dca39b8e");
 
     @Container
     private static final PostgreSQLContainer POSTGRES =
@@ -141,6 +146,49 @@ class PasswordRecoveryPersistenceIntegrationTest {
                         """).query(Long.class).single()).isOne();
         assertThat(jdbcClient.sql("select count(*) from password_recovery_challenge")
                 .query(Long.class).single()).isEqualTo(3);
+    }
+
+    @Test
+    void commitsConsumedProofAndPasswordChangedNotificationAfterReset() {
+        request(CHALLENGE_ID, emailRequester()).execute(command());
+        var resets = new AtomicInteger();
+        var emailRepository = new JdbcEmailDeliveryRepository(jdbcClient, transactions);
+        var changedEmail = new RequestPasswordChangedEmail(
+                emailRepository,
+                id -> new EmailOrigin(id, "auto-radar", "Auto Radar", "development"),
+                Clock.fixed(NOW.plusSeconds(1), ZoneOffset.UTC));
+        var complete = new CompletePasswordRecovery(
+                new JdbcPasswordRecoveryChallengeRepository(jdbcClient),
+                (account, email, password) -> resets.incrementAndGet(),
+                new CommunicationPasswordChangedNotifier(changedEmail),
+                new SpringVerificationTransaction(transactions),
+                Clock.fixed(NOW.plusSeconds(1), ZoneOffset.UTC),
+                () -> PASSWORD_CHANGED_DELIVERY_ID);
+
+        complete.execute(new CompletePasswordRecovery.Command(
+                CHALLENGE_ID + "." + SECRET,
+                "a new secure password phrase".toCharArray(),
+                "complete-password-recovery-persistence"));
+
+        assertThat(resets).hasValue(1);
+        assertThat(jdbcClient.sql("""
+                        select state
+                        from password_recovery_challenge
+                        where challenge_id = :challengeId
+                        """)
+                .param("challengeId", CHALLENGE_ID)
+                .query(String.class)
+                .single())
+                .isEqualTo("USED");
+        assertThat(jdbcClient.sql("""
+                        select purpose
+                        from email_delivery_outbox
+                        where delivery_id = :deliveryId
+                        """)
+                .param("deliveryId", PASSWORD_CHANGED_DELIVERY_ID)
+                .query(String.class)
+                .single())
+                .isEqualTo("PASSWORD_CHANGED");
     }
 
     private RequestPasswordRecovery request(UUID id, RecoveryEmailRequester requester) {

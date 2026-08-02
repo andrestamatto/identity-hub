@@ -16,9 +16,13 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicati
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SelfRegistrationPolicy;
 import br.dev.andrestamatto.identityhub.identity.application.BeginLocalRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerification;
+import br.dev.andrestamatto.identityhub.identity.application.CompletePasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRejectedException;
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRateLimitException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
+import br.dev.andrestamatto.identityhub.identity.application.LocalPasswordResetException;
+import br.dev.andrestamatto.identityhub.identity.application.InvalidPasswordRecoveryPasswordException;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryRejectedException;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryRateLimitException;
 import br.dev.andrestamatto.identityhub.identity.application.RequestPasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.application.SelfRegistrationDisabledException;
@@ -44,6 +48,8 @@ class PublicIdentityControllerTest {
             "/public/v1/applications/auto-radar/password-recoveries";
     private static final String RECOVERY_ACCEPTED_MESSAGE =
             "If the account is eligible, password recovery instructions will be sent";
+    private static final String COMPLETE_RECOVERY_ENDPOINT =
+            "/public/v1/password-recoveries";
 
     private final GetClientApplicationByIdentifier getApplication =
             mock(GetClientApplicationByIdentifier.class);
@@ -52,6 +58,8 @@ class PublicIdentityControllerTest {
             mock(ConfirmEmailVerification.class);
     private final RequestPasswordRecovery requestPasswordRecovery =
             mock(RequestPasswordRecovery.class);
+    private final CompletePasswordRecovery completePasswordRecovery =
+            mock(CompletePasswordRecovery.class);
     private MockMvc mvc;
 
     @BeforeEach
@@ -65,6 +73,7 @@ class PublicIdentityControllerTest {
                 beginRegistration,
                 confirmVerification,
                 requestPasswordRecovery,
+                completePasswordRecovery,
                 limiter,
                 recoveryLimiter,
                 PublicResponseTiming.none());
@@ -88,6 +97,61 @@ class PublicIdentityControllerTest {
                 .contains(RECOVERY_ACCEPTED_MESSAGE);
         org.assertj.core.api.Assertions.assertThat(second.getHeader("Cache-Control"))
                 .isEqualTo(first.getHeader("Cache-Control"));
+    }
+
+    @Test
+    void completesPasswordRecoveryWithoutReturningSensitiveData() throws Exception {
+        mvc.perform(completeRecoveryRequest("challenge.secret", "a new secure password phrase"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""))
+                .andExpect(header().string("Cache-Control", "no-store"));
+    }
+
+    @Test
+    void rejectsInvalidRecoveryProofGenericallyWithoutEchoingIt() throws Exception {
+        org.mockito.Mockito.doThrow(new PasswordRecoveryRejectedException())
+                .when(completePasswordRecovery).execute(any());
+
+        mvc.perform(completeRecoveryRequest("invalid.secret", "a new secure password phrase"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(
+                        "Password recovery could not be completed"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("invalid.secret"))));
+    }
+
+    @Test
+    void explainsRecoveryPasswordPolicyWithoutEchoingPassword() throws Exception {
+        org.mockito.Mockito.doThrow(new InvalidPasswordRecoveryPasswordException())
+                .when(completePasswordRecovery).execute(any());
+
+        mvc.perform(completeRecoveryRequest("challenge.secret", "too-short"))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.detail").value(
+                        "Use a password with 15 to 64 characters that is not commonly used"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("too-short"))));
+    }
+
+    @Test
+    void sanitizesPasswordResetProviderFailure() throws Exception {
+        org.mockito.Mockito.doThrow(new LocalPasswordResetException())
+                .when(completePasswordRecovery).execute(any());
+
+        mvc.perform(completeRecoveryRequest("challenge.secret", "a new secure password phrase"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.detail").value(
+                        "Password recovery could not be completed at this time"));
+    }
+
+    @Test
+    void rejectsMissingRecoveryProofGenerically() throws Exception {
+        mvc.perform(post(COMPLETE_RECOVERY_ENDPOINT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newPassword\":\"a new secure password phrase\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(
+                        "Password recovery could not be completed"));
     }
 
     @Test
@@ -127,6 +191,7 @@ class PublicIdentityControllerTest {
                 beginRegistration,
                 confirmVerification,
                 requestPasswordRecovery,
+                completePasswordRecovery,
                 new InMemoryRegistrationRateLimiter(
                         20, Duration.ofMinutes(15), 100, Clock.systemUTC()),
                 new InMemoryPasswordRecoveryRateLimiter(
@@ -292,6 +357,8 @@ class PublicIdentityControllerTest {
                 "challenge.secret");
         var recovery = new PublicIdentityController.PasswordRecoveryRequest(
                 "andre@example.com");
+        var completion = new PublicIdentityController.CompletePasswordRecoveryRequest(
+                "challenge.secret", "a new secure password phrase".toCharArray());
 
         org.assertj.core.api.Assertions.assertThat(registration.toString())
                 .doesNotContain("andre@example.com", "correct-horse-battery");
@@ -299,7 +366,10 @@ class PublicIdentityControllerTest {
                 .doesNotContain("challenge.secret");
         org.assertj.core.api.Assertions.assertThat(recovery.toString())
                 .doesNotContain("andre@example.com");
+        org.assertj.core.api.Assertions.assertThat(completion.toString())
+                .doesNotContain("challenge.secret", "a new secure password phrase");
         registration.close();
+        completion.close();
     }
 
     @Test
@@ -311,6 +381,7 @@ class PublicIdentityControllerTest {
                 beginRegistration,
                 confirmVerification,
                 requestPasswordRecovery,
+                completePasswordRecovery,
                 limiter,
                 new InMemoryPasswordRecoveryRateLimiter(
                         20, Duration.ofMinutes(15), 100, Clock.systemUTC()),
@@ -340,6 +411,14 @@ class PublicIdentityControllerTest {
         return post(RECOVERY_ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"" + email + "\"}");
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+            completeRecoveryRequest(String token, String password) {
+        return post(COMPLETE_RECOVERY_ENDPOINT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"" + token + "\",\"newPassword\":\""
+                        + password + "\"}");
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder

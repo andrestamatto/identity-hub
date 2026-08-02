@@ -80,6 +80,8 @@ class LocalDevelopmentHarnessTest(unittest.TestCase):
         self.assertEqual(30, realm["waitIncrementSeconds"])
         self.assertEqual(900, realm["maxFailureWaitSeconds"])
         self.assertTrue(realm["eventsEnabled"])
+        self.assertTrue(realm["adminEventsEnabled"])
+        self.assertFalse(realm["adminEventsDetailsEnabled"])
         self.assertEqual(
             ["LOGIN", "LOGIN_ERROR"],
             realm["enabledEventTypes"],

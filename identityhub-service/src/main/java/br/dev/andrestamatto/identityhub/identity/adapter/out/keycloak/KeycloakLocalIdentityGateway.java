@@ -6,10 +6,13 @@ import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegist
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationFailureCode;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerifier;
+import br.dev.andrestamatto.identityhub.identity.application.LocalPasswordResetException;
+import br.dev.andrestamatto.identityhub.identity.application.LocalPasswordResetter;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentity;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentityFinder;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentityLookupException;
+import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
 import br.dev.andrestamatto.identityhub.identity.domain.UserAccountRef;
 import java.io.IOException;
@@ -31,8 +34,9 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-public final class KeycloakLocalIdentityRegistrar
-        implements LocalIdentityRegistrar, LocalIdentityVerifier, PasswordRecoveryIdentityFinder {
+public final class KeycloakLocalIdentityGateway
+        implements LocalIdentityRegistrar, LocalIdentityVerifier, PasswordRecoveryIdentityFinder,
+                LocalPasswordResetter {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
@@ -43,7 +47,7 @@ public final class KeycloakLocalIdentityRegistrar
     private final String managementClientId;
     private final String managementClientSecret;
 
-    public KeycloakLocalIdentityRegistrar(
+    public KeycloakLocalIdentityGateway(
             HttpClient httpClient,
             ObjectMapper objectMapper,
             URI baseUri,
@@ -106,6 +110,39 @@ public final class KeycloakLocalIdentityRegistrar
                 throw lookupException;
             }
             throw new PasswordRecoveryIdentityLookupException(exception);
+        }
+    }
+
+    @Override
+    public void reset(
+            UserAccountRef userAccountRef,
+            LoginEmail expectedEmail,
+            LocalPassword password) {
+        Objects.requireNonNull(userAccountRef);
+        Objects.requireNonNull(expectedEmail);
+        Objects.requireNonNull(password);
+        try {
+            var accessToken = requestManagementToken();
+            var userResponse = sendAuthorized(
+                    HttpRequest.newBuilder(userUri(userAccountRef)).GET(), accessToken);
+            ensureSuccess(
+                    userResponse.statusCode(),
+                    LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+            var user = objectMapper.readTree(userResponse.body());
+            if (!isEligibleIdentity(user, expectedEmail)
+                    || !hasPasswordCredential(userAccountRef, accessToken)) {
+                throw new LocalPasswordResetException();
+            }
+            revokeSessions(userAccountRef, accessToken);
+            resetPassword(userAccountRef, password, accessToken);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new LocalPasswordResetException();
+        } catch (IOException | RuntimeException exception) {
+            if (exception instanceof LocalPasswordResetException resetException) {
+                throw resetException;
+            }
+            throw new LocalPasswordResetException();
         }
     }
 
@@ -332,6 +369,46 @@ public final class KeycloakLocalIdentityRegistrar
 
     private URI credentialsUri(UserAccountRef userAccountRef) {
         return URI.create(userUri(userAccountRef) + "/credentials");
+    }
+
+    private void revokeSessions(UserAccountRef userAccountRef, String accessToken)
+            throws IOException, InterruptedException {
+        var response = sendAuthorized(
+                HttpRequest.newBuilder(URI.create(userUri(userAccountRef) + "/logout"))
+                        .POST(HttpRequest.BodyPublishers.noBody()),
+                accessToken);
+        ensureSuccess(
+                response.statusCode(),
+                LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+    }
+
+    private void resetPassword(
+            UserAccountRef userAccountRef,
+            LocalPassword password,
+            String accessToken) throws IOException, InterruptedException {
+        var rawPassword = password.copy();
+        byte[] body = null;
+        try {
+            var credential = new LinkedHashMap<String, Object>();
+            credential.put("type", "password");
+            credential.put("value", rawPassword);
+            credential.put("temporary", false);
+            body = objectMapper.writeValueAsBytes(credential);
+            var response = sendAuthorized(
+                    HttpRequest.newBuilder(URI.create(
+                                    userUri(userAccountRef) + "/reset-password"))
+                            .header("Content-Type", "application/json")
+                            .PUT(HttpRequest.BodyPublishers.ofByteArray(body)),
+                    accessToken);
+            ensureSuccess(
+                    response.statusCode(),
+                    LocalIdentityRegistrationFailureCode.MANAGEMENT_REQUEST_REJECTED);
+        } finally {
+            Arrays.fill(rawPassword, '\0');
+            if (body != null) {
+                Arrays.fill(body, (byte) 0);
+            }
+        }
     }
 
     private URI userUri(UserAccountRef userAccountRef) {

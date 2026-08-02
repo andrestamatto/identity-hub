@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.keycloak.KeycloakApplicationClientProjector;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionState;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientSnapshot;
-import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityRegistrar;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityGateway;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
@@ -76,6 +76,9 @@ class KeycloakAdminTokenIntegrationTest {
     private static final String LOCAL_LOGIN_PASSWORD = "test-only-verified-user-password";
     private static final String BRUTE_FORCE_USERNAME = "brute.force.user@example.test";
     private static final String BRUTE_FORCE_PASSWORD = "test-only-brute-force-user-password";
+    private static final String RESET_USERNAME = "password.reset.user@example.test";
+    private static final String RESET_OLD_PASSWORD = "test-only-password-before-reset";
+    private static final String RESET_NEW_PASSWORD = "test-only-password-after-reset";
     private static final String LOCAL_LOGIN_REDIRECT_URI =
             "http://127.0.0.1:5173/auth/callback";
     private static final String LOCAL_LOGIN_PKCE_VERIFIER =
@@ -295,7 +298,7 @@ class KeycloakAdminTokenIntegrationTest {
 
     @Test
     void registersPendingLocalIdentityUsingIsolatedServiceAccount() throws Exception {
-        var registrar = new KeycloakLocalIdentityRegistrar(
+        var registrar = new KeycloakLocalIdentityGateway(
                 HttpClient.newHttpClient(),
                 JSON,
                 keycloakBaseUri(),
@@ -436,6 +439,8 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(realm.path("waitIncrementSeconds").asInt()).isEqualTo(30);
         assertThat(realm.path("maxFailureWaitSeconds").asInt()).isEqualTo(900);
         assertThat(realm.path("eventsEnabled").asBoolean()).isTrue();
+        assertThat(realm.path("adminEventsEnabled").asBoolean()).isTrue();
+        assertThat(realm.path("adminEventsDetailsEnabled").asBoolean()).isFalse();
         assertThat(realm.path("enabledEventTypes"))
                 .containsExactlyInAnyOrder(
                         JSON.valueToTree("LOGIN"),
@@ -447,7 +452,7 @@ class KeycloakAdminTokenIntegrationTest {
             throws Exception {
         projectLocalLoginSpa();
         var userAccountRef = registerVerifiedLocalLoginUser();
-        assertThat(localIdentityRegistrar().findEligible(
+        assertThat(localIdentityGateway().findEligible(
                         new LoginEmail(LOCAL_LOGIN_USERNAME)))
                 .get()
                 .extracting(identity -> identity.userAccountRef().value())
@@ -481,6 +486,63 @@ class KeycloakAdminTokenIntegrationTest {
     }
 
     @Test
+    void revokesExistingSessionAndReplacesLocalPasswordWithoutSensitiveAdminEvent()
+            throws Exception {
+        projectLocalLoginSpa();
+        var userAccountRef = registerVerifiedLocalLoginUser(
+                RESET_USERNAME, RESET_OLD_PASSWORD);
+        var clientId = "ih-spa-" + LOCAL_LOGIN_CLIENT_ID;
+        var tokens = authenticateLocalUser(
+                clientId,
+                LOCAL_LOGIN_REDIRECT_URI,
+                RESET_USERNAME,
+                RESET_OLD_PASSWORD,
+                LOCAL_LOGIN_PKCE_VERIFIER);
+
+        try (var password = new LocalPassword(RESET_NEW_PASSWORD.toCharArray())) {
+            localIdentityGateway().reset(
+                    userAccountRef, new LoginEmail(RESET_USERNAME), password);
+        }
+
+        assertGenericLoginFailure(attemptLocalLogin(
+                clientId,
+                LOCAL_LOGIN_REDIRECT_URI,
+                RESET_USERNAME,
+                RESET_OLD_PASSWORD,
+                LOCAL_LOGIN_PKCE_VERIFIER));
+        assertThat(authenticateLocalUser(
+                        clientId,
+                        LOCAL_LOGIN_REDIRECT_URI,
+                        RESET_USERNAME,
+                        RESET_NEW_PASSWORD,
+                        LOCAL_LOGIN_PKCE_VERIFIER)
+                .required("access_token").asString())
+                .isNotBlank();
+
+        var refreshResponse = httpClient(HttpClient.Redirect.NORMAL).send(
+                formRequest(
+                        keycloakBaseUri.resolve(
+                                "/realms/" + REALM + "/protocol/openid-connect/token"),
+                        Map.of(
+                                "grant_type", "refresh_token",
+                                "client_id", clientId,
+                                "refresh_token", tokens.required("refresh_token").asString())),
+                HttpResponse.BodyHandlers.discarding());
+        assertThat(refreshResponse.statusCode()).isEqualTo(400);
+
+        var adminEvents = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve(
+                                "/admin/realms/" + REALM + "/admin-events"),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(adminEvents.statusCode()).isEqualTo(200);
+        assertThat(adminEvents.body()).contains("reset-password");
+        assertThat(adminEvents.body())
+                .doesNotContain(RESET_OLD_PASSWORD, RESET_NEW_PASSWORD);
+    }
+
+    @Test
     void rejectsLocalLoginGenericallyAndActivatesTemporaryBruteForceProtection()
             throws Exception {
         projectLocalLoginSpa();
@@ -490,7 +552,7 @@ class KeycloakAdminTokenIntegrationTest {
         registerPendingLocalLoginUser(
                 "disabled.user@example.test",
                 "test-only-disabled-user-password");
-        assertThat(localIdentityRegistrar().findEligible(
+        assertThat(localIdentityGateway().findEligible(
                         new LoginEmail("disabled.user@example.test")))
                 .isEmpty();
         var clientId = "ih-spa-" + LOCAL_LOGIN_CLIENT_ID;
@@ -591,7 +653,7 @@ class KeycloakAdminTokenIntegrationTest {
         var registration = registerPendingLocalLoginUser(
                 username,
                 rawPassword);
-        var registrar = localIdentityRegistrar();
+        var registrar = localIdentityGateway();
         registrar.verifyAndEnable(registration, new LoginEmail(username));
         return registration;
     }
@@ -599,7 +661,7 @@ class KeycloakAdminTokenIntegrationTest {
     private static UserAccountRef registerPendingLocalLoginUser(
             String username,
             String rawPassword) {
-        var registrar = localIdentityRegistrar();
+        var registrar = localIdentityGateway();
         var email = new LoginEmail(username);
         LocalIdentityRegistration registration;
         try (var password = new LocalPassword(rawPassword.toCharArray())) {
@@ -608,8 +670,8 @@ class KeycloakAdminTokenIntegrationTest {
         return registration.userAccountRef();
     }
 
-    private static KeycloakLocalIdentityRegistrar localIdentityRegistrar() {
-        return new KeycloakLocalIdentityRegistrar(
+    private static KeycloakLocalIdentityGateway localIdentityGateway() {
+        return new KeycloakLocalIdentityGateway(
                 HttpClient.newHttpClient(),
                 JSON,
                 keycloakBaseUri(),
@@ -1491,6 +1553,8 @@ class KeycloakAdminTokenIntegrationTest {
                   "maxFailureWaitSeconds": 900,
                   "maxDeltaTimeSeconds": 43200,
                   "eventsEnabled": true,
+                  "adminEventsEnabled": true,
+                  "adminEventsDetailsEnabled": false,
                   "eventsExpiration": 2592000,
                   "enabledEventTypes": ["LOGIN", "LOGIN_ERROR"],
                   "roles": {

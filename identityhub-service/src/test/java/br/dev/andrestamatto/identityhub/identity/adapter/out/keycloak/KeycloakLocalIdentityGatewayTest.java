@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationFailureCode;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
+import br.dev.andrestamatto.identityhub.identity.application.LocalPasswordResetException;
 import br.dev.andrestamatto.identityhub.identity.application.PendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.domain.LocalPassword;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
@@ -16,6 +17,8 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
@@ -24,7 +27,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-class KeycloakLocalIdentityRegistrarTest {
+class KeycloakLocalIdentityGatewayTest {
 
     private static final String REALM = "identityhub-test";
     private static final UUID USER_ID =
@@ -33,10 +36,12 @@ class KeycloakLocalIdentityRegistrarTest {
 
     private final AtomicInteger creates = new AtomicInteger();
     private final AtomicInteger updates = new AtomicInteger();
+    private final List<String> credentialMutations = new ArrayList<>();
     private HttpServer server;
     private JsonNode storedUser;
     private int managementStatus = 200;
     private int createStatus = 201;
+    private int logoutStatus = 204;
     private boolean passwordCredentialCreated;
 
     @BeforeEach
@@ -156,8 +161,63 @@ class KeycloakLocalIdentityRegistrarTest {
                 });
     }
 
-    private KeycloakLocalIdentityRegistrar registrar() {
-        return new KeycloakLocalIdentityRegistrar(
+    @Test
+    void revokesSessionsBeforeResettingPassword() {
+        var registrar = registrar();
+        var registration = register(registrar);
+        registrar.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+
+        try (var password = new LocalPassword(
+                "uma nova frase longa e segura".toCharArray())) {
+            registrar.reset(
+                    registration.userAccountRef(),
+                    new LoginEmail("andre@example.com"),
+                    password);
+        }
+
+        assertThat(credentialMutations).containsExactly("logout", "reset-password");
+    }
+
+    @Test
+    void refusesResetWhenVerifiedIdentityNoLongerMatches() {
+        var registrar = registrar();
+        var registration = register(registrar);
+        registrar.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+
+        try (var password = new LocalPassword(
+                "uma nova frase longa e segura".toCharArray())) {
+            assertThatThrownBy(() -> registrar.reset(
+                            registration.userAccountRef(),
+                            new LoginEmail("other@example.com"),
+                            password))
+                    .isInstanceOf(LocalPasswordResetException.class);
+        }
+        assertThat(credentialMutations).isEmpty();
+    }
+
+    @Test
+    void doesNotResetPasswordWhenSessionRevocationFails() {
+        var registrar = registrar();
+        var registration = register(registrar);
+        registrar.verifyAndEnable(
+                registration.userAccountRef(), new LoginEmail("andre@example.com"));
+        logoutStatus = 503;
+
+        try (var password = new LocalPassword(
+                "uma nova frase longa e segura".toCharArray())) {
+            assertThatThrownBy(() -> registrar.reset(
+                            registration.userAccountRef(),
+                            new LoginEmail("andre@example.com"),
+                            password))
+                    .isInstanceOf(LocalPasswordResetException.class);
+        }
+        assertThat(credentialMutations).containsExactly("logout");
+    }
+
+    private KeycloakLocalIdentityGateway registrar() {
+        return new KeycloakLocalIdentityGateway(
                 HttpClient.newHttpClient(),
                 JSON,
                 URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
@@ -167,7 +227,7 @@ class KeycloakLocalIdentityRegistrarTest {
     }
 
     private br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistration
-            register(KeycloakLocalIdentityRegistrar registrar) {
+            register(KeycloakLocalIdentityGateway registrar) {
         try (var password = new LocalPassword(
                 "frase longa com café seguro".toCharArray())) {
             return registrar.register(new PendingLocalIdentity(
@@ -187,6 +247,21 @@ class KeycloakLocalIdentityRegistrarTest {
         if (exchange.getRequestURI().getPath().endsWith(USER_ID + "/credentials")) {
             send(exchange, 200, passwordCredentialCreated
                     ? "[{\"type\":\"password\"}]" : "[]");
+            return;
+        }
+        if (exchange.getRequestURI().getPath().endsWith(USER_ID + "/logout")) {
+            credentialMutations.add("logout");
+            send(exchange, logoutStatus, "");
+            return;
+        }
+        if (exchange.getRequestURI().getPath().endsWith(USER_ID + "/reset-password")) {
+            credentialMutations.add("reset-password");
+            var credential = JSON.readTree(exchange.getRequestBody().readAllBytes());
+            assertThat(credential.path("type").asString()).isEqualTo("password");
+            assertThat(credential.path("temporary").asBoolean()).isFalse();
+            assertThat(credential.path("value").asString())
+                    .isEqualTo("uma nova frase longa e segura");
+            send(exchange, 204, "");
             return;
         }
         if (exchange.getRequestURI().getPath().endsWith(USER_ID.toString())) {

@@ -240,6 +240,8 @@ def realm_security_baseline() -> dict:
         "maxFailureWaitSeconds": 900,
         "maxDeltaTimeSeconds": 43200,
         "eventsEnabled": True,
+        "adminEventsEnabled": True,
+        "adminEventsDetailsEnabled": False,
         "eventsExpiration": 2592000,
         "enabledEventTypes": ["LOGIN", "LOGIN_ERROR"],
     }
