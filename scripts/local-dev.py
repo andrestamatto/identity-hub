@@ -98,6 +98,7 @@ def request_json(
     *,
     method: str = "GET",
     body: dict | list | None = None,
+    text: str | None = None,
     token: str | None = None,
     form: dict[str, str] | None = None,
     expected: tuple[int, ...] = (200,),
@@ -107,6 +108,9 @@ def request_json(
     if body is not None:
         headers["Content-Type"] = "application/json"
         data = json.dumps(body).encode()
+    elif text is not None:
+        headers["Content-Type"] = "text/plain; charset=UTF-8"
+        data = text.encode("utf-8")
     elif form is not None:
         headers["Content-Type"] = "application/x-www-form-urlencoded"
         data = urllib.parse.urlencode(form).encode()
@@ -167,7 +171,7 @@ def realm_representation(env: dict[str, str]) -> dict:
         "otpPolicyAlgorithm": "HmacSHA1",
         "otpPolicyDigits": 6,
         "otpPolicyPeriod": 30,
-        "passwordPolicy": "length(15) and maxLength(64)",
+        **realm_security_baseline(),
         "roles": {"realm": [{"name": role} for role in ADMIN_ROLES]},
         "clients": [
             management_client_representation(env),
@@ -219,6 +223,25 @@ def realm_representation(env: dict[str, str]) -> dict:
                 ],
             }
         ],
+    }
+
+
+def realm_security_baseline() -> dict:
+    return {
+        "passwordPolicy": "length(15) and maxLength(64)",
+        "internationalizationEnabled": True,
+        "supportedLocales": ["en", "pt-BR"],
+        "defaultLocale": "en",
+        "bruteForceProtected": True,
+        "permanentLockout": False,
+        "failureFactor": 5,
+        "quickLoginCheckMilliSeconds": 0,
+        "waitIncrementSeconds": 30,
+        "maxFailureWaitSeconds": 900,
+        "maxDeltaTimeSeconds": 43200,
+        "eventsEnabled": True,
+        "eventsExpiration": 2592000,
+        "enabledEventTypes": ["LOGIN", "LOGIN_ERROR"],
     }
 
 
@@ -429,14 +452,57 @@ def configure_amr(env: dict[str, str], token: str) -> None:
         raise RuntimeError("O fluxo do Keycloak não expôs execuções suficientes para AMR.")
 
 
-def configure_password_policy(env: dict[str, str], token: str) -> None:
+def configure_realm_security(env: dict[str, str], token: str) -> None:
     request_json(
         f"{keycloak_url(env)}/admin/realms/{REALM}",
         method="PUT",
         token=token,
-        body={"passwordPolicy": "length(15) and maxLength(64)"},
+        body=realm_security_baseline(),
         expected=(204,),
     )
+
+
+def allow_email_only_profile(profile: dict) -> dict:
+    for attribute in profile.get("attributes", []):
+        if attribute.get("name") in {"firstName", "lastName"}:
+            attribute.pop("required", None)
+    return profile
+
+
+def configure_user_profile(env: dict[str, str], token: str) -> None:
+    endpoint = f"{keycloak_url(env)}/admin/realms/{REALM}/users/profile"
+    _, profile = request_json(endpoint, token=token)
+    assert isinstance(profile, dict)
+    request_json(
+        endpoint,
+        method="PUT",
+        token=token,
+        body=allow_email_only_profile(profile),
+        expected=(200, 204),
+    )
+
+
+def configure_generic_login_messages(env: dict[str, str], token: str) -> None:
+    messages = {
+        "en": {
+            "accountDisabledMessage": "Invalid username or password.",
+            "accountTemporarilyDisabledMessage": "Invalid username or password.",
+        },
+        "pt-BR": {
+            "accountDisabledMessage": "E-mail ou senha inválidos.",
+            "accountTemporarilyDisabledMessage": "E-mail ou senha inválidos.",
+        },
+    }
+    base = f"{keycloak_url(env)}/admin/realms/{REALM}/localization"
+    for locale, localized in messages.items():
+        for key, value in localized.items():
+            request_json(
+                f"{base}/{urllib.parse.quote(locale)}/{key}",
+                method="PUT",
+                token=token,
+                text=value,
+                expected=(204,),
+            )
 
 
 def bootstrap(env: dict[str, str]) -> None:
@@ -457,7 +523,9 @@ def bootstrap(env: dict[str, str]) -> None:
     else:
         configure_amr(env, token)
         print("Keycloak local já estava configurado.")
-    configure_password_policy(env, token)
+    configure_realm_security(env, token)
+    configure_user_profile(env, token)
+    configure_generic_login_messages(env, token)
     configure_management_client(env, token)
     configure_identity_management_client(env, token)
 
