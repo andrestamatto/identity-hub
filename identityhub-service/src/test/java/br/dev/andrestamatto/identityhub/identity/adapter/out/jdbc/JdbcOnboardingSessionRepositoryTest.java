@@ -1,6 +1,7 @@
 package br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc.JdbcApplicationClientConfigurationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc.JdbcClientApplicationRepository;
@@ -14,17 +15,23 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicati
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import br.dev.andrestamatto.identityhub.identity.application.OnboardingSessionRepository;
+import br.dev.andrestamatto.identityhub.identity.application.IssueOnboardingIdentityProof;
+import br.dev.andrestamatto.identityhub.identity.application.OnboardingProofRejectedException;
+import br.dev.andrestamatto.identityhub.identity.application.VerifiedOnboardingIdentity;
 import br.dev.andrestamatto.identityhub.identity.domain.OnboardingDigest;
 import br.dev.andrestamatto.identityhub.identity.domain.OnboardingSession;
 import br.dev.andrestamatto.identityhub.identity.domain.OnboardingSessionId;
 import br.dev.andrestamatto.identityhub.identity.domain.PkceCodeChallenge;
+import br.dev.andrestamatto.identityhub.identity.domain.UserAccountRef;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +59,7 @@ class JdbcOnboardingSessionRepositoryTest {
 
     private static JdbcClient jdbcClient;
     private static JdbcOnboardingSessionRepository repository;
+    private static TransactionTemplate transactions;
 
     @BeforeAll
     static void migrate() {
@@ -59,13 +67,14 @@ class JdbcOnboardingSessionRepositoryTest {
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
         Flyway.configure().dataSource(dataSource).load().migrate();
         jdbcClient = JdbcClient.create(dataSource);
-        var transactions = new TransactionTemplate(new JdbcTransactionManager(dataSource));
+        transactions = new TransactionTemplate(new JdbcTransactionManager(dataSource));
         repository = new JdbcOnboardingSessionRepository(jdbcClient);
         seedClients(jdbcClient, transactions);
     }
 
     @BeforeEach
     void clearSessions() {
+        jdbcClient.sql("delete from onboarding_identity_proof").update();
         jdbcClient.sql("delete from onboarding_session").update();
     }
 
@@ -109,6 +118,67 @@ class JdbcOnboardingSessionRepositoryTest {
         }
     }
 
+    @Test
+    void concurrentAuthenticationCompletionPersistsOnlyOneHashedProof() throws Exception {
+        repository.saveOrFind(session("A", "a"));
+        var sequence = new AtomicInteger();
+        var issueProof = new IssueOnboardingIdentityProof(
+                repository,
+                new SpringOnboardingProofTransaction(transactions),
+                Clock.fixed(NOW.plusSeconds(60), ZoneOffset.UTC),
+                () -> sequence.getAndIncrement() == 0 ? "B".repeat(43) : "C".repeat(43));
+        var identity = new VerifiedOnboardingIdentity(
+                new UserAccountRef(UUID.randomUUID()));
+        var ready = new CountDownLatch(2);
+        var start = new CountDownLatch(1);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> issueWhenReleased(
+                    issueProof, identity, ready, start));
+            var second = executor.submit(() -> issueWhenReleased(
+                    issueProof, identity, ready, start));
+            ready.await();
+            start.countDown();
+
+            assertThat(Arrays.asList(first.get(), second.get()))
+                    .satisfiesExactlyInAnyOrder(
+                            outcome -> assertThat(outcome).isNull(),
+                            outcome -> assertThat(outcome)
+                                    .isInstanceOf(OnboardingProofRejectedException.class));
+        }
+
+        assertThat(jdbcClient.sql("select count(*) from onboarding_identity_proof")
+                .query(Integer.class)
+                .single()).isOne();
+        var stored = jdbcClient.sql("""
+                        select proof_digest, user_account_ref, state, email_verified
+                        from onboarding_identity_proof
+                        """)
+                .query((resultSet, rowNumber) -> new StoredProof(
+                        resultSet.getString("proof_digest"),
+                        resultSet.getObject("user_account_ref", UUID.class),
+                        resultSet.getString("state"),
+                        resultSet.getBoolean("email_verified")))
+                .single();
+        assertThat(stored.digest()).hasSize(64).isNotEqualTo("B".repeat(43));
+        assertThat(stored.userAccountRef()).isEqualTo(identity.userAccountRef().value());
+        assertThat(stored.state()).isEqualTo("AVAILABLE");
+        assertThat(stored.emailVerified()).isTrue();
+        assertThat(jdbcClient.sql("select state from onboarding_session")
+                .query(String.class)
+                .single()).isEqualTo("PROOF_ISSUED");
+    }
+
+    private Throwable issueWhenReleased(
+            IssueOnboardingIdentityProof issueProof,
+            VerifiedOnboardingIdentity identity,
+            CountDownLatch ready,
+            CountDownLatch start) throws InterruptedException {
+        ready.countDown();
+        start.await();
+        return catchThrowable(() -> issueProof.execute(SESSION_ID, identity));
+    }
+
     private OnboardingSessionRepository.SaveResult saveWhenReleased(
             OnboardingSession session,
             CountDownLatch ready,
@@ -131,6 +201,15 @@ class JdbcOnboardingSessionRepositoryTest {
                 new OnboardingDigest(requestDigestSeed.repeat(64)),
                 "jdbc-onboarding-test",
                 NOW);
+    }
+
+    private static final String SESSION_ID = "A".repeat(43);
+
+    private record StoredProof(
+            String digest,
+            UUID userAccountRef,
+            String state,
+            boolean emailVerified) {
     }
 
     private static void seedClients(

@@ -11,6 +11,7 @@ import br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEv
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc.JdbcApplicationClientConfigurationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
 import br.dev.andrestamatto.identityhub.identity.application.BeginOnboardingSession;
+import br.dev.andrestamatto.identityhub.identity.application.IssueOnboardingIdentityProof;
 import br.dev.andrestamatto.identityhub.identity.application.OnboardingSessionRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -68,6 +69,9 @@ class IntegrationOnboardingHttpSecurityTest {
 
     @MockitoBean
     private BeginOnboardingSession beginOnboardingSession;
+
+    @MockitoBean
+    private IssueOnboardingIdentityProof issueOnboardingIdentityProof;
 
     @BeforeEach
     void successfulCreation() {
