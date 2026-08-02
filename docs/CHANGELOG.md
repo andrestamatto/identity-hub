@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Backend-initiated `OnboardingSession` with machine-scoped Client Credentials,
+  exact browser redirect and PKCE binding, opaque ten-minute sessions,
+  PostgreSQL-backed idempotency, explicit `onboarding:write` projection, and a
+  default-off integration edge validated against real Keycloak and PostgreSQL.
 - Public local-registration and email-verification edge with generic
   anti-enumeration responses, stable application identifiers, strict JSON and
   2 KiB body limits, per-source rate limiting, bounded response timing,

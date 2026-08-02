@@ -106,4 +106,3 @@ superfície de ataque.
 - [Integration Mode](../integration-mode.md)
 - [ADR-0002 — identidade global e membership](0002-global-identity-and-application-membership.md)
 - [ADR-0007 — claims públicos](0007-public-access-token-claims.md)
-
