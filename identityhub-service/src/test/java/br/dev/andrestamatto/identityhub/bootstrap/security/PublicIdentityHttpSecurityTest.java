@@ -22,6 +22,7 @@ import br.dev.andrestamatto.identityhub.identity.adapter.in.http
 import br.dev.andrestamatto.identityhub.identity.adapter.in.http.PublicResponseTiming;
 import br.dev.andrestamatto.identityhub.identity.application.BeginLocalRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerification;
+import br.dev.andrestamatto.identityhub.identity.application.CompletePasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.application.RequestPasswordRecovery;
 import java.time.Instant;
 import java.util.UUID;
@@ -84,6 +85,9 @@ class PublicIdentityHttpSecurityTest {
     private RequestPasswordRecovery requestPasswordRecovery;
 
     @MockitoBean
+    private CompletePasswordRecovery completePasswordRecovery;
+
+    @MockitoBean
     private InMemoryRegistrationRateLimiter rateLimiter;
 
     @MockitoBean
@@ -128,7 +132,15 @@ class PublicIdentityHttpSecurityTest {
                         .content("{\"email\":\"andre@example.com\"}"))
                 .andExpect(status().isAccepted());
 
+        mvc.perform(post("/public/v1/password-recoveries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"challenge.secret\","
+                                + "\"newPassword\":\"a new secure password phrase\"}"))
+                .andExpect(status().isNoContent());
+
         mvc.perform(get(REGISTRATION_ENDPOINT))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/public/v1/password-recoveries"))
                 .andExpect(status().isUnauthorized());
         mvc.perform(post("/public/v1/unrecognized"))
                 .andExpect(status().isUnauthorized());

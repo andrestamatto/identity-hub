@@ -98,6 +98,16 @@ class RequestPasswordRecoveryTest {
             this.windowStart = windowStart;
             this.maximumRequests = maximumRequests;
         }
+
+        @Override
+        public java.util.Optional<PasswordRecoveryChallenge> findForUpdate(UUID id) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void update(PasswordRecoveryChallenge value) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private static final class CapturingEmailRequester implements RecoveryEmailRequester {

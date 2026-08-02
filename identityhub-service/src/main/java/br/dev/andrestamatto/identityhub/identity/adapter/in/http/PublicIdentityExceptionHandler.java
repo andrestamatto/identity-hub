@@ -5,6 +5,9 @@ import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRa
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRejectedException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityRegistrationException;
 import br.dev.andrestamatto.identityhub.identity.application.LocalIdentityVerificationException;
+import br.dev.andrestamatto.identityhub.identity.application.InvalidPasswordRecoveryPasswordException;
+import br.dev.andrestamatto.identityhub.identity.application.LocalPasswordResetException;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryRejectedException;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryIdentityLookupException;
 import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryRateLimitException;
 import br.dev.andrestamatto.identityhub.identity.application.SelfRegistrationDisabledException;
@@ -19,6 +22,30 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 
 @RestControllerAdvice(assignableTypes = PublicIdentityController.class)
 final class PublicIdentityExceptionHandler {
+
+    @ExceptionHandler(PasswordRecoveryRejectedException.class)
+    ResponseEntity<ProblemDetail> recoveryRejected() {
+        return problem(
+                HttpStatus.BAD_REQUEST,
+                "Password recovery rejected",
+                "Password recovery could not be completed");
+    }
+
+    @ExceptionHandler(InvalidPasswordRecoveryPasswordException.class)
+    ResponseEntity<ProblemDetail> invalidRecoveryPassword() {
+        return problem(
+                HttpStatus.valueOf(422),
+                "Invalid password",
+                "Use a password with 15 to 64 characters that is not commonly used");
+    }
+
+    @ExceptionHandler(LocalPasswordResetException.class)
+    ResponseEntity<ProblemDetail> passwordResetUnavailable() {
+        return problem(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Password recovery temporarily unavailable",
+                "Password recovery could not be completed at this time");
+    }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ProblemDetail> unreadableRequest() {

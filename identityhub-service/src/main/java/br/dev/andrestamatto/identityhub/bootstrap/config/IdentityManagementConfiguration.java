@@ -3,6 +3,8 @@ package br.dev.andrestamatto.identityhub.bootstrap.config;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
 import br.dev.andrestamatto.identityhub.communication.application.RequestEmailVerificationEmail;
 import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordRecoveryEmail;
+import br.dev.andrestamatto.identityhub.communication.application.RequestPasswordChangedEmail;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.communication.CommunicationPasswordChangedNotifier;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.communication.CommunicationRecoveryEmailRequester;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.communication.CommunicationVerificationEmailRequester;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.crypto.SecureRandomEmailVerificationSecretGenerator;
@@ -11,9 +13,10 @@ import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcEmailVerif
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcPasswordRecoveryChallengeRepository;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.SpringVerificationTransaction;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.clientapplication.ClientApplicationSelfRegistrationPolicyResolver;
-import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityRegistrar;
+import br.dev.andrestamatto.identityhub.identity.adapter.out.keycloak.KeycloakLocalIdentityGateway;
 import br.dev.andrestamatto.identityhub.identity.application.RegisterPendingLocalIdentity;
 import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerification;
+import br.dev.andrestamatto.identityhub.identity.application.CompletePasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.application.BeginLocalRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.RequestEmailVerification;
 import br.dev.andrestamatto.identityhub.identity.application.RequestPasswordRecovery;
@@ -41,11 +44,11 @@ class IdentityManagementConfiguration {
     }
 
     @Bean
-    KeycloakLocalIdentityRegistrar localIdentityRegistrar(
+    KeycloakLocalIdentityGateway localIdentityGateway(
             HttpClient httpClient,
             ObjectMapper objectMapper,
             IdentityManagementProperties properties) {
-        return new KeycloakLocalIdentityRegistrar(
+        return new KeycloakLocalIdentityGateway(
                 httpClient,
                 objectMapper,
                 properties.baseUri(),
@@ -57,7 +60,7 @@ class IdentityManagementConfiguration {
     @Bean
     RegisterPendingLocalIdentity registerPendingLocalIdentity(
             ClientApplicationSelfRegistrationPolicyResolver policyResolver,
-            KeycloakLocalIdentityRegistrar registrar) {
+            KeycloakLocalIdentityGateway registrar) {
         return new RegisterPendingLocalIdentity(policyResolver, registrar);
     }
 
@@ -99,7 +102,7 @@ class IdentityManagementConfiguration {
     @Bean
     ConfirmEmailVerification confirmEmailVerification(
             JdbcEmailVerificationChallengeRepository repository,
-            KeycloakLocalIdentityRegistrar registrar,
+            KeycloakLocalIdentityGateway registrar,
             SpringVerificationTransaction transaction,
             Clock clock) {
         return new ConfirmEmailVerification(repository, registrar, transaction, clock);
@@ -119,7 +122,7 @@ class IdentityManagementConfiguration {
 
     @Bean
     RequestPasswordRecovery requestPasswordRecovery(
-            KeycloakLocalIdentityRegistrar identityFinder,
+            KeycloakLocalIdentityGateway identityFinder,
             JdbcPasswordRecoveryChallengeRepository repository,
             CommunicationRecoveryEmailRequester emailRequester,
             SpringVerificationTransaction transaction,
@@ -134,6 +137,23 @@ class IdentityManagementConfiguration {
                 clock,
                 UUID::randomUUID,
                 properties.publicBaseUri());
+    }
+
+    @Bean
+    CommunicationPasswordChangedNotifier passwordChangedNotifier(
+            RequestPasswordChangedEmail requestEmail) {
+        return new CommunicationPasswordChangedNotifier(requestEmail);
+    }
+
+    @Bean
+    CompletePasswordRecovery completePasswordRecovery(
+            JdbcPasswordRecoveryChallengeRepository repository,
+            KeycloakLocalIdentityGateway resetter,
+            CommunicationPasswordChangedNotifier notifier,
+            SpringVerificationTransaction transaction,
+            Clock clock) {
+        return new CompletePasswordRecovery(
+                repository, resetter, notifier, transaction, clock, UUID::randomUUID);
     }
 
     @Bean

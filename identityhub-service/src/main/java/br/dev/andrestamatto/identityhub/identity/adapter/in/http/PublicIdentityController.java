@@ -5,7 +5,9 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.ClientAppl
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplicationByIdentifier;
 import br.dev.andrestamatto.identityhub.identity.application.BeginLocalRegistration;
 import br.dev.andrestamatto.identityhub.identity.application.ConfirmEmailVerification;
+import br.dev.andrestamatto.identityhub.identity.application.CompletePasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.application.EmailVerificationRejectedException;
+import br.dev.andrestamatto.identityhub.identity.application.PasswordRecoveryRejectedException;
 import br.dev.andrestamatto.identityhub.identity.application.RequestPasswordRecovery;
 import br.dev.andrestamatto.identityhub.identity.domain.LoginEmail;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +38,7 @@ final class PublicIdentityController {
     private final BeginLocalRegistration beginRegistration;
     private final ConfirmEmailVerification confirmVerification;
     private final RequestPasswordRecovery requestPasswordRecovery;
+    private final CompletePasswordRecovery completePasswordRecovery;
     private final InMemoryRegistrationRateLimiter registrationRateLimiter;
     private final InMemoryPasswordRecoveryRateLimiter recoveryRateLimiter;
     private final PublicResponseTiming responseTiming;
@@ -45,6 +48,7 @@ final class PublicIdentityController {
             BeginLocalRegistration beginRegistration,
             ConfirmEmailVerification confirmVerification,
             RequestPasswordRecovery requestPasswordRecovery,
+            CompletePasswordRecovery completePasswordRecovery,
             InMemoryRegistrationRateLimiter registrationRateLimiter,
             InMemoryPasswordRecoveryRateLimiter recoveryRateLimiter,
             PublicResponseTiming responseTiming) {
@@ -52,9 +56,37 @@ final class PublicIdentityController {
         this.beginRegistration = Objects.requireNonNull(beginRegistration);
         this.confirmVerification = Objects.requireNonNull(confirmVerification);
         this.requestPasswordRecovery = Objects.requireNonNull(requestPasswordRecovery);
+        this.completePasswordRecovery = Objects.requireNonNull(completePasswordRecovery);
         this.registrationRateLimiter = Objects.requireNonNull(registrationRateLimiter);
         this.recoveryRateLimiter = Objects.requireNonNull(recoveryRateLimiter);
         this.responseTiming = Objects.requireNonNull(responseTiming);
+    }
+
+    @PostMapping("/password-recoveries")
+    ResponseEntity<Void> completePasswordRecovery(
+            @RequestBody CompletePasswordRecoveryRequest request) {
+        if (request == null) {
+            throw new PasswordRecoveryRejectedException();
+        }
+        try (request) {
+            var password = request.passwordCopy();
+            try {
+                completePasswordRecovery.execute(new CompletePasswordRecovery.Command(
+                        recoveryToken(request.token()), password, correlationId()));
+                return ResponseEntity.noContent()
+                        .cacheControl(CacheControl.noStore())
+                        .build();
+            } finally {
+                Arrays.fill(password, '\0');
+            }
+        }
+    }
+
+    private String recoveryToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new PasswordRecoveryRejectedException();
+        }
+        return token;
     }
 
     @PostMapping("/applications/{applicationIdentifier}/password-recoveries")
@@ -160,6 +192,29 @@ final class PublicIdentityController {
         @Override
         public String toString() {
             return "EmailVerificationRequest[token=REDACTED]";
+        }
+    }
+
+    record CompletePasswordRecoveryRequest(String token, char[] newPassword)
+            implements AutoCloseable {
+
+        char[] passwordCopy() {
+            if (newPassword == null) {
+                return new char[0];
+            }
+            return newPassword.clone();
+        }
+
+        @Override
+        public void close() {
+            if (newPassword != null) {
+                Arrays.fill(newPassword, '\0');
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "CompletePasswordRecoveryRequest[credentials=REDACTED]";
         }
     }
 
