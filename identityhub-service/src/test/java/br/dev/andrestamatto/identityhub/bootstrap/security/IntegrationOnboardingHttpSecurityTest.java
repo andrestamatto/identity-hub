@@ -12,6 +12,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc.JdbcA
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
 import br.dev.andrestamatto.identityhub.identity.application.BeginOnboardingSession;
 import br.dev.andrestamatto.identityhub.identity.application.OnboardingSessionRepository;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -87,7 +88,7 @@ class IntegrationOnboardingHttpSecurityTest {
         mvc.perform(post(ENDPOINT)
                         .with(jwt().jwt(token -> token.subject(MACHINE_CLIENT_ID.toString())))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Idempotency-Key", "purchase-2026-0001")
+                        .header("Idempotency-Key", idempotencyKey())
                         .content(body()))
                 .andExpect(status().isForbidden());
     }
@@ -97,7 +98,7 @@ class IntegrationOnboardingHttpSecurityTest {
         mvc.perform(post(ENDPOINT)
                         .with(machineJwt())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Idempotency-Key", "purchase-2026-0001")
+                        .header("Idempotency-Key", idempotencyKey())
                         .content(body()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.onboardingSession")
@@ -114,14 +115,14 @@ class IntegrationOnboardingHttpSecurityTest {
         mvc.perform(post(ENDPOINT)
                         .with(machineJwt())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Idempotency-Key", "purchase-2026-0001")
+                        .header("Idempotency-Key", idempotencyKey())
                         .content(body()))
                 .andExpect(status().isOk());
 
         mvc.perform(post(ENDPOINT)
                         .with(machineJwt())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Idempotency-Key", "purchase-2026-0001")
+                        .header("Idempotency-Key", idempotencyKey())
                         .content(body().replace(
                                 "{", "{\"applicationId\":\"" + UUID.randomUUID() + "\",")))
                 .andExpect(status().isBadRequest());
@@ -131,6 +132,11 @@ class IntegrationOnboardingHttpSecurityTest {
         return jwt()
                 .jwt(token -> token.subject(MACHINE_CLIENT_ID.toString()))
                 .authorities(new SimpleGrantedAuthority("SCOPE_onboarding:write"));
+    }
+
+    private String idempotencyKey() {
+        return UUID.nameUUIDFromBytes(
+                "onboarding-http-test".getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     private String body() {
