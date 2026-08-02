@@ -23,6 +23,7 @@ public final class OnboardingSession {
     private final OnboardingSessionState state;
     private final Instant createdAt;
     private final Instant expiresAt;
+    private final Instant proofIssuedAt;
 
     private OnboardingSession(
             OnboardingSessionId id,
@@ -37,7 +38,8 @@ public final class OnboardingSession {
             String correlationId,
             OnboardingSessionState state,
             Instant createdAt,
-            Instant expiresAt) {
+            Instant expiresAt,
+            Instant proofIssuedAt) {
         this.id = Objects.requireNonNull(id);
         this.applicationId = Objects.requireNonNull(applicationId);
         this.machineClientId = Objects.requireNonNull(machineClientId);
@@ -51,8 +53,12 @@ public final class OnboardingSession {
         this.state = Objects.requireNonNull(state);
         this.createdAt = Objects.requireNonNull(createdAt);
         this.expiresAt = Objects.requireNonNull(expiresAt);
+        this.proofIssuedAt = proofIssuedAt;
         if (!expiresAt.isAfter(createdAt)) {
             throw new IllegalArgumentException("Onboarding session must expire after creation");
+        }
+        if ((state == OnboardingSessionState.PROOF_ISSUED) != (proofIssuedAt != null)) {
+            throw new IllegalArgumentException("Onboarding proof issuance state is inconsistent");
         }
     }
 
@@ -82,7 +88,8 @@ public final class OnboardingSession {
                 correlationId,
                 OnboardingSessionState.PENDING,
                 createdAt,
-                createdAt.plus(LIFETIME));
+                createdAt.plus(LIFETIME),
+                null);
     }
 
     public static OnboardingSession reconstitute(
@@ -98,7 +105,8 @@ public final class OnboardingSession {
             String correlationId,
             OnboardingSessionState state,
             Instant createdAt,
-            Instant expiresAt) {
+            Instant expiresAt,
+            Instant proofIssuedAt) {
         return new OnboardingSession(
                 id,
                 applicationId,
@@ -112,7 +120,42 @@ public final class OnboardingSession {
                 correlationId,
                 state,
                 createdAt,
-                expiresAt);
+                expiresAt,
+                proofIssuedAt);
+    }
+
+    public OnboardingProofIssuance issueProof(
+            OnboardingDigest proofDigest, UserAccountRef userAccountRef, Instant now) {
+        Objects.requireNonNull(proofDigest);
+        Objects.requireNonNull(userAccountRef);
+        var issuedAt = Objects.requireNonNull(now).truncatedTo(ChronoUnit.MICROS);
+        if (state != OnboardingSessionState.PENDING || !issuedAt.isBefore(expiresAt)) {
+            throw new IllegalStateException("Onboarding session cannot issue a proof");
+        }
+        var completedSession = new OnboardingSession(
+                id,
+                applicationId,
+                machineClientId,
+                browserClientId,
+                acquisitionReferenceDigest,
+                redirectUri,
+                codeChallenge,
+                idempotencyKeyDigest,
+                requestDigest,
+                correlationId,
+                OnboardingSessionState.PROOF_ISSUED,
+                createdAt,
+                expiresAt,
+                issuedAt);
+        var proof = OnboardingIdentityProof.issue(
+                proofDigest,
+                id,
+                userAccountRef,
+                applicationId,
+                acquisitionReferenceDigest,
+                correlationId,
+                issuedAt);
+        return new OnboardingProofIssuance(completedSession, proof);
     }
 
     public OnboardingSessionId id() {
@@ -165,6 +208,10 @@ public final class OnboardingSession {
 
     public Instant expiresAt() {
         return expiresAt;
+    }
+
+    public Instant proofIssuedAt() {
+        return proofIssuedAt;
     }
 
     @Override
