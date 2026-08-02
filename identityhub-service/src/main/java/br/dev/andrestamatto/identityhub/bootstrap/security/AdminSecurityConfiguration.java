@@ -2,6 +2,7 @@ package br.dev.andrestamatto.identityhub.bootstrap.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.authorization.AuthorizationManagers;
@@ -46,6 +47,7 @@ class AdminSecurityConfiguration {
     }
 
     @Bean
+    @Order(2)
     SecurityFilterChain adminSecurityFilterChain(
             HttpSecurity http,
             JwtDecoder adminJwtDecoder,

@@ -376,7 +376,8 @@ class ClientApplicationAdminHttpTest {
                         .content("""
                                 {
                                   "type": "MACHINE",
-                                  "key": "auto-radar-membership-provisioner"
+                                  "key": "auto-radar-membership-provisioner",
+                                  "scopes": ["onboarding:write"]
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -384,6 +385,7 @@ class ClientApplicationAdminHttpTest {
                 .andExpect(jsonPath("$.audience").doesNotExist())
                 .andExpect(jsonPath("$.redirectUris").isEmpty())
                 .andExpect(jsonPath("$.webOrigins").isEmpty())
+                .andExpect(jsonPath("$.scopes[0]").value("onboarding:write"))
                 .andExpect(jsonPath("$.projectionState").value("PENDING"));
     }
 
@@ -437,6 +439,25 @@ class ClientApplicationAdminHttpTest {
                                   "type": "MACHINE",
                                   "key": "auto-radar-membership-provisioner",
                                   "audience": "auto-radar-api"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid client application"));
+
+        verify(clientRepository, never()).add(any());
+    }
+
+    @Test
+    void rejectsMachineScopesForNonMachineClient() throws Exception {
+        mvc.perform(put(CLIENT_PATH)
+                        .with(adminWithTotp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "API",
+                                  "key": "catalog-api",
+                                  "audience": "catalog-api",
+                                  "scopes": ["onboarding:write"]
                                 }
                                 """))
                 .andExpect(status().isBadRequest())

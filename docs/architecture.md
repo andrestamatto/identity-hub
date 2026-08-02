@@ -251,6 +251,7 @@ Responsável por orquestrar capacidades de identidade sem duplicar credenciais o
 - login local e social;
 - recuperação e alteração de senha;
 - referência opaca ao usuário global;
+- `OnboardingSession` iniciada por backend consumidor;
 - criação e troca de `OnboardingIdentityProof`.
 
 O módulo trabalha com `UserAccountRef`, não com uma cópia local completa do usuário.
@@ -465,6 +466,7 @@ API versionada do IdentityHub para:
 
 - configuração e consulta de `ClientApplication`;
 - comparação e aplicação de estado desejado;
+- criação idempotente de `OnboardingSession`;
 - troca ou validação de prova de onboarding;
 - provisionamento idempotente de `Membership`;
 - suspensão e remoção de acesso;
@@ -508,7 +510,9 @@ sequenceDiagram
     participant P as Provedor de pagamento
 
     U->>S: Escolhe produto ou plano
-    S->>I: Inicia onboarding com state, nonce e PKCE
+    S->>I: Cria OnboardingSession com Client Credentials, aquisição e PKCE
+    I-->>S: Sessão opaca temporária
+    S-->>U: Inicia fluxo hospedado com sessão e state
     I->>K: Delega autenticação
     K-->>I: Identidade autenticada
     I-->>S: OnboardingIdentityProof restrita
@@ -527,6 +531,7 @@ Regras:
 
 - o IdentityHub não recebe detalhes de pagamento;
 - o SaaS não recebe senha nem credencial humana;
+- aplicação e aquisição são fixadas pelo backend autenticado antes do login;
 - a prova é vinculada à aplicação, aquisição, finalidade e prazo;
 - a decisão comercial pertence ao SaaS;
 - repetição da mesma concessão não duplica acesso;

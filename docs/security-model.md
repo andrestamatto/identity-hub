@@ -260,11 +260,43 @@ Toda seta que cruza uma fronteira exige autenticação, autorização, validaç�
 - audience e scopes mínimos;
 - sem refresh token e sem sessão humana.
 
-## 9. `OnboardingIdentityProof`
+## 9. Onboarding seguro
+
+### 9.1 `OnboardingSession`
+
+A sessão de onboarding é criada exclusivamente por cliente de máquina autenticado
+com audience `identityhub-integration-api` e scope `onboarding:write`.
+
+Ela mantém no servidor:
+
+- identificador opaco aleatório;
+- `ClientApplication` derivada do token, nunca do corpo;
+- cliente de máquina iniciador e browser client autorizado;
+- digest da referência opaca de aquisição;
+- redirect URI exata;
+- PKCE challenge `S256`;
+- digest da idempotency key e hash semântico da solicitação;
+- criação, expiração, estado e correlação.
+
+Controles:
+
+- validade inicial de dez minutos;
+- browser client ativo, projetado e pertencente à mesma aplicação;
+- redirect URI comparada exatamente à configuração projetada;
+- repetição idêntica retorna a mesma sessão;
+- conteúdo diferente com a mesma idempotency key é rejeitado;
+- identificador de sessão isolado não conclui autenticação nem emite prova;
+- `state`, `nonce` e PKCE são validados nas etapas de navegador;
+- sessão expirada, consumida ou com binding incompatível falha fechada;
+- nenhum dado de pagamento, plano, senha ou usuário é aceito nessa criação.
+- métricas registram apenas resultado e duração, sem identificadores ou valores
+  de aquisição e idempotência.
+
+### 9.2 `OnboardingIdentityProof`
 
 A prova de onboarding será um identificador opaco, aleatório e de uso único. Ela não será um access token de negócio.
 
-### 9.1 Conteúdo mantido no servidor
+#### 9.2.1 Conteúdo mantido no servidor
 
 - hash da prova;
 - `UserAccount` opaco;
@@ -276,7 +308,7 @@ A prova de onboarding será um identificador opaco, aleatório e de uso único. 
 - correlação;
 - hash semântico da operação quando aplicável.
 
-### 9.2 Controles
+#### 9.2.2 Controles
 
 - mínimo de 128 bits de entropia, preferencialmente 256;
 - transmitida apenas por TLS;
@@ -354,6 +386,7 @@ Os valores abaixo formam a baseline do MVP. Exceções exigem justificativa, tes
 | Access token humano | 10 minutos |
 | Access token de máquina | 5 minutos |
 | Clock skew aceito | 60 segundos |
+| `OnboardingSession` | 10 minutos |
 | `OnboardingIdentityProof` | 30 minutos |
 | Código de verificação de e-mail | 30 minutos |
 | Prova de recuperação de senha | 15 minutos |
