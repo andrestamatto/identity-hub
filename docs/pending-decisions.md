@@ -61,17 +61,20 @@ Itens bloqueantes não entram aqui como forma de contornar uma parada obrigatór
 - Status: OPEN
 - Blocking: no
 - Detected in: SLICE-004D
-- Context: o rate limiting público precisa reconhecer o endereço do cliente
-  atrás do reverse proxy, mas a topologia final do Coolify e seus endereços
-  confiáveis ainda não foram fixados.
-- Impact: sem a configuração, todas as requisições vistas pelo mesmo proxy
-  compartilham a quota de cadastro; aceitar cabeçalhos encaminhados sem confiança
-  explícita permitiria falsificação da origem.
+- Context: os limites públicos de cadastro e login precisam reconhecer o endereço
+  do cliente atrás do reverse proxy, mas a topologia final do Coolify e seus
+  endereços confiáveis ainda não foram fixados.
+- Impact: sem a configuração, requisições vistas pelo mesmo proxy compartilham a
+  quota de cadastro e o login permanece apenas com a proteção por conta do
+  Keycloak; aceitar cabeçalhos encaminhados sem confiança explícita permitiria
+  falsificação da origem.
 - Temporary choice: usar somente o endereço remoto fornecido pelo servidor HTTP,
-  ignorar `X-Forwarded-For` e manter a borda desabilitada por padrão. A escolha
-  falha de forma conservadora e é reversível.
+  ignorar `X-Forwarded-For`, manter a borda de cadastro desabilitada por padrão e
+  aplicar no login espera progressiva por conta após cinco falhas. A escolha falha
+  de forma conservadora e é reversível.
 - Resolution condition: documentar a rede de proxies do ambiente, aceitar o
-  endereço encaminhado somente de proxies em allowlist e validar rate limiting e
-  spoofing em staging antes de exposição pública.
+  endereço encaminhado somente de proxies em allowlist e validar em staging o
+  rate limiting de cadastro e de login, inclusive spoofing, antes de exposição
+  pública.
 - References: `security-model.md` seção 20 e
   `assessments/slice-004d-public-local-registration.md`.

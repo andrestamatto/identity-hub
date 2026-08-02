@@ -4,8 +4,9 @@
 
 O harness local permite executar e verificar as APIs administrativas das
 `SLICE-001`, os incrementos `SLICE-002A` a `SLICE-002C`, a entrega SMTP da
-`SLICE-003A` e a fundação de identidade local da `SLICE-004B` com PostgreSQL 17,
-Keycloak 26.7 e Mailpit 1.30.6 reais. A aplicação
+`SLICE-003A`, a fundação de identidade local da `SLICE-004B` e a baseline de
+login hospedado da `SLICE-005D` com PostgreSQL 17, Keycloak 26.7 e Mailpit
+1.30.6 reais. A aplicação
 continua sendo iniciada pelo Gradle no WSL; somente as dependências de
 infraestrutura usam containers.
 
@@ -88,6 +89,13 @@ O token fica em `~/.local/state/identityhub/local-admin.token`, no filesystem do
 WSL, com modo `0600`. A ação `down` remove esse arquivo. O cliente público
 não aceita Resource Owner Password Credentials e o acesso administrativo exige
 `PLATFORM_ADMIN` e `amr=totp`.
+
+Esse fluxo é exclusivo do administrador local. O login de usuário final ocorre
+na página hospedada do realm por Authorization Code com PKCE. O comando `up`
+mantém idempotentemente a política de 15 a 64 caracteres, perfil que não exige
+nomes além do e-mail, mensagens públicas genéricas, espera progressiva após cinco
+falhas e eventos `LOGIN`/`LOGIN_ERROR`. Não existe endpoint do IdentityHub que
+receba a senha nem comando de Resource Owner Password Credentials.
 
 ## 5. Projeção dos clientes da aplicação
 
