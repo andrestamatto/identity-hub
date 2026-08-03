@@ -1372,6 +1372,7 @@ class KeycloakAdminTokenIntegrationTest {
         awaitActiveMemberships(userAccountRef, 2);
         assertTechnicalMembershipMarkers(
                 userAccountRef, firstApplicationId, secondApplicationId);
+        assertTechnicalMembershipMarkersAreNotExposed();
         var secondOperationId = JSON.readTree(grant.body()).required("operationId").asString();
         var ownStatus = HttpClient.newHttpClient().send(
                 authorizedGetRequest(
@@ -1448,6 +1449,13 @@ class KeycloakAdminTokenIntegrationTest {
                 .contains(
                         "ih-membership-" + firstApplicationId,
                         "ih-membership-" + secondApplicationId);
+    }
+
+    private static void assertTechnicalMembershipMarkersAreNotExposed() throws Exception {
+        var freshHumanToken = oidcDecoder().decode(authenticateThroughHostedLogin());
+
+        assertThat(freshHumanToken.getClaims()).doesNotContainKey("groups");
+        assertThat(freshHumanToken.getClaims().toString()).doesNotContain("ih-membership-");
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {
