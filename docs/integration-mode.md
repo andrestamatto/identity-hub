@@ -4,7 +4,7 @@
 >
 > **Versão do documento:** 1.0
 >
-> **Última atualização:** 2026-07-28
+> **Última atualização:** 2026-08-03
 
 ## 1. Finalidade
 
@@ -26,6 +26,11 @@ Este documento detalha:
 - o console local em `/identity-hub-config`;
 - diagnóstico, diff e aplicação explícita de configuração;
 - extensibilidade, compatibilidade e testes.
+
+> **Estado de implementação:** a SLICE-009A entrega somente o runtime Servlet de
+> Resource Server descrito nas seções 8 a 10. Manifesto, cliente tipado, console,
+> health contributor, métricas e diagnóstico de configuração continuam em fatias
+> posteriores; sua descrição neste documento não autoriza sua presença implícita.
 
 ## 2. Objetivos
 
@@ -82,6 +87,10 @@ Esse artefato contém:
 Uma separação futura entre `autoconfigure`, `starter`, `client` ou `console` somente
 será feita se compatibilidade, tamanho ou consumidores reais demonstrarem
 necessidade. A distribuição pública continua sendo um único starter no MVP.
+
+No checkpoint inicial, o artefato já contém a auto-configuração, as propriedades,
+os validadores e o conversor Servlet. Os demais componentes enumerados acima
+permanecem planejados e não são carregados pelo starter atual.
 
 ## 5. Compatibilidade
 
@@ -169,6 +178,7 @@ identityhub:
     issuer-uri: https://auth.dev.andrestamatto.dev.br
     audience: catalog-api
     clock-skew: 60s
+    allow-http-for-loopback: false
     authorities:
       role-prefix: ROLE_
       scope-prefix: SCOPE_
@@ -188,10 +198,18 @@ identityhub:
 ### 8.3 Regras
 
 - o namespace é exclusivamente `identityhub`;
+- `enabled` é `true` por padrão; `false` é uma desativação explícita, fora do
+  caminho seguro suportado, e não permite que issuer ou audience sejam omitidos
+  por engano quando a integração está ativa;
 - `issuer-uri` e `audience` são obrigatórios quando segurança estiver habilitada;
-- issuer deve ser HTTPS, exceto ambiente local explicitamente permitido;
-- audience deve conter um identificador exato, nunca padrão ou expressão;
-- duração inválida ou negativa impede o startup;
+- issuer deve ser HTTPS. HTTP exige simultaneamente
+  `allow-http-for-loopback=true` e host `localhost`, `127.0.0.0/8` ou `::1`; URI
+  com user-info, query ou fragment é inválida;
+- audience deve conter identificador ASCII exato de até 255 caracteres, no formato
+  `[A-Za-z0-9](?:[A-Za-z0-9._:/-]*[A-Za-z0-9])?`; padrões e expressões são
+  inválidos;
+- `clock-skew` aceita somente o intervalo de `0s` a `60s`; duração negativa ou
+  acima da baseline de segurança impede o startup;
 - segredo literal no YAML produz falha ou alerta bloqueante conforme a origem;
 - propriedades possuem Javadoc e metadata para autocomplete;
 - valores podem ser substituídos pelos mecanismos normais do Spring;
@@ -208,11 +226,37 @@ O starter deve fornecer, quando as condições forem atendidas:
 - `Converter<Jwt, AbstractAuthenticationToken>` para claims públicos;
 - `AuthenticationEntryPoint` e `AccessDeniedHandler` sem dados sensíveis;
 - `SecurityFilterChain` segura somente quando o consumidor não declarar uma própria;
-- health contributor sanitizado;
+- health contributor sanitizado em fatia posterior;
 - propriedades validadas no startup.
 
 As classes de auto-configuração usam mecanismos oficiais do Spring Boot, recuam
 diante de beans definidos pelo consumidor e não usam component scanning.
+
+Na primeira entrega, os pontos de substituição do starter são explícitos:
+
+| Bean | Nome |
+|---|---|
+| Clock de validação | `identityHubJwtValidationClock` |
+| Validador composto | `identityHubJwtValidator` |
+| HTTP do decoder padrão | `identityHubJwtRestOperations` |
+| Decoder padrão | `identityHubJwtDecoder` |
+| Conversor de authorities | `identityHubJwtAuthenticationConverter` |
+| Entrada `401` | `identityHubAuthenticationEntryPoint` |
+| Handler `403` | `identityHubAccessDeniedHandler` |
+| Cadeia padrão | `identityHubSecurityFilterChain` |
+
+Um `JwtDecoder` fornecido pelo consumidor impede a criação do decoder padrão. Ao
+substituí-lo, o consumidor assume explicitamente a responsabilidade por manter
+assinatura `RS256`, issuer, audience, tempo e claims obrigatórios; essa escolha
+não é uma forma suportada de remover esses controles.
+
+O decoder padrão executa discovery e uma leitura inicial do JWKS durante o
+startup. Essa pré-verificação não aceita tokens nem amplia o algoritmo permitido
+em runtime, que permanece explicitamente restrito a `RS256`.
+
+As chamadas de discovery e JWKS usam timeout de conexão de `2s` e de leitura de
+`5s`. Assim, uma dependência indisponível impede o startup de modo previsível,
+sem usar o limite interno de `500ms` do decoder Nimbus.
 
 ### 9.2 Política padrão
 
@@ -230,6 +274,10 @@ O consumidor pode fornecer sua própria `SecurityFilterChain`. Nesse caso, o sta
 mantém decoder, validadores e conversor disponíveis, mas não deve competir pela
 ordem dos filtros. Aplicações que também utilizam cookie devem preservar proteção
 CSRF nas cadeias correspondentes.
+
+Uma `SecurityFilterChain` de qualquer nome fornecida pelo consumidor impede a
+cadeia padrão. A cadeia própria deve conectar o `JwtDecoder` e o conversor público
+de forma equivalente antes de aplicar as regras contextuais do SaaS.
 
 ### 9.3 Falha segura
 
@@ -271,6 +319,12 @@ O starter conhece apenas o contrato IdentityHub:
 O starter não lê `realm_access`, `resource_access` ou outro claim privado do
 Keycloak. A projeção do Service Mode deve entregar o formato público acima.
 
+Na implementação inicial, `iss`, `sub`, `aud`, `exp`, `iat`, `jti`, `scope` e
+`roles` são obrigatórios. `azp` e `sid` permanecem condicionais ao tipo de fluxo.
+`scope` pode representar zero scopes pela string vazia e `roles` pode ser a lista
+vazia; ausência, tipo incorreto ou formato inválido de qualquer um desses claims
+obrigatórios falha fechada.
+
 Na fatia inicial de audience pública, `roles` é emitido como lista vazia. A
 presença da audience esperada demonstra somente a Membership ativa; papéis de
 negócio serão introduzidos por uma capacidade posterior e não devem ser inferidos
@@ -280,9 +334,13 @@ de claims privados do motor.
 
 - cada scope válido vira `SCOPE_<scope>`;
 - cada role válida vira `ROLE_<role>`;
-- nomes vazios, duplicados, excessivos ou fora do formato são rejeitados;
+- `scope` é uma string separada por espaço simples e `roles` é uma lista JSON;
+- cada valor deve ter até 255 caracteres e obedecer ao formato ASCII
+  `[A-Za-z0-9](?:[A-Za-z0-9._:/-]*[A-Za-z0-9])?`;
+- nomes vazios, duplicados, mais de 100 valores por claim ou fora do formato são
+  rejeitados;
 - prefixos são configuráveis, mas não podem ser vazios;
-- roles de plataforma não são aceitas em audience de SaaS;
+- roles iniciadas por `PLATFORM_` não são aceitas em audience de SaaS;
 - e-mail, telefone e nome não viram authority;
 - o domínio consumidor pode combinar authorities com regras próprias.
 
@@ -730,6 +788,10 @@ O starter deve recuar diante de beans equivalentes e documentar a consequência 
 cada substituição. Extensões não podem desabilitar silenciosamente issuer ou
 audience; fazê-lo exige configuração explícita fora do caminho suportado.
 
+Os componentes da tabela da seção 9.1 são substituídos pelo mesmo nome de bean.
+Uma cadeia fornecida pelo consumidor continua responsável por preservar os
+controles obrigatórios antes de aplicar autorização contextual.
+
 ## 18. Testes
 
 ### 18.1 Starter
@@ -745,6 +807,9 @@ audience; fazê-lo exige configuração explícita fora do caminho suportado.
 - respostas `401` e `403`;
 - cache e rotação de JWKS;
 - falha fechada sem chave confiável.
+
+A primeira fatia também executa discovery, JWKS e token `RS256` contra Keycloak
+26.7 real por Testcontainers no ambiente com Docker disponível.
 
 ### 18.2 Manifesto e console
 

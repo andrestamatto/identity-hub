@@ -1,3 +1,4 @@
 rootProject.name = 'identity-hub'
 
 include 'identityhub-service'
+include 'identityhub-spring-boot-starter'
