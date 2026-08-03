@@ -334,7 +334,11 @@ O consumidor deve:
 7. mapear apenas claims documentados;
 8. rejeitar ausência de claim obrigatório;
 9. atualizar JWKS uma única vez diante de `kid` desconhecido e falhar fechado se continuar desconhecido;
-10. limitar clock skew ao valor definido.
+10. com o decoder padrão do starter, obter discovery e JWKS confiável antes de
+    declarar o startup bem-sucedido;
+11. limitar as chamadas de discovery/JWKS a `2s` de conexão e `5s` de leitura,
+    falhando fechadamente quando o limite for excedido;
+12. limitar clock skew ao valor definido.
 
 ID token não autoriza API. Access token não substitui prova de identidade em fluxos que exigem ID token.
 
@@ -356,6 +360,10 @@ Os valores abaixo formam a baseline do MVP. Exceções exigem justificativa, tes
 | Sessão administrativa inativa | 15 minutos |
 | Sessão administrativa máxima | 4 horas |
 | Autenticação recente para ação sensível | 5 minutos |
+
+O runtime inicial do Integration Mode permite reduzir esse desvio até `0s`, mas
+rejeita configuração acima de `60s`. Uma exceção maior exige alteração explícita
+do modelo de segurança, evidência e revisão antes de existir no contrato público.
 
 `Remember Me` e offline access permanecem desabilitados no MVP.
 
@@ -947,6 +955,10 @@ Os requisitos ASVS adotados serão mantidos em checklist versionado separado ant
 - testes de rotação, replay e revogação;
 - testes de headers, CORS, CSRF e cookies;
 - testes de acesso administrativo.
+
+O starter Resource Server inclui teste de compatibilidade por Testcontainers com
+Keycloak 26.7: discovery, JWKS e token `RS256` real precisam validar issuer,
+audience e claims públicos sem ler claims privados do motor.
 
 Provedores sociais são simulados em CI. Smoke tests reais ocorrem somente em staging e não atacam Google, GitHub ou Meta.
 

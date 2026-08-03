@@ -1,6 +1,6 @@
 # SLICE-009A — Starter Resource Server Servlet
 
-> **Status:** contract defined; implementation pending
+> **Status:** complete
 >
 > **Data:** 2026-08-03
 >
@@ -70,18 +70,47 @@ privados do Keycloak não concedem nenhuma authority.
   suportado seguro e isso deve ficar visível em teste e documentação;
 - configuração HTTP fora de loopback é rejeitada mesmo com opt-in.
 
-## 7. Testes planejados
+## 7. Testes e evidências de implementação
 
-- propriedades: ausência, URI insegura, audience/prefixes/clock skew inválidos;
-- auto-configuração: beans padrão, recuo para decoder, conversor e cadeia do
-  consumidor;
-- HTTP: `401` sem Bearer, `403` por authority ausente, token correto aceito;
-- JWT: assinatura `RS256`, issuer, audience, expiração, algoritmo e claims
-  obrigatórios inválidos são rejeitados;
-- conversão: `scope` e `roles` públicos são mapeados, claims privados não;
-- arquitetura: o starter não possui import `org.keycloak`;
-- integração real com discovery/JWKS do Keycloak 26.7 quando a configuração
-  básica estiver verde.
+- TDD: testes de propriedades e validadores ficaram vermelhos inicialmente por
+  ausência das classes; a compilação/execução verdes só ocorreram após a
+  implementação mínima. Um teste de decoder revelou clock divergente entre
+  `iat` e expiração; o `JwtTimestampValidator` passou a receber o mesmo `Clock`
+  injetável antes de o teste ficar verde.
+- propriedades: issuer ausente, URI HTTP fora de loopback, audience inválida,
+  prefixos vazios e clock skew negativo são rejeitados; defaults de binding são
+  `enabled=true`, `60s`, `ROLE_` e `SCOPE_`;
+- auto-configuração: `ApplicationContextRunner` prova os beans padrão, recuo
+  diante de `JwtDecoder` e de `SecurityFilterChain` do consumidor, além da
+  inatividade explícita com `enabled=false`; discovery disponível com JWKS
+  `503` falha o contexto pela indisponibilidade efetiva da chave pública. Esse
+  último teste foi vermelho antes do preflight, pois o decoder padrão adiava a
+  leitura do JWKS para o primeiro token. O gate Linux revelou também que o
+  timeout interno de `500ms` do Nimbus torna esse preflight frágil; o starter
+  passou a fornecer `identityHubJwtRestOperations` com `2s` de conexão e `5s`
+  de leitura, comprovado pelas mesmas cadeias HTTP e pelo decoder no WSL;
+- JWT: issuer, audience, expiração, `iat` futuro, `kid` desconhecido, assinatura
+  fora da chave confiável e algoritmo `HS256` são rejeitados por discovery/JWKS
+  e validação local;
+- HTTP: cadeia padrão responde `401` sem Bearer e para audience errada; token
+  correto recebe `200`; cadeia consumidora produz `403` para scope/role ausente
+  e reconhece somente `scope` e `roles` públicos;
+- arquitetura: ArchUnit proíbe dependência em `org.keycloak` no starter;
+- integração real: `KeycloakResourceServerIntegrationTest` executou sem skip
+  no WSL/Docker em 2026-08-03, iniciou Keycloak `26.7.0` por Testcontainers,
+  importou realm descartável, obteve token `RS256` por Client Credentials e o
+  validou por discovery e JWKS, inclusive após a pré-verificação de startup. O
+  relatório registrou `tests=1`, `skipped=0`, `failures=0` e `errors=0`.
+
+O Windows atual não possui CLI/daemon Docker visível; por isso a mesma classe é
+marcada como skipped nesse processo e não conta como evidência de integração.
+O gate real é executado no WSL, onde Docker `29.1.3` está disponível.
+
+- gates finais: `./gradlew clean build` no WSL concluiu em 18m06s com `338`
+  testes, `0` skips, `0` falhas e `0` erros; `./gradlew.bat clean build` no
+  Windows concluiu em 2m49s. Ambos executaram Checkstyle, JaCoCo e o `bootJar`
+  do Service Mode; o JAR do starter contém `AutoConfiguration.imports` e
+  `spring-configuration-metadata.json`.
 
 ## 8. Migration, observabilidade e rollback
 
@@ -89,3 +118,16 @@ Não há migration nem mudança no runtime do Service Mode. O artefato ainda nã
 publicado em repositório externo; rollback é remover a dependência ou reverter o
 PR. Logs de startup podem informar somente issuer normalizado, audience, versão e
 recursos ativados, nunca token, header, segredo ou JWKS completo.
+
+## 9. Recuperação de contexto
+
+Após a compactação da conversa em 2026-08-03, foram relidos o estado Git, a última
+fatia completa, `pending-decisions.md`, `autonomous-delivery.md`, a sequência de
+migração, `IH-MVP-020`, Integration Mode, o modelo de segurança e ADRs 0003,
+0007, 0012 e 0018 antes de qualquer alteração. Não havia divergência normativa ou
+pendência bloqueante para esta fatia.
+
+Após nova compactação na mesma data, essa recuperação foi repetida antes dos
+gates finais. A revisão identificou a diferença entre discovery no startup e
+leitura preguiçosa de JWKS do decoder do Spring; o preflight e sua prova negativa
+foram incluídos para cumprir o contrato já aprovado, sem mudar o contrato público.

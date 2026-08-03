@@ -17,6 +17,14 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- First Integration Mode runtime: the `identityhub-spring-boot-starter` Servlet
+  auto-configures a stateless default-deny Resource Server, validates only
+  `RS256` JWTs through issuer discovery/JWKS with issuer, audience, time and
+  public-claim checks, verifies JWKS availability before a default decoder
+  starts with bounded 2-second connect and 5-second read calls, maps only public
+  scope/roles authorities, and backs off for an explicit consumer security chain.
+  Unit, HTTP, architecture and real Keycloak 26.7 Testcontainers evidence cover
+  the secure path.
 - Membership-conditioned public token projection using private API roles and
   per-application Keycloak role scopes. Browser tokens receive only
   same-application API audiences, `roles=[]` until business roles exist, and no
