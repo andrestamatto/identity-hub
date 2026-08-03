@@ -50,7 +50,10 @@ fatia; a política de exclusão do client será definida junto ao seu lifecycle.
 O adapter usa somente OIDC e Admin REST, sem biblioteca ou tipo do Keycloak fora
 de `adapter.out.keycloak`. A projeção cria um cliente OIDC bearer-only:
 
-- identificador interno determinístico `ih-api-{applicationClientId}`;
+- no incremento original, identificador interno determinístico
+  `ih-api-{applicationClientId}`; o ADR-0018 posteriormente tornou a audience
+  pública o `client_id` do resource server para que o Audience Resolve nativo
+  emita o contrato correto sem mapper customizado;
 - nenhum secret, redirect URI ou web origin;
 - standard, implicit, direct access, service account e authorization services
   desabilitados;

@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Changed
+- API resource-server projections now use their stable public audience as the
+  Keycloak `client_id`, allowing native audience resolution without exposing a
+  custom Keycloak claim contract.
 - Platform-role assignments now use Keycloak as their MVP source of truth while
   IdentityHub retains the administrative contracts, authorization policies and
   audit boundary, avoiding an unsafe authoritative replica.
@@ -14,6 +17,11 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Membership-conditioned public token projection using private API roles and
+  per-application Keycloak role scopes. Browser tokens receive only
+  same-application API audiences, `roles=[]` until business roles exist, and no
+  native role, group or PII claims; real Keycloak/PostgreSQL evidence covers
+  cross-application isolation and managed-scope drift reconciliation.
 - Durable membership projection through a transactional PostgreSQL outbox,
   private per-application Keycloak markers, fail-closed activation, scoped
   operation status and explicit reconciliation, with outcome and duration

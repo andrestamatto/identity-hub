@@ -271,6 +271,11 @@ O starter conhece apenas o contrato IdentityHub:
 O starter não lê `realm_access`, `resource_access` ou outro claim privado do
 Keycloak. A projeção do Service Mode deve entregar o formato público acima.
 
+Na fatia inicial de audience pública, `roles` é emitido como lista vazia. A
+presença da audience esperada demonstra somente a Membership ativa; papéis de
+negócio serão introduzidos por uma capacidade posterior e não devem ser inferidos
+de claims privados do motor.
+
 ### 10.1 Authorities
 
 - cada scope válido vira `SCOPE_<scope>`;

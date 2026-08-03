@@ -1,6 +1,6 @@
 # SLICE-008A — Audience pública condicionada à Membership
 
-> **Status:** contract defined; implementation pending
+> **Status:** complete
 >
 > **Data:** 2026-08-03
 >
@@ -76,3 +76,27 @@ Antes de produção, rollback é o revert do PR; artefatos remotos permanecem
 inertes sem vínculo ao cliente e não serão removidos automaticamente sem
 inspeção e autorização.
 
+## 9. Implementação e evidência
+
+- `JdbcApplicationTokenClientResolver` seleciona somente API, SPA e BFF
+  habilitados, pertencentes à mesma aplicação e já projetados no Keycloak;
+- `KeycloakMembershipTokenProjector` cria ou reconcilia a role privada de cada
+  API, o scope técnico da aplicação, seus role scope mappings e os scopes de
+  navegador permitidos;
+- o `client_id` remoto da API coincide com a audience pública estável, pois esse
+  é o valor que o Audience Resolve suportado pelo Keycloak emite em `aud`;
+- a role e o scope são configurados pela credencial de gestão de clientes; a
+  associação de usuário/grupo e role usa a credencial separada de identidade;
+- somente o scope nativo `basic` é preservado para que o motor emita `sub`;
+  todos os demais defaults e optional scopes de navegador são removidos;
+- o scope técnico é reconciliado para conter somente Audience Resolve e o mapper
+  `roles=[]`; grupo, role operacional, `realm_access`, `resource_access`, PII e
+  claims privados não entram no token;
+- `KeycloakAdminTokenIntegrationTest` executado com Keycloak 26.7 e PostgreSQL
+  reais comprovou ausência de audience antes da Membership, audience somente da
+  aplicação ativa, isolamento entre duas aplicações, `roles=[]`, `sub`, `jti`,
+  tempos válidos e ausência dos claims proibidos;
+- o teste do adapter cobriu replay, ownership e reconciliação de mapper
+  inesperado; a execução focada e Checkstyle ficaram verdes em Windows;
+- a recuperação de contexto exigida por `autonomous-delivery.md` foi refeita em
+  2026-08-03 antes da consolidação desta implementação.

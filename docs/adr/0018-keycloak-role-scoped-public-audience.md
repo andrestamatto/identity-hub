@@ -11,20 +11,32 @@ mapper fixo seria incondicional. O scope `roles` padrão do realm poderia expor
 papéis de outras aplicações. Criar provider próprio aumentaria operação e
 acoplamento antes de existir necessidade concreta.
 
+O Audience Resolve nativo emite o `client_id` do resource server como audience.
+Portanto, um identificador operacional aleatório para a API não produziria a
+audience pública estável aprovada pelo IdentityHub.
+
 ## Decisão
 
 O MVP usa somente recursos OIDC e Admin REST suportados pelo Keycloak:
 
 - cada API gerenciada recebe uma role operacional privada de acesso;
+- o `client_id` operacional de uma API é a sua audience pública estável; os
+  identificadores de SPA, BFF e máquina continuam internos;
 - o grupo técnico da Membership recebe essa role;
 - um client scope técnico por `ClientApplication` limita seu role scope às
   roles operacionais das APIs da mesma aplicação;
 - o Audience Resolve mapper inclui como audience somente clientes para os quais
   o usuário possui role disponível naquele scope;
-- SPA e BFF gerenciados recebem esse scope como default e não conservam client
-  scopes herdados do realm;
+- SPA e BFF gerenciados recebem esse scope como default e conservam somente o
+  scope nativo `basic`, necessário para o `sub`; todos os demais scopes default
+  ou opcionais são removidos;
 - um mapper público produz `roles` vazio nesta fatia; papéis de negócio serão
   adicionados somente quando existirem no domínio do IdentityHub;
+- scopes gerenciados aceitam somente os dois mappers aprovados; drift de mapper
+  é reconciliado antes da ativação da Membership;
+- configuração de clientes, roles e scopes usa a service account de gestão;
+  associação de usuário, grupo e roles usa a service account de identidade,
+  sem ampliar privilégios de nenhuma delas;
 - claims nativos de roles, grupos e PII não são mapeados.
 
 As audiences de todas as APIs protegidas da aplicação podem coexistir no token,
@@ -38,6 +50,9 @@ duplicadas.
 - role scope impede vazamento cross-application;
 - configuração usa recursos nativos e atualizáveis do motor;
 - o contrato público permanece engine-neutral;
+- o token preserva o `sub` opaco sem carregar scopes de perfil ou PII;
+- a separação das credenciais técnicas reduz o impacto de comprometimento de
+  cada uma;
 - nenhuma nova dependência, credencial ou extensão Java é necessária.
 
 ## Consequências negativas

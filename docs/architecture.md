@@ -485,16 +485,26 @@ No provisionamento do MVP, a API exige a audience estável
 `identityhub-integration-api` e o scope `membership:write`. A aplicação alvo não
 faz parte do path nem do payload: o plano de controle resolve a
 `ClientApplication` a partir do `azp` assinado do cliente de máquina e de seu
-vínculo projetado. O formato do identificador operacional do cliente no Keycloak
-continua interno e não integra o contrato consumidor.
+vínculo projetado. Os identificadores operacionais de SPA, BFF e máquina no
+Keycloak continuam internos e não integram o contrato consumidor. Para uma API,
+o `client_id` do resource server é sua audience pública estável, pois o Audience
+Resolve nativo usa esse identificador para formar a claim `aud`.
 
 A concessão persiste atomicamente uma `Membership` `PENDING`, a operação
 idempotente que a originou e um item de outbox. A unicidade é definida por
-aplicação e usuário. Um worker associa o usuário a um grupo técnico privado da
-aplicação no Keycloak e somente então confirma `Membership=ACTIVE` e
-`projection=APPLIED` na mesma transação local. O grupo é infraestrutura interna,
-não possui mapper público e não representa organização, tenant ou autorização
-de negócio.
+aplicação e usuário. Um worker configura primeiro as roles operacionais e o
+scope técnico da `ClientApplication` usando a identidade de gestão do Keycloak.
+Em seguida, usando a identidade separada de gestão de usuários, associa o usuário
+ao grupo técnico privado da aplicação e atribui as roles privadas ao grupo.
+Somente após ambas as projeções remotas serem confirmadas, confirma
+`Membership=ACTIVE` e `projection=APPLIED` na mesma transação local.
+
+O scope de navegador conserva apenas o scope nativo `basic`, necessário ao
+`sub` opaco, e o scope técnico da aplicação; default scopes adicionais e optional
+scopes são removidos. O scope técnico contém apenas Audience Resolve e o mapper
+público `roles=[]` até a capacidade de papéis de negócio existir. Grupo e roles
+operacionais são infraestrutura interna, não possuem mapper público e não
+representam organização, tenant ou autorização de negócio.
 
 O cliente consulta a própria operação por `operationId`. Uma projeção
 `FAILED` mantém a Membership `PENDING` e pode ser explicitamente recolocada em
