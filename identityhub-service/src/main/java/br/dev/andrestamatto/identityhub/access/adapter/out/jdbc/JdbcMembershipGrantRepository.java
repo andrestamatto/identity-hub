@@ -143,6 +143,43 @@ public final class JdbcMembershipGrantRepository implements MembershipGrantRepos
                 .optional();
     }
 
+    @Override
+    public Optional<MembershipOperationStatus> requeue(
+            UUID operationId,
+            MembershipApplicationRef applicationRef,
+            java.time.Instant now) {
+        return Objects.requireNonNull(transactions.execute(status -> {
+            var current = findStatus(operationId, applicationRef);
+            if (current.isEmpty() || "PENDING".equals(current.orElseThrow().projectionState())) {
+                return current;
+            }
+            var membershipId = current.orElseThrow().membershipId();
+            jdbcClient.sql("""
+                            update membership
+                            set state = 'PENDING', activated_at = null, updated_at = :now
+                            where id = :membershipId
+                            """)
+                    .param("membershipId", membershipId)
+                    .param("now", utc(now))
+                    .update();
+            var updated = jdbcClient.sql("""
+                            update membership_projection_outbox
+                            set state = 'PENDING', attempts = 0, next_attempt_at = :now,
+                                last_failure_code = null, lease_owner = null,
+                                lease_until = null, updated_at = :now
+                            where membership_id = :membershipId
+                              and lease_owner is null
+                            """)
+                    .param("membershipId", membershipId)
+                    .param("now", utc(now))
+                    .update();
+            if (updated != 1) {
+                throw new IllegalStateException("Membership projection is currently reserved");
+            }
+            return findStatus(operationId, applicationRef);
+        }));
+    }
+
     private void insertProjection(Membership membership, String correlationId) {
         jdbcClient.sql("""
                         insert into membership_projection_outbox (

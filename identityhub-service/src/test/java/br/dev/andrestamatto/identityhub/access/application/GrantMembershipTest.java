@@ -112,5 +112,14 @@ class GrantMembershipTest {
                         applicationRef) {
             return java.util.Optional.empty();
         }
+
+        @Override
+        public java.util.Optional<MembershipOperationStatus> requeue(
+                java.util.UUID operationId,
+                br.dev.andrestamatto.identityhub.access.domain.MembershipApplicationRef
+                        applicationRef,
+                java.time.Instant now) {
+            return java.util.Optional.empty();
+        }
     }
 }

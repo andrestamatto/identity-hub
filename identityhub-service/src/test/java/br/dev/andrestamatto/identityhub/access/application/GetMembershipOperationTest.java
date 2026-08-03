@@ -37,6 +37,14 @@ class GetMembershipOperationTest {
                 assertThat(applicationRef.value()).isEqualTo(applicationId);
                 return Optional.of(expected);
             }
+
+            @Override
+            public Optional<MembershipOperationStatus> requeue(
+                    UUID requestedOperationId,
+                    MembershipApplicationRef applicationRef,
+                    Instant now) {
+                return Optional.empty();
+            }
         };
 
         assertThat(new GetMembershipOperation(repository).execute(operationId, applicationId))

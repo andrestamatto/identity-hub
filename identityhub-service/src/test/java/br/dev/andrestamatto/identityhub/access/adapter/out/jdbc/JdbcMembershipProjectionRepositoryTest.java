@@ -165,6 +165,32 @@ class JdbcMembershipProjectionRepositoryTest {
         assertThat(status.lastFailureCode()).isEqualTo("USER_NOT_FOUND");
     }
 
+    @Test
+    void explicitReconciliationReturnsActiveMembershipToPendingBeforeRetry() {
+        var task = projections.reserveNext(WORKER, NOW, Duration.ofSeconds(30)).orElseThrow();
+        projections.markApplied(
+                task.membership().activate(Clock.fixed(NOW.plusSeconds(1), ZoneOffset.UTC)),
+                WORKER,
+                NOW.plusSeconds(1));
+        var operationId = UUID.fromString("06d068e0-78d5-4df6-97dd-88df538ab948");
+
+        var requeued = grants.requeue(
+                        operationId,
+                        new MembershipApplicationRef(APPLICATION),
+                        NOW.plusSeconds(2))
+                .orElseThrow();
+
+        assertThat(requeued.membershipState()).isEqualTo("PENDING");
+        assertThat(requeued.projectionState()).isEqualTo("PENDING");
+        assertThat(requeued.attempts()).isZero();
+        assertThat(projections.reserveNext(
+                UUID.randomUUID(), NOW.plusSeconds(2), Duration.ofSeconds(30))).isPresent();
+        assertThat(grants.requeue(
+                operationId,
+                new MembershipApplicationRef(UUID.randomUUID()),
+                NOW.plusSeconds(2))).isEmpty();
+    }
+
     private MembershipGrantOperation operation() {
         return new MembershipGrantOperation(
                 UUID.fromString("06d068e0-78d5-4df6-97dd-88df538ab948"),

@@ -16,6 +16,7 @@ import br.dev.andrestamatto.identityhub.access.application.MembershipGrantConfli
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantRepository;
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantResult;
 import br.dev.andrestamatto.identityhub.access.application.MembershipOperationStatus;
+import br.dev.andrestamatto.identityhub.access.application.ReconcileMembershipOperation;
 import br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEventRepository;
 import br.dev.andrestamatto.identityhub.bootstrap.IdentityHubApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc
@@ -69,6 +70,9 @@ class MembershipGrantHttpTest {
 
     @MockitoBean
     private GetMembershipOperation getMembershipOperation;
+
+    @MockitoBean
+    private ReconcileMembershipOperation reconcileMembershipOperation;
 
     @MockitoBean
     private MembershipGrantRepository membershipRepository;
@@ -242,6 +246,28 @@ class MembershipGrantHttpTest {
                         .with(provisionerJwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Membership operation not found"));
+    }
+
+    @Test
+    void authorizedClientReconcilesItsOperationFailClosed() throws Exception {
+        var operationId = UUID.fromString("06d068e0-78d5-4df6-97dd-88df538ab948");
+        when(reconcileMembershipOperation.execute(operationId, APPLICATION_ID))
+                .thenReturn(Optional.of(new MembershipOperationStatus(
+                        operationId,
+                        UUID.fromString("c50638fe-0b91-4f47-81e6-2bd183040c1c"),
+                        "PENDING",
+                        "PENDING",
+                        0,
+                        null,
+                        Instant.parse("2026-08-02T18:00:00Z"),
+                        Instant.parse("2026-08-02T18:00:02Z"))));
+
+        mvc.perform(post("/api/v1/membership-operations/" + operationId
+                        + "/projection/reconcile")
+                        .with(provisionerJwt()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.membershipState").value("PENDING"))
+                .andExpect(jsonPath("$.projectionState").value("PENDING"));
     }
 
     private RequestPostProcessor provisionerJwt() {
