@@ -619,6 +619,12 @@ Pode executar somente operações documentadas pelo IdentityHub. Não recebe ace
 - membership é única por usuário e aplicação;
 - nenhuma role de outra aplicação entra no token;
 - máquina só gerencia memberships da própria aplicação.
+- membership permanece `PENDING` até a associação remota ser confirmada;
+- a projeção inicial usa grupo técnico privado, sem mapper, claim ou role em
+  tokens públicos;
+- consulta e reconciliação de uma operação são limitadas à aplicação derivada
+  do `azp`, e operações alheias não podem ser enumeradas;
+- falha ou esgotamento de tentativas mantém o acesso fechado.
 
 ### 19.2 Plataforma
 

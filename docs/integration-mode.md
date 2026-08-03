@@ -625,11 +625,37 @@ Content-Type: application/json
 Uma solicitação aceita retorna `202 Accepted` com `operationId`, `membershipId`,
 `state=PENDING` e `acceptedAt`. A resposta não devolve application id nem dados
 comerciais. O estado `PENDING` prova a intenção durável, mas ainda não concede
-acesso; a ativação depende da projeção prevista no incremento seguinte.
+acesso; a ativação depende da projeção confirmada no motor interno.
 
 A mesma chave com o mesmo comando devolve a mesma operação. A reutilização da
 chave com outro comando retorna conflito. Campos desconhecidos, inclusive
 qualquer application id informado pelo solicitante, são rejeitados.
+
+### 14.2 Consulta e reconciliação da operação
+
+O cliente acompanha somente operações da própria aplicação:
+
+```http
+GET /api/v1/membership-operations/{operationId}
+Authorization: Bearer <client-credentials-access-token>
+```
+
+A resposta contém `operationId`, `membershipId`, `membershipState`,
+`projectionState`, `attempts`, `lastFailureCode`, `acceptedAt` e `updatedAt`.
+Não contém application id, usuário ou mensagem interna do provedor. Operação
+desconhecida e operação de outra aplicação retornam a mesma resposta `404`.
+
+Uma projeção `FAILED` conhecida pode ser recolocada em processamento:
+
+```http
+POST /api/v1/membership-operations/{operationId}/projection/reconcile
+Authorization: Bearer <client-credentials-access-token>
+```
+
+O comando exige a mesma audience e o scope `membership:write`, retorna
+`202 Accepted` e é idempotente enquanto a operação já estiver `PENDING`. A
+reconciliação não amplia acesso: a Membership volta ou permanece `PENDING` até
+nova confirmação remota.
 
 ## 15. Diagnóstico e observabilidade
 

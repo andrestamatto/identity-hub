@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Durable membership projection through a transactional PostgreSQL outbox,
+  private per-application Keycloak markers, fail-closed activation, scoped
+  operation status and explicit reconciliation, with outcome and duration
+  metrics that contain no application or user identifiers.
 - Authenticated membership-grant intent API with a stable integration audience,
   explicit `membership:write` machine scope, target application derived from
   validated `azp`, idempotent PostgreSQL persistence in `PENDING`, strict

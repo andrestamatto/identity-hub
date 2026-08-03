@@ -12,18 +12,27 @@ public final class Membership {
     private final MembershipUserAccountRef userAccountRef;
     private final MembershipState state;
     private final Instant requestedAt;
+    private final Instant activatedAt;
 
     private Membership(
             MembershipId id,
             MembershipApplicationRef applicationRef,
             MembershipUserAccountRef userAccountRef,
             MembershipState state,
-            Instant requestedAt) {
+            Instant requestedAt,
+            Instant activatedAt) {
         this.id = Objects.requireNonNull(id);
         this.applicationRef = Objects.requireNonNull(applicationRef);
         this.userAccountRef = Objects.requireNonNull(userAccountRef);
         this.state = Objects.requireNonNull(state);
         this.requestedAt = Objects.requireNonNull(requestedAt);
+        this.activatedAt = activatedAt;
+        if (state == MembershipState.PENDING && activatedAt != null) {
+            throw new IllegalArgumentException("Pending membership cannot have activation time");
+        }
+        if (state == MembershipState.ACTIVE && activatedAt == null) {
+            throw new IllegalArgumentException("Active membership requires activation time");
+        }
     }
 
     public static Membership request(
@@ -37,7 +46,8 @@ public final class Membership {
                 applicationRef,
                 userAccountRef,
                 MembershipState.PENDING,
-                clock.instant().truncatedTo(ChronoUnit.MICROS));
+                clock.instant().truncatedTo(ChronoUnit.MICROS),
+                null);
     }
 
     public static Membership reconstitute(
@@ -45,8 +55,24 @@ public final class Membership {
             MembershipApplicationRef applicationRef,
             MembershipUserAccountRef userAccountRef,
             MembershipState state,
-            Instant requestedAt) {
-        return new Membership(id, applicationRef, userAccountRef, state, requestedAt);
+            Instant requestedAt,
+            Instant activatedAt) {
+        return new Membership(
+                id, applicationRef, userAccountRef, state, requestedAt, activatedAt);
+    }
+
+    public Membership activate(Clock clock) {
+        Objects.requireNonNull(clock);
+        if (state == MembershipState.ACTIVE) {
+            return this;
+        }
+        return new Membership(
+                id,
+                applicationRef,
+                userAccountRef,
+                MembershipState.ACTIVE,
+                requestedAt,
+                clock.instant().truncatedTo(ChronoUnit.MICROS));
     }
 
     public MembershipId id() {
@@ -67,5 +93,9 @@ public final class Membership {
 
     public Instant requestedAt() {
         return requestedAt;
+    }
+
+    public Instant activatedAt() {
+        return activatedAt;
     }
 }

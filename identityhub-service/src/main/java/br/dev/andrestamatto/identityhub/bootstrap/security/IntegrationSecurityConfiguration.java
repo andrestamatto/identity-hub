@@ -20,6 +20,10 @@ class IntegrationSecurityConfiguration {
 
     static final String INTEGRATION_AUDIENCE = "identityhub-integration-api";
     private static final String MEMBERSHIP_ENDPOINT = "/api/v1/memberships";
+    private static final String MEMBERSHIP_OPERATION_ENDPOINT =
+            "/api/v1/membership-operations/*";
+    private static final String MEMBERSHIP_RECONCILIATION_ENDPOINT =
+            "/api/v1/membership-operations/*/projection/reconcile";
 
     @Bean
     @Order(1)
@@ -31,6 +35,10 @@ class IntegrationSecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.POST, MEMBERSHIP_ENDPOINT)
+                        .hasAuthority("SCOPE_membership:write")
+                        .requestMatchers(HttpMethod.GET, MEMBERSHIP_OPERATION_ENDPOINT)
+                        .hasAuthority("SCOPE_membership:write")
+                        .requestMatchers(HttpMethod.POST, MEMBERSHIP_RECONCILIATION_ENDPOINT)
                         .hasAuthority("SCOPE_membership:write")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(

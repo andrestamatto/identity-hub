@@ -1212,15 +1212,18 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(claims.getClaimAsString("scope")).isEqualTo("membership:write");
         assertThat(claims.getClaimAsString("azp")).isEqualTo("ih-machine-" + clientId);
 
-        assertRealMembershipGrant(machineAccessToken, applicationId, clientId);
-        assertSecondApplicationMembershipIsolation(accessToken, applicationId);
+        var membershipUser = userAccountRefByUsername(USERNAME).value();
+        assertRealMembershipGrant(
+                machineAccessToken, applicationId, clientId, membershipUser);
+        assertSecondApplicationMembershipIsolation(
+                accessToken, applicationId, membershipUser);
     }
 
     private void assertRealMembershipGrant(
             String machineAccessToken,
             UUID applicationId,
-            UUID applicationClientId) throws Exception {
-        var userAccountRef = UUID.fromString("680ac2e4-bfb0-4375-a75e-453b6e7b600c");
+            UUID applicationClientId,
+            UUID userAccountRef) throws Exception {
         var membershipUri = URI.create(
                 "http://127.0.0.1:" + servicePort + "/api/v1/memberships");
         var body = "{\"userAccountRef\":\"" + userAccountRef + "\"}";
@@ -1285,7 +1288,8 @@ class KeycloakAdminTokenIntegrationTest {
 
     private void assertSecondApplicationMembershipIsolation(
             String adminAccessToken,
-            UUID firstApplicationId) throws Exception {
+            UUID firstApplicationId,
+            UUID userAccountRef) throws Exception {
         var integrationUri = URI.create(
                 "http://127.0.0.1:" + servicePort + "/api/v1/memberships");
         var wrongAudience = HttpClient.newHttpClient().send(
@@ -1294,7 +1298,7 @@ class KeycloakAdminTokenIntegrationTest {
                         adminAccessToken,
                         "wrong-audience-grant",
                         "wrong-audience-grant",
-                        "{\"userAccountRef\":\"680ac2e4-bfb0-4375-a75e-453b6e7b600c\"}"),
+                        "{\"userAccountRef\":\"" + userAccountRef + "\"}"),
                 HttpResponse.BodyHandlers.ofString());
         assertThat(wrongAudience.statusCode()).isEqualTo(401);
 
@@ -1341,7 +1345,6 @@ class KeycloakAdminTokenIntegrationTest {
                 "ih-machine-" + secondClientId,
                 JSON.readTree(secretResponse.body()).required("clientSecret").asString());
 
-        var userAccountRef = UUID.fromString("680ac2e4-bfb0-4375-a75e-453b6e7b600c");
         var grant = HttpClient.newHttpClient().send(
                 authorizedPostJsonRequest(
                         integrationUri,
@@ -1366,6 +1369,93 @@ class KeycloakAdminTokenIntegrationTest {
                 .containsExactlyInAnyOrder(
                         Map.entry(firstApplicationId, 1),
                         Map.entry(secondApplicationId, 1));
+        awaitActiveMemberships(userAccountRef, 2);
+        assertTechnicalMembershipMarkers(
+                userAccountRef, firstApplicationId, secondApplicationId);
+        assertTechnicalMembershipMarkersAreNotExposed();
+        var secondOperationId = JSON.readTree(grant.body()).required("operationId").asString();
+        var ownStatus = HttpClient.newHttpClient().send(
+                authorizedGetRequest(
+                        URI.create("http://127.0.0.1:" + servicePort
+                                + "/api/v1/membership-operations/" + secondOperationId),
+                        secondToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(ownStatus.statusCode()).isEqualTo(200);
+        assertThat(ownStatus.body()).contains(
+                "\"membershipState\":\"ACTIVE\"",
+                "\"projectionState\":\"APPLIED\"");
+
+        var firstOperationId = jdbcClient.sql("""
+                        select o.operation_id
+                        from membership_grant_operation o
+                        join membership m on m.id = o.membership_id
+                        where m.application_id = :applicationId
+                        order by o.accepted_at
+                        limit 1
+                        """)
+                .param("applicationId", firstApplicationId)
+                .query(UUID.class)
+                .single();
+        var crossApplicationStatus = HttpClient.newHttpClient().send(
+                authorizedGetRequest(
+                        URI.create("http://127.0.0.1:" + servicePort
+                                + "/api/v1/membership-operations/" + firstOperationId),
+                        secondToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(crossApplicationStatus.statusCode()).isEqualTo(404);
+    }
+
+    private void awaitActiveMemberships(UUID userAccountRef, int expected)
+            throws InterruptedException {
+        var deadline = Instant.now().plusSeconds(30);
+        int active;
+        do {
+            active = jdbcClient.sql("""
+                            select count(*) from membership
+                            where user_account_ref = :userAccountRef and state = 'ACTIVE'
+                            """)
+                    .param("userAccountRef", userAccountRef)
+                    .query(Integer.class)
+                    .single();
+            if (active == expected) {
+                return;
+            }
+            Thread.sleep(100);
+        } while (Instant.now().isBefore(deadline));
+        var diagnostics = jdbcClient.sql("""
+                        select string_agg(state || ':' || coalesce(last_failure_code, 'none'), ',')
+                        from membership_projection_outbox
+                        """)
+                .query(String.class)
+                .single();
+        assertThat(active)
+                .describedAs("membership projection outcomes: %s", diagnostics)
+                .isEqualTo(expected);
+    }
+
+    private void assertTechnicalMembershipMarkers(
+            UUID userAccountRef,
+            UUID firstApplicationId,
+            UUID secondApplicationId) throws Exception {
+        var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedGetRequest(
+                        keycloakBaseUri.resolve("/admin/realms/" + REALM + "/users/"
+                                + userAccountRef + "/groups"),
+                        requestBootstrapAdminToken()),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(JSON.readTree(response.body()))
+                .extracting(group -> group.path("name").asString())
+                .contains(
+                        "ih-membership-" + firstApplicationId,
+                        "ih-membership-" + secondApplicationId);
+    }
+
+    private static void assertTechnicalMembershipMarkersAreNotExposed() throws Exception {
+        var freshHumanToken = oidcDecoder().decode(authenticateThroughHostedLogin());
+
+        assertThat(freshHumanToken.getClaims()).doesNotContainKey("groups");
+        assertThat(freshHumanToken.getClaims().toString()).doesNotContain("ih-membership-");
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {
