@@ -98,5 +98,8 @@ inspeção e autorização.
   tempos válidos e ausência dos claims proibidos;
 - o teste do adapter cobriu replay, ownership e reconciliação de mapper
   inesperado; a execução focada e Checkstyle ficaram verdes em Windows;
+- os builds canônicos `.\gradlew.bat clean build` (Windows, 3m02) e
+  `./gradlew clean build` (Linux/WSL, 16m53) ficaram verdes, incluindo
+  `bootJar`, Checkstyle, ArchUnit, JaCoCo e a integração real aplicável;
 - a recuperação de contexto exigida por `autonomous-delivery.md` foi refeita em
   2026-08-03 antes da consolidação desta implementação.
