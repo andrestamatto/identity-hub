@@ -33,6 +33,7 @@ class KeycloakMembershipProjectorTest {
     private static final ObjectMapper JSON = new ObjectMapper();
     private final AtomicInteger creates = new AtomicInteger();
     private final AtomicInteger joins = new AtomicInteger();
+    private final AtomicInteger roleMappings = new AtomicInteger();
     private HttpServer server;
     private ObjectNode group;
     private boolean userExists = true;
@@ -63,6 +64,17 @@ class KeycloakMembershipProjectorTest {
         assertThat(joins).hasValue(2);
         assertThat(group.path("attributes").path("identityhub.application-id").get(0)
                 .asString()).isEqualTo(membership().applicationRef().value().toString());
+    }
+
+    @Test
+    void mapsPreparedClientRoleThroughIdentityBoundary() {
+        var role = new KeycloakClientRole(
+                "api-internal", "role-id", "ih-membership-access");
+
+        projector().project(membership(), java.util.List.of(role));
+
+        assertThat(joins).hasValue(1);
+        assertThat(roleMappings).hasValue(1);
     }
 
     @Test
@@ -105,6 +117,11 @@ class KeycloakMembershipProjectorTest {
     }
 
     private void groups(HttpExchange exchange) throws IOException {
+        if (exchange.getRequestURI().getPath().contains("/role-mappings/clients/")) {
+            roleMappings.incrementAndGet();
+            respond(exchange, 204, "");
+            return;
+        }
         if ("GET".equals(exchange.getRequestMethod())) {
             respond(exchange, 200, group == null ? "[]" : "[" + group + "]");
             return;

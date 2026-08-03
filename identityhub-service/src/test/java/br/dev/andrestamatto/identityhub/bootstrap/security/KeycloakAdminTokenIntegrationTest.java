@@ -74,6 +74,14 @@ class KeycloakAdminTokenIntegrationTest {
     private static final String PASSWORD = syntheticPassword();
     private static final String OTP_SECRET = String.join("", "JBSWY3DP", "EHPK3PXP");
     private static final String REDIRECT_URI = "http://127.0.0.1/callback";
+    private static final UUID PUBLIC_API_CLIENT_ID =
+            UUID.fromString("1ae43ab3-ad03-41fe-b734-e579824e0e93");
+    private static final String PUBLIC_API_AUDIENCE = "real-protected-api";
+    private static final UUID PUBLIC_SPA_CLIENT_ID =
+            UUID.fromString("72c43df3-9f34-4dc6-85cc-5d323762f299");
+    private static final String PUBLIC_SPA_REDIRECT_URI =
+            "http://127.0.0.1:5173/auth/callback";
+    private static final String SECOND_API_AUDIENCE = "second-protected-api";
     private static final String PKCE_VERIFIER =
             "test-only-verifier-identityhub-admin-login-0001";
     private static final String LOCAL_LOGIN_USERNAME = "verified.user@example.test";
@@ -189,6 +197,7 @@ class KeycloakAdminTokenIntegrationTest {
         createRealm(adminToken);
         configureEmailOnlyUserProfile(adminToken);
         configureGenericLoginMessages(adminToken);
+        restrictAdminClientScopes(adminToken);
         grantClientManagement(adminToken);
         grantIdentityManagement(adminToken);
         configureAuthenticationMethodReferences(adminToken);
@@ -299,8 +308,8 @@ class KeycloakAdminTokenIntegrationTest {
         var response = httpClient(HttpClient.Redirect.NORMAL).send(
                 authorizedGetRequest(
                         keycloakBaseUri.resolve(
-                                "/admin/realms/" + REALM + "/clients?clientId=ih-api-"
-                                        + clientId + "&exact=true"),
+                                "/admin/realms/" + REALM
+                                        + "/clients?clientId=catalog-api&exact=true"),
                         adminToken),
                 HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
@@ -987,7 +996,7 @@ class KeycloakAdminTokenIntegrationTest {
             String accessToken,
             URI applicationUri,
             UUID applicationId) throws Exception {
-        var clientId = UUID.fromString("1ae43ab3-ad03-41fe-b734-e579824e0e93");
+        var clientId = PUBLIC_API_CLIENT_ID;
         var clientUri = URI.create(applicationUri + "/clients/" + clientId);
         var response = HttpClient.newHttpClient().send(
                 authorizedPutJsonRequest(
@@ -1020,7 +1029,7 @@ class KeycloakAdminTokenIntegrationTest {
             String accessToken,
             URI applicationUri,
             UUID applicationId) throws Exception {
-        var clientId = UUID.fromString("72c43df3-9f34-4dc6-85cc-5d323762f299");
+        var clientId = PUBLIC_SPA_CLIENT_ID;
         var clientUri = URI.create(applicationUri + "/clients/" + clientId);
         var response = HttpClient.newHttpClient().send(
                 authorizedPutJsonRequest(
@@ -1213,6 +1222,9 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(claims.getClaimAsString("azp")).isEqualTo("ih-machine-" + clientId);
 
         var membershipUser = userAccountRefByUsername(USERNAME).value();
+        var beforeMembership = oidcDecoder().decode(authenticateThroughHostedLogin(
+                "ih-spa-" + PUBLIC_SPA_CLIENT_ID, PUBLIC_SPA_REDIRECT_URI));
+        assertThat(beforeMembership.getAudience()).isNullOrEmpty();
         assertRealMembershipGrant(
                 machineAccessToken, applicationId, clientId, membershipUser);
         assertSecondApplicationMembershipIsolation(
@@ -1317,6 +1329,23 @@ class KeycloakAdminTokenIntegrationTest {
                 HttpResponse.BodyHandlers.ofString());
         assertThat(registration.statusCode()).isEqualTo(201);
 
+        var secondApiId = UUID.fromString("e160970a-8551-48f8-aa98-2de935a16293");
+        var secondApi = HttpClient.newHttpClient().send(
+                authorizedPutJsonRequest(
+                        URI.create(applicationUri + "/clients/" + secondApiId),
+                        adminAccessToken,
+                        "configure-second-protected-api",
+                        """
+                                {
+                                  "type": "API",
+                                  "key": "second-protected-api",
+                                  "audience": "second-protected-api"
+                                }
+                                """),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(secondApi.statusCode()).isEqualTo(201);
+        awaitAppliedProjection(secondApiId);
+
         var clientUri = URI.create(applicationUri + "/clients/" + secondClientId);
         var configuration = HttpClient.newHttpClient().send(
                 authorizedPutJsonRequest(
@@ -1373,6 +1402,7 @@ class KeycloakAdminTokenIntegrationTest {
         assertTechnicalMembershipMarkers(
                 userAccountRef, firstApplicationId, secondApplicationId);
         assertTechnicalMembershipMarkersAreNotExposed();
+        assertPublicApplicationToken();
         var secondOperationId = JSON.readTree(grant.body()).required("operationId").asString();
         var ownStatus = HttpClient.newHttpClient().send(
                 authorizedGetRequest(
@@ -1456,6 +1486,26 @@ class KeycloakAdminTokenIntegrationTest {
 
         assertThat(freshHumanToken.getClaims()).doesNotContainKey("groups");
         assertThat(freshHumanToken.getClaims().toString()).doesNotContain("ih-membership-");
+    }
+
+    private static void assertPublicApplicationToken() throws Exception {
+        var token = oidcDecoder().decode(authenticateThroughHostedLogin(
+                "ih-spa-" + PUBLIC_SPA_CLIENT_ID, PUBLIC_SPA_REDIRECT_URI));
+
+        assertThat(token.getAudience()).containsExactly(PUBLIC_API_AUDIENCE);
+        assertThat(token.getAudience()).doesNotContain(SECOND_API_AUDIENCE);
+        assertThat(token.getClaimAsStringList("roles")).isEmpty();
+        assertThat(token.getClaimAsString("azp"))
+                .isEqualTo("ih-spa-" + PUBLIC_SPA_CLIENT_ID);
+        assertThat(token.getClaimAsString("scope")).contains("openid");
+        assertThat(token.getId()).isNotBlank();
+        assertThat(token.getSubject()).isNotBlank();
+        assertThat(token.getIssuedAt()).isNotNull();
+        assertThat(token.getExpiresAt()).isNotNull();
+        assertThat(token.getClaims()).doesNotContainKeys(
+                "realm_access", "resource_access", "groups", "email", "phone_number");
+        assertThat(token.getClaims().toString()).doesNotContain(
+                "ih-membership-", "ih-membership-access");
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {
@@ -1674,17 +1724,46 @@ class KeycloakAdminTokenIntegrationTest {
     }
 
     private static String authenticateThroughHostedLogin() throws Exception {
+        return authenticateThroughHostedLogin(CLIENT_ID, REDIRECT_URI);
+    }
+
+    private static void restrictAdminClientScopes(String adminToken) throws Exception {
+        var adminClientUuid = clientUuid(adminToken, CLIENT_ID);
+        var roles = new java.util.ArrayList<JsonNode>();
+        for (var roleName : List.of("PLATFORM_ADMIN", "PLATFORM_AUDITOR")) {
+            var response = httpClient(HttpClient.Redirect.NORMAL).send(
+                    authorizedGetRequest(
+                            keycloakBaseUri.resolve("/admin/realms/" + REALM
+                                    + "/roles/" + roleName),
+                            adminToken),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isEqualTo(200);
+            roles.add(JSON.readTree(response.body()));
+        }
+        var mapping = httpClient(HttpClient.Redirect.NORMAL).send(
+                authorizedJsonRequest(
+                        keycloakBaseUri.resolve("/admin/realms/" + REALM
+                                + "/clients/" + adminClientUuid + "/scope-mappings/realm"),
+                        adminToken,
+                        JSON.writeValueAsString(roles)),
+                HttpResponse.BodyHandlers.discarding());
+        assertThat(mapping.statusCode()).isEqualTo(204);
+    }
+
+    private static String authenticateThroughHostedLogin(
+            String clientId,
+            String redirectUri) throws Exception {
         var client = HttpClient.newBuilder()
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
         var authorizationUri = keycloakBaseUri.resolve(
                 "/realms/" + REALM + "/protocol/openid-connect/auth"
-                        + "?client_id=" + encode(CLIENT_ID)
+                        + "?client_id=" + encode(clientId)
                         + "&response_type=code"
                         + "&scope=openid"
                         + "&code_challenge_method=S256"
                         + "&code_challenge=" + encode(pkceChallenge())
-                        + "&redirect_uri=" + encode(REDIRECT_URI));
+                        + "&redirect_uri=" + encode(redirectUri));
         var loginPage = client.send(
                 HttpRequest.newBuilder(authorizationUri).GET().build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -1721,8 +1800,8 @@ class KeycloakAdminTokenIntegrationTest {
                                 "/realms/" + REALM + "/protocol/openid-connect/token"),
                         Map.of(
                                 "grant_type", "authorization_code",
-                                "client_id", CLIENT_ID,
-                                "redirect_uri", REDIRECT_URI,
+                                "client_id", clientId,
+                                "redirect_uri", redirectUri,
                                 "code_verifier", PKCE_VERIFIER,
                                 "code", authorizationCode)),
                 HttpResponse.BodyHandlers.ofString());
@@ -2018,7 +2097,7 @@ class KeycloakAdminTokenIntegrationTest {
                       "publicClient": true,
                       "standardFlowEnabled": true,
                       "directAccessGrantsEnabled": false,
-                      "fullScopeAllowed": true,
+                      "fullScopeAllowed": false,
                       "redirectUris": ["%s"],
                       "protocolMappers": [
                         {

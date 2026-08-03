@@ -50,12 +50,18 @@ public final class KeycloakMembershipProjector implements MembershipProjector {
 
     @Override
     public void project(Membership membership) {
+        project(membership, List.of());
+    }
+
+    public void project(Membership membership, List<KeycloakClientRole> roles) {
         Objects.requireNonNull(membership);
+        Objects.requireNonNull(roles);
         try {
             var accessToken = requestToken();
             ensureUserExists(membership, accessToken);
             var marker = ensureMarker(membership, accessToken);
             join(membership, marker.required("id").asString(), accessToken);
+            mapRoles(marker.required("id").asString(), roles, accessToken);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw retryable(MembershipProjectionFailureCode.KEYCLOAK_UNAVAILABLE, exception);
@@ -65,6 +71,24 @@ public final class KeycloakMembershipProjector implements MembershipProjector {
             throw exception;
         } catch (RuntimeException exception) {
             throw retryable(MembershipProjectionFailureCode.KEYCLOAK_INVALID_RESPONSE, exception);
+        }
+    }
+
+    private void mapRoles(
+            String markerId,
+            List<KeycloakClientRole> roles,
+            String accessToken) throws IOException, InterruptedException {
+        for (var role : roles) {
+            var response = send(HttpRequest.newBuilder(URI.create(groupCollectionUri()
+                                    + "/" + encode(markerId)
+                                    + "/role-mappings/clients/"
+                                    + encode(role.clientInternalId())))
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofByteArray(
+                                    objectMapper.writeValueAsBytes(
+                                            List.of(role.representation())))),
+                    accessToken);
+            ensureSuccess(response.statusCode());
         }
     }
 

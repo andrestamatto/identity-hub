@@ -602,7 +602,8 @@ Pode executar somente operações documentadas pelo IdentityHub. Não recebe ace
 
 - console, Admin REST API e realm administrativo bloqueados no edge público;
 - hostname administrativo não é considerado controle suficiente sozinho;
-- plano de controle usa service account exclusiva;
+- plano de controle usa service accounts exclusivas e separadas para gestão de
+  clientes/scopes e gestão de identidades/grupos;
 - Full Scope Allowed desabilitado;
 - somente roles administrativas mínimas necessárias;
 - secret ou chave técnica rotacionável;
@@ -620,8 +621,14 @@ Pode executar somente operações documentadas pelo IdentityHub. Não recebe ace
 - nenhuma role de outra aplicação entra no token;
 - máquina só gerencia memberships da própria aplicação.
 - membership permanece `PENDING` até a associação remota ser confirmada;
-- a projeção inicial usa grupo técnico privado, sem mapper, claim ou role em
-  tokens públicos;
+- a projeção usa grupo e role técnica privada por API; o client scope da
+  aplicação limita quais dessas roles podem resolver audience para seu browser;
+- browser clients conservam somente `basic` e o scope técnico gerenciado;
+  scopes default e opcionais adicionais são removidos;
+- o scope técnico aceita somente Audience Resolve e o mapper público `roles=[]`;
+  qualquer mapper inesperado é reconciliado antes da ativação;
+- grupo e role operacional não possuem mapper, claim ou representação em token
+  público;
 - consulta e reconciliação de uma operação são limitadas à aplicação derivada
   do `azp`, e operações alheias não podem ser enumeradas;
 - falha ou esgotamento de tentativas mantém o acesso fechado.

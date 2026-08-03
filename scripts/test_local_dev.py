@@ -60,6 +60,7 @@ class LocalDevelopmentHarnessTest(unittest.TestCase):
         )
         user = realm["users"][0]
         self.assertFalse(client["directAccessGrantsEnabled"])
+        self.assertFalse(client["fullScopeAllowed"])
         self.assertEqual(
             "true",
             client["attributes"]["oauth2.device.authorization.grant.enabled"],

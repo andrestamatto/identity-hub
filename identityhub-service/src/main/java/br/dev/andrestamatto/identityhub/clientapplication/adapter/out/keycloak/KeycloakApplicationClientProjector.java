@@ -540,6 +540,9 @@ public final class KeycloakApplicationClientProjector
     }
 
     private String keycloakClientId(ApplicationClientSnapshot client) {
+        if (client.type().equals("API")) {
+            return client.audience();
+        }
         return "ih-" + client.type().toLowerCase(java.util.Locale.ROOT)
                 + "-" + client.applicationClientId();
     }
