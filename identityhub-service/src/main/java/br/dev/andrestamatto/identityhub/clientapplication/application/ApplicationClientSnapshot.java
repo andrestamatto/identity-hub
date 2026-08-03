@@ -1,6 +1,7 @@
 package br.dev.andrestamatto.identityhub.clientapplication.application;
 
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
 import java.time.Instant;
@@ -16,6 +17,7 @@ public record ApplicationClientSnapshot(
         String audience,
         List<String> redirectUris,
         List<String> webOrigins,
+        List<String> scopes,
         boolean enabled,
         Instant configuredAt,
         UUID operationId,
@@ -29,6 +31,7 @@ public record ApplicationClientSnapshot(
     public ApplicationClientSnapshot {
         redirectUris = List.copyOf(Objects.requireNonNull(redirectUris));
         webOrigins = List.copyOf(Objects.requireNonNull(webOrigins));
+        scopes = List.copyOf(Objects.requireNonNull(scopes));
     }
 
     public static ApplicationClientSnapshot from(
@@ -50,6 +53,9 @@ public record ApplicationClientSnapshot(
         var webOrigins = client.settings() instanceof SpaSettings spa
                 ? spa.webOrigins().stream().map(origin -> origin.value()).toList()
                 : List.<String>of();
+        var scopes = client.settings() instanceof MachineSettings machine
+                ? machine.scopes().stream().map(scope -> scope.value()).toList()
+                : List.<String>of();
         return new ApplicationClientSnapshot(
                 client.id().value(),
                 client.applicationId().value(),
@@ -58,6 +64,7 @@ public record ApplicationClientSnapshot(
                 audience,
                 redirectUris,
                 webOrigins,
+                scopes,
                 client.enabled(),
                 client.configuredAt(),
                 projection.operationId(),

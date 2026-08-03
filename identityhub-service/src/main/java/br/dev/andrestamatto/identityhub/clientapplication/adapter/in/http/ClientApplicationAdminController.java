@@ -127,7 +127,8 @@ final class ClientApplicationAdminController {
                     ConfigureApplicationClientRequest request) {
         if (request.audience() == null
                 || request.redirectUris() != null
-                || request.webOrigins() != null) {
+                || request.webOrigins() != null
+                || request.scopes() != null) {
             throw new IllegalArgumentException("API client contains incompatible fields");
         }
         return configureProtectedApiClient.execute(new ConfigureProtectedApiClient.Command(
@@ -144,7 +145,8 @@ final class ClientApplicationAdminController {
                     ConfigureApplicationClientRequest request) {
         if (request.audience() != null
                 || request.redirectUris() == null
-                || request.webOrigins() == null) {
+                || request.webOrigins() == null
+                || request.scopes() != null) {
             throw new IllegalArgumentException("SPA client contains incompatible fields");
         }
         return configureSpaClient.execute(new ConfigureSpaClient.Command(
@@ -162,7 +164,8 @@ final class ClientApplicationAdminController {
                     ConfigureApplicationClientRequest request) {
         if (request.audience() != null
                 || request.redirectUris() == null
-                || request.webOrigins() != null) {
+                || request.webOrigins() != null
+                || request.scopes() != null) {
             throw new IllegalArgumentException("BFF client contains incompatible fields");
         }
         return configureBffClient.execute(new ConfigureBffClient.Command(
@@ -186,6 +189,7 @@ final class ClientApplicationAdminController {
                 applicationId,
                 applicationClientId,
                 request.key(),
+                request.scopes() == null ? List.of() : request.scopes(),
                 MDC.get("correlationId")));
     }
 
@@ -226,7 +230,8 @@ final class ClientApplicationAdminController {
             String key,
             String audience,
             List<String> redirectUris,
-            List<String> webOrigins) {
+            List<String> webOrigins,
+            List<String> scopes) {
     }
 
     record ClientApplicationResponse(
@@ -256,6 +261,7 @@ final class ClientApplicationAdminController {
             String audience,
             List<String> redirectUris,
             List<String> webOrigins,
+            List<String> scopes,
             boolean enabled,
             Instant configuredAt,
             UUID projectionOperationId,
@@ -275,6 +281,7 @@ final class ClientApplicationAdminController {
                     client.audience(),
                     client.redirectUris(),
                     client.webOrigins(),
+                    client.scopes(),
                     client.enabled(),
                     client.configuredAt(),
                     client.operationId(),

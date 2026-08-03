@@ -4,6 +4,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClie
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClientKey;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineClientScope;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
@@ -34,26 +35,30 @@ public final class ConfigureMachineClient {
         var applicationId = new ClientApplicationId(command.applicationId());
         var clientId = new ApplicationClientId(command.applicationClientId());
         var key = new ApplicationClientKey(command.key());
+        var settings = new MachineSettings(command.scopes().stream()
+                .map(MachineClientScope::from)
+                .toList());
         var application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ClientApplicationNotFoundException(applicationId.value()));
 
         var existing = clientRepository.findById(clientId);
         if (existing.isPresent()) {
-            return replay(existing.orElseThrow(), applicationId, key);
+            return replay(existing.orElseThrow(), applicationId, key, settings);
         }
         if (clientRepository.findByKey(applicationId, key).isPresent()) {
             throw new ClientApplicationConflictException(
                     "Application client key is already assigned inside the application");
         }
-        return create(application, clientId, key, command.correlationId());
+        return create(application, clientId, key, settings, command.correlationId());
     }
 
     private ApplicationClientConfigurationResult create(
             ClientApplication application,
             ApplicationClientId clientId,
             ApplicationClientKey key,
+            MachineSettings settings,
             String correlationId) {
-        var client = application.configureMachine(clientId, key, clock);
+        var client = application.configureMachine(clientId, key, settings, clock);
         var now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         var projection = ApplicationClientProjection.pending(
                 operationIdGenerator.get(), clientId, correlationId, now);
@@ -66,11 +71,12 @@ public final class ConfigureMachineClient {
     private ApplicationClientConfigurationResult replay(
             ApplicationClientConfiguration existing,
             ClientApplicationId applicationId,
-            ApplicationClientKey key) {
+            ApplicationClientKey key,
+            MachineSettings settings) {
         var client = existing.client();
         if (client.applicationId().equals(applicationId)
                 && client.key().equals(key)
-                && client.settings().equals(new MachineSettings())) {
+                && client.settings().equals(settings)) {
             return new ApplicationClientConfigurationResult(
                     ApplicationClientSnapshot.from(existing), false);
         }
@@ -82,6 +88,11 @@ public final class ConfigureMachineClient {
             UUID applicationId,
             UUID applicationClientId,
             String key,
+            java.util.List<String> scopes,
             String correlationId) {
+
+        public Command {
+            scopes = java.util.List.copyOf(Objects.requireNonNull(scopes));
+        }
     }
 }

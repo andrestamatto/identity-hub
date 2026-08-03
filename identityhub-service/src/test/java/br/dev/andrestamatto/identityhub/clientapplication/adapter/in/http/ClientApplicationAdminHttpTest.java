@@ -376,7 +376,8 @@ class ClientApplicationAdminHttpTest {
                         .content("""
                                 {
                                   "type": "MACHINE",
-                                  "key": "auto-radar-membership-provisioner"
+                                  "key": "auto-radar-membership-provisioner",
+                                  "scopes": ["membership:write"]
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -384,6 +385,7 @@ class ClientApplicationAdminHttpTest {
                 .andExpect(jsonPath("$.audience").doesNotExist())
                 .andExpect(jsonPath("$.redirectUris").isEmpty())
                 .andExpect(jsonPath("$.webOrigins").isEmpty())
+                .andExpect(jsonPath("$.scopes[0]").value("membership:write"))
                 .andExpect(jsonPath("$.projectionState").value("PENDING"));
     }
 
