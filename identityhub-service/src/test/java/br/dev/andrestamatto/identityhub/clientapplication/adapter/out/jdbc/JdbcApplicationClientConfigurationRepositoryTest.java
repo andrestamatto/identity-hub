@@ -251,6 +251,14 @@ class JdbcApplicationClientConfigurationRepositoryTest {
 
         repository.add(configuration);
 
+        jdbcClient.sql("""
+                        insert into application_client_machine_scope (
+                            application_client_id, position, scope
+                        ) values (:clientId, 0, 'onboarding:write')
+                        """)
+                .param("clientId", CLIENT_ID)
+                .update();
+
         var stored = repository.findById(new ApplicationClientId(CLIENT_ID)).orElseThrow();
         var snapshot = ApplicationClientSnapshot.from(stored);
         assertThat(snapshot.type()).isEqualTo("MACHINE");

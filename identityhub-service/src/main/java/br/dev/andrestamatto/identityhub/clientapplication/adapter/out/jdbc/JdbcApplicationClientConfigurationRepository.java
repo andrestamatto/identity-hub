@@ -330,7 +330,7 @@ public final class JdbcApplicationClientConfigurationRepository
             java.util.List<MachineClientScope> scopes) {
         for (var position = 0; position < scopes.size(); position++) {
             jdbcClient.sql("""
-                            insert into application_client_machine_scope (
+                            insert into application_client_machine_permission (
                                 application_client_id, position, scope
                             ) values (:clientId, :position, :scope)
                             """)
@@ -456,7 +456,7 @@ public final class JdbcApplicationClientConfigurationRepository
         if (type == ApplicationClientType.MACHINE) {
             var scopes = jdbcClient.sql("""
                             select scope
-                            from application_client_machine_scope
+                            from application_client_machine_permission
                             where application_client_id = :clientId
                             order by position
                             """)
