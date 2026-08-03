@@ -1372,6 +1372,36 @@ class KeycloakAdminTokenIntegrationTest {
         awaitActiveMemberships(userAccountRef, 2);
         assertTechnicalMembershipMarkers(
                 userAccountRef, firstApplicationId, secondApplicationId);
+        var secondOperationId = JSON.readTree(grant.body()).required("operationId").asString();
+        var ownStatus = HttpClient.newHttpClient().send(
+                authorizedGetRequest(
+                        URI.create("http://127.0.0.1:" + servicePort
+                                + "/api/v1/membership-operations/" + secondOperationId),
+                        secondToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(ownStatus.statusCode()).isEqualTo(200);
+        assertThat(ownStatus.body()).contains(
+                "\"membershipState\":\"ACTIVE\"",
+                "\"projectionState\":\"APPLIED\"");
+
+        var firstOperationId = jdbcClient.sql("""
+                        select o.operation_id
+                        from membership_grant_operation o
+                        join membership m on m.id = o.membership_id
+                        where m.application_id = :applicationId
+                        order by o.accepted_at
+                        limit 1
+                        """)
+                .param("applicationId", firstApplicationId)
+                .query(UUID.class)
+                .single();
+        var crossApplicationStatus = HttpClient.newHttpClient().send(
+                authorizedGetRequest(
+                        URI.create("http://127.0.0.1:" + servicePort
+                                + "/api/v1/membership-operations/" + firstOperationId),
+                        secondToken),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(crossApplicationStatus.statusCode()).isEqualTo(404);
     }
 
     private void awaitActiveMemberships(UUID userAccountRef, int expected)

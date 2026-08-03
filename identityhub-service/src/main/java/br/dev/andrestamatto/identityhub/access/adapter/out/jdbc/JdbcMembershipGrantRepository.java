@@ -3,6 +3,7 @@ package br.dev.andrestamatto.identityhub.access.adapter.out.jdbc;
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantConflictException;
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantOperation;
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantRepository;
+import br.dev.andrestamatto.identityhub.access.application.MembershipOperationStatus;
 import br.dev.andrestamatto.identityhub.access.domain.Membership;
 import br.dev.andrestamatto.identityhub.access.domain.MembershipApplicationRef;
 import br.dev.andrestamatto.identityhub.access.domain.MembershipId;
@@ -15,6 +16,8 @@ import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.support.TransactionOperations;
 
@@ -108,6 +111,36 @@ public final class JdbcMembershipGrantRepository implements MembershipGrantRepos
                 .param("correlationId", operation.correlationId())
                 .param("acceptedAt", utc(operation.acceptedAt()))
                 .update();
+    }
+
+    @Override
+    public Optional<MembershipOperationStatus> findStatus(
+            UUID operationId,
+            MembershipApplicationRef applicationRef) {
+        Objects.requireNonNull(operationId);
+        Objects.requireNonNull(applicationRef);
+        return jdbcClient.sql("""
+                        select o.operation_id, o.membership_id, m.state membership_state,
+                               p.state projection_state, p.attempts, p.last_failure_code,
+                               o.accepted_at, p.updated_at
+                        from membership_grant_operation o
+                        join membership m on m.id = o.membership_id
+                        join membership_projection_outbox p on p.membership_id = m.id
+                        where o.operation_id = :operationId
+                          and m.application_id = :applicationId
+                        """)
+                .param("operationId", operationId)
+                .param("applicationId", applicationRef.value())
+                .query((resultSet, rowNumber) -> new MembershipOperationStatus(
+                        resultSet.getObject("operation_id", UUID.class),
+                        resultSet.getObject("membership_id", UUID.class),
+                        resultSet.getString("membership_state"),
+                        resultSet.getString("projection_state"),
+                        resultSet.getInt("attempts"),
+                        resultSet.getString("last_failure_code"),
+                        resultSet.getObject("accepted_at", OffsetDateTime.class).toInstant(),
+                        resultSet.getObject("updated_at", OffsetDateTime.class).toInstant()))
+                .optional();
     }
 
     private void insertProjection(Membership membership, String correlationId) {

@@ -11,9 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.dev.andrestamatto.identityhub.access.application.GrantMembership;
+import br.dev.andrestamatto.identityhub.access.application.GetMembershipOperation;
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantConflictException;
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantRepository;
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantResult;
+import br.dev.andrestamatto.identityhub.access.application.MembershipOperationStatus;
 import br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEventRepository;
 import br.dev.andrestamatto.identityhub.bootstrap.IdentityHubApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc
@@ -35,6 +37,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @SpringBootTest(classes = IdentityHubApplication.class, properties = {
     "spring.autoconfigure.exclude="
@@ -63,6 +66,9 @@ class MembershipGrantHttpTest {
 
     @MockitoBean
     private GrantMembership grantMembership;
+
+    @MockitoBean
+    private GetMembershipOperation getMembershipOperation;
 
     @MockitoBean
     private MembershipGrantRepository membershipRepository;
@@ -201,6 +207,47 @@ class MembershipGrantHttpTest {
                         .with(jwt().authorities(new SimpleGrantedAuthority(
                                 "SCOPE_membership:write"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void authorizedClientReadsOnlyItsOperationStatus() throws Exception {
+        var operationId = UUID.fromString("06d068e0-78d5-4df6-97dd-88df538ab948");
+        when(getMembershipOperation.execute(operationId, APPLICATION_ID))
+                .thenReturn(Optional.of(new MembershipOperationStatus(
+                        operationId,
+                        UUID.fromString("c50638fe-0b91-4f47-81e6-2bd183040c1c"),
+                        "ACTIVE",
+                        "APPLIED",
+                        1,
+                        null,
+                        Instant.parse("2026-08-02T18:00:00Z"),
+                        Instant.parse("2026-08-02T18:00:01Z"))));
+
+        mvc.perform(get("/api/v1/membership-operations/" + operationId)
+                        .with(provisionerJwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.membershipState").value("ACTIVE"))
+                .andExpect(jsonPath("$.projectionState").value("APPLIED"))
+                .andExpect(jsonPath("$.applicationId").doesNotExist())
+                .andExpect(jsonPath("$.userAccountRef").doesNotExist());
+    }
+
+    @Test
+    void crossApplicationOperationIsIndistinguishableFromUnknown() throws Exception {
+        var operationId = UUID.fromString("06d068e0-78d5-4df6-97dd-88df538ab948");
+        when(getMembershipOperation.execute(operationId, APPLICATION_ID))
+                .thenReturn(Optional.empty());
+
+        mvc.perform(get("/api/v1/membership-operations/" + operationId)
+                        .with(provisionerJwt()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Membership operation not found"));
+    }
+
+    private RequestPostProcessor provisionerJwt() {
+        return jwt()
+                .jwt(token -> token.claim("azp", "ih-machine-" + APPLICATION_CLIENT_ID))
+                .authorities(new SimpleGrantedAuthority("SCOPE_membership:write"));
     }
 
 }

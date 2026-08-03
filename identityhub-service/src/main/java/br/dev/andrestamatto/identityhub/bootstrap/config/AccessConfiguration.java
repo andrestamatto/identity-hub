@@ -2,6 +2,7 @@ package br.dev.andrestamatto.identityhub.bootstrap.config;
 
 import br.dev.andrestamatto.identityhub.access.adapter.out.jdbc.JdbcMembershipGrantRepository;
 import br.dev.andrestamatto.identityhub.access.application.GrantMembership;
+import br.dev.andrestamatto.identityhub.access.application.GetMembershipOperation;
 import br.dev.andrestamatto.identityhub.access.application.MembershipGrantRepository;
 import java.time.Clock;
 import java.util.UUID;
@@ -25,5 +26,10 @@ class AccessConfiguration {
             MembershipGrantRepository repository,
             Clock clock) {
         return new GrantMembership(repository, clock, UUID::randomUUID);
+    }
+
+    @Bean
+    GetMembershipOperation getMembershipOperation(MembershipGrantRepository repository) {
+        return new GetMembershipOperation(repository);
     }
 }

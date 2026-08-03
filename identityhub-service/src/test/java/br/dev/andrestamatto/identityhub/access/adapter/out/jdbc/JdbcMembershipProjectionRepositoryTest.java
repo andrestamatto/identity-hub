@@ -99,6 +99,16 @@ class JdbcMembershipProjectionRepositoryTest {
 
         assertThat(state("membership")).isEqualTo("ACTIVE");
         assertThat(state("membership_projection_outbox")).isEqualTo("APPLIED");
+        var status = grants.findStatus(
+                        UUID.fromString("06d068e0-78d5-4df6-97dd-88df538ab948"),
+                        new MembershipApplicationRef(APPLICATION))
+                .orElseThrow();
+        assertThat(status.membershipState()).isEqualTo("ACTIVE");
+        assertThat(status.projectionState()).isEqualTo("APPLIED");
+        assertThat(status.attempts()).isOne();
+        assertThat(grants.findStatus(
+                status.operationId(),
+                new MembershipApplicationRef(UUID.randomUUID()))).isEmpty();
         assertThat(projections.reserveNext(UUID.randomUUID(), NOW.plusSeconds(31),
                 Duration.ofSeconds(30))).isEmpty();
     }
@@ -115,6 +125,44 @@ class JdbcMembershipProjectionRepositoryTest {
 
         assertThat(projections.reserveNext(UUID.randomUUID(), NOW.plusSeconds(31),
                 Duration.ofSeconds(30))).isPresent();
+    }
+
+    @Test
+    void retryReleasesLeaseAndRespectsNextAttempt() {
+        var task = projections.reserveNext(WORKER, NOW, Duration.ofSeconds(30)).orElseThrow();
+
+        projections.scheduleRetry(
+                task.membership().id(),
+                WORKER,
+                1,
+                NOW.plusSeconds(10),
+                "KEYCLOAK_UNAVAILABLE",
+                NOW.plusSeconds(1));
+
+        assertThat(projections.reserveNext(UUID.randomUUID(), NOW.plusSeconds(9),
+                Duration.ofSeconds(30))).isEmpty();
+        assertThat(projections.reserveNext(UUID.randomUUID(), NOW.plusSeconds(10),
+                Duration.ofSeconds(30))).isPresent();
+    }
+
+    @Test
+    void terminalFailureRemainsPendingAndVisible() {
+        var task = projections.reserveNext(WORKER, NOW, Duration.ofSeconds(30)).orElseThrow();
+
+        projections.markFailed(
+                task.membership().id(),
+                WORKER,
+                1,
+                "USER_NOT_FOUND",
+                NOW.plusSeconds(1));
+
+        var status = grants.findStatus(
+                        UUID.fromString("06d068e0-78d5-4df6-97dd-88df538ab948"),
+                        new MembershipApplicationRef(APPLICATION))
+                .orElseThrow();
+        assertThat(status.membershipState()).isEqualTo("PENDING");
+        assertThat(status.projectionState()).isEqualTo("FAILED");
+        assertThat(status.lastFailureCode()).isEqualTo("USER_NOT_FOUND");
     }
 
     private MembershipGrantOperation operation() {

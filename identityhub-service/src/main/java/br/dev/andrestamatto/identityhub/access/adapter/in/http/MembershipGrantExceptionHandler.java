@@ -25,6 +25,14 @@ final class MembershipGrantExceptionHandler {
                 "The idempotency key was already used for another command");
     }
 
+    @ExceptionHandler(MembershipOperationNotFoundException.class)
+    ProblemDetail notFound() {
+        return problem(
+                HttpStatus.NOT_FOUND,
+                "Membership operation not found",
+                "The membership operation was not found");
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     ProblemDetail invalid() {
         return problem(
