@@ -3,6 +3,7 @@ package br.dev.andrestamatto.identityhub.bootstrap.config;
 import br.dev.andrestamatto.identityhub.access.application.MembershipProjectionResult;
 import br.dev.andrestamatto.identityhub.access.application.ProcessMembershipProjection;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,6 +16,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 final class MembershipProjectionScheduler implements ApplicationListener<ContextClosedEvent> {
 
     static final String METRIC_NAME = "identityhub.membership.projection.cycles";
+    static final String DURATION_METRIC_NAME =
+            "identityhub.membership.projection.duration";
     private static final Logger LOGGER = LoggerFactory.getLogger(MembershipProjectionScheduler.class);
 
     private final ProcessMembershipProjection processor;
@@ -38,11 +41,12 @@ final class MembershipProjectionScheduler implements ApplicationListener<Context
         if (!running.get()) {
             return;
         }
+        var sample = Timer.start(registry);
         try {
-            record(processor.processNext(workerId));
+            record(processor.processNext(workerId), sample);
         } catch (RuntimeException exception) {
             if (running.get()) {
-                registry.counter(METRIC_NAME, "outcome", "cycle_failure").increment();
+                record("cycle_failure", sample);
                 LOGGER.warn("Membership projection cycle failed");
             }
         }
@@ -53,7 +57,14 @@ final class MembershipProjectionScheduler implements ApplicationListener<Context
         running.set(false);
     }
 
-    private void record(MembershipProjectionResult result) {
-        registry.counter(METRIC_NAME, "outcome", result.name().toLowerCase()).increment();
+    private void record(MembershipProjectionResult result, Timer.Sample sample) {
+        record(result.name().toLowerCase(), sample);
+    }
+
+    private void record(String outcome, Timer.Sample sample) {
+        registry.counter(METRIC_NAME, "outcome", outcome).increment();
+        sample.stop(Timer.builder(DURATION_METRIC_NAME)
+                .tag("outcome", outcome)
+                .register(registry));
     }
 }
