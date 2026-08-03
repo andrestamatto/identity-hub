@@ -16,6 +16,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.client.HttpServerErrorException;
 
 class IdentityHubSecurityAutoConfigurationTest {
 
@@ -57,6 +58,35 @@ class IdentityHubSecurityAutoConfigurationTest {
         contextRunner
                 .withPropertyValues("identityhub.security.enabled=false")
                 .run(context -> assertThat(context).doesNotHaveBean(IdentityHubSecurityProperties.class));
+    }
+
+    @Test
+    void failsStartupWhenTheJwkSetCannotBeRetrieved() throws Exception {
+        try (var issuer = TestJwtIssuer.startWithUnavailableJwks()) {
+            new WebApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(
+                            SecurityAutoConfiguration.class,
+                            ServletWebSecurityAutoConfiguration.class,
+                            OAuth2ResourceServerAutoConfiguration.class,
+                            IdentityHubSecurityAutoConfiguration.class))
+                    .withPropertyValues(
+                            "identityhub.security.issuer-uri=" + issuer.issuer(),
+                            "identityhub.security.audience=catalog-api",
+                            "identityhub.security.allow-http-for-loopback=true")
+                    .run(context -> {
+                        assertThat(context).hasFailed();
+                        assertThat(rootCauseOf(context.getStartupFailure()))
+                                .isInstanceOf(HttpServerErrorException.ServiceUnavailable.class);
+                    });
+        }
+    }
+
+    private static Throwable rootCauseOf(Throwable failure) {
+        var rootCause = failure;
+        while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+            rootCause = rootCause.getCause();
+        }
+        return rootCause;
     }
 
     @Configuration(proxyBeanMethods = false)

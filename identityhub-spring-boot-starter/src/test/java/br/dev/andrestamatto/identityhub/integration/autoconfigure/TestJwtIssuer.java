@@ -26,21 +26,36 @@ final class TestJwtIssuer implements AutoCloseable {
     private final RSAKey signingKey;
     private final String issuer;
 
-    private TestJwtIssuer(HttpServer server, RSAKey signingKey) {
+    private TestJwtIssuer(HttpServer server, RSAKey signingKey, int jwksResponseStatus) {
         this.server = server;
         this.signingKey = signingKey;
         issuer = "http://127.0.0.1:" + server.getAddress().getPort();
         server.createContext("/.well-known/openid-configuration", exchange -> respond(
                 exchange,
                 "{\"issuer\":\"" + issuer + "\",\"jwks_uri\":\"" + issuer + "/jwks\"}"));
-        server.createContext("/jwks", exchange -> respond(exchange, new JWKSet(signingKey.toPublicJWK()).toString()));
+        server.createContext("/jwks", exchange -> {
+            if (jwksResponseStatus == 200) {
+                respond(exchange, new JWKSet(signingKey.toPublicJWK()).toString());
+                return;
+            }
+            exchange.sendResponseHeaders(jwksResponseStatus, -1);
+            exchange.close();
+        });
         server.start();
     }
 
     static TestJwtIssuer start() throws Exception {
+        return startWithJwksResponse(200);
+    }
+
+    static TestJwtIssuer startWithUnavailableJwks() throws Exception {
+        return startWithJwksResponse(503);
+    }
+
+    private static TestJwtIssuer startWithJwksResponse(int jwksResponseStatus) throws Exception {
         var server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
         var signingKey = new RSAKeyGenerator(2048).keyID(KEY_ID).generate();
-        return new TestJwtIssuer(server, signingKey);
+        return new TestJwtIssuer(server, signingKey, jwksResponseStatus);
     }
 
     String issuer() {

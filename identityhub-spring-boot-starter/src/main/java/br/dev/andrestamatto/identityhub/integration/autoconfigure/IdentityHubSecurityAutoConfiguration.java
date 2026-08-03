@@ -69,11 +69,20 @@ public class IdentityHubSecurityAutoConfiguration {
     JwtDecoder identityHubJwtDecoder(
             IdentityHubSecurityProperties properties,
             @Qualifier("identityHubJwtValidator") OAuth2TokenValidator<Jwt> validator) {
+        verifyJwkSetIsAvailable(properties.issuerUri().toString());
         var decoder = NimbusJwtDecoder.withIssuerLocation(properties.issuerUri().toString())
                 .jwsAlgorithm(SignatureAlgorithm.RS256)
                 .build();
         decoder.setJwtValidator(validator);
         return decoder;
+    }
+
+    private void verifyJwkSetIsAvailable(String issuer) {
+        // The decoder used at runtime retrieves its JWK set lazily on the first token.
+        // This separate discovery decoder makes an unavailable first JWK set fail startup.
+        NimbusJwtDecoder.withIssuerLocation(issuer)
+                .discoverJwsAlgorithms()
+                .build();
     }
 
     @Bean("identityHubJwtAuthenticationConverter")
