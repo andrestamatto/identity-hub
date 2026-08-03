@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.dev.andrestamatto.identityhub.access.adapter.out.jdbc.JdbcMembershipProjectionRepository;
 import br.dev.andrestamatto.identityhub.audit.application.AdministrativeAccessEventRepository;
 import br.dev.andrestamatto.identityhub.bootstrap.IdentityHubApplication;
 import br.dev.andrestamatto.identityhub.identity.adapter.out.jdbc.JdbcGlobalAccountDisableOperationRepository;
@@ -75,6 +76,9 @@ class GlobalAccountAdminHttpTest {
 
     @MockitoBean
     private JdbcGlobalAccountDisableOperationRepository operationRepository;
+
+    @MockitoBean
+    private JdbcMembershipProjectionRepository membershipProjectionRepository;
 
     @MockitoBean
     private DisableGlobalAccount disableGlobalAccount;

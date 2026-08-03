@@ -27,6 +27,7 @@ class FoundationArchitectureTest {
                         BASE_PACKAGE + ".access.application..",
                         BASE_PACKAGE + ".access.adapter.in.http..",
                         BASE_PACKAGE + ".access.adapter.out.jdbc..",
+                        BASE_PACKAGE + ".access.adapter.out.keycloak..",
                         BASE_PACKAGE + ".access.adapter.out.clientapplication..",
                         BASE_PACKAGE + ".clientapplication.domain..",
                         BASE_PACKAGE + ".clientapplication.application..",
