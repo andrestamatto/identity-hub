@@ -46,6 +46,7 @@ public final class JdbcMembershipGrantRepository implements MembershipGrantRepos
         var membership = findMembership(
                 proposed.membership().applicationRef(),
                 proposed.membership().userAccountRef());
+        insertProjection(membership, proposed.correlationId());
         insertOperation(proposed.withMembership(membership));
         var stored = Objects.requireNonNull(findOperation(proposed.idempotencyKey()));
         ensureEquivalent(stored, proposed);
@@ -76,7 +77,8 @@ public final class JdbcMembershipGrantRepository implements MembershipGrantRepos
             MembershipApplicationRef applicationRef,
             MembershipUserAccountRef userAccountRef) {
         return jdbcClient.sql("""
-                        select id, application_id, user_account_ref, state, requested_at
+                        select id, application_id, user_account_ref, state,
+                               requested_at, activated_at
                         from membership
                         where application_id = :applicationId
                           and user_account_ref = :userAccountRef
@@ -108,13 +110,31 @@ public final class JdbcMembershipGrantRepository implements MembershipGrantRepos
                 .update();
     }
 
+    private void insertProjection(Membership membership, String correlationId) {
+        jdbcClient.sql("""
+                        insert into membership_projection_outbox (
+                            membership_id, payload_version, correlation_id, state,
+                            attempts, next_attempt_at, created_at, updated_at
+                        )
+                        select id, 1, :correlationId, 'PENDING', 0,
+                               requested_at, requested_at, updated_at
+                        from membership
+                        where id = :membershipId
+                          and state = 'PENDING'
+                        on conflict (membership_id) do nothing
+                        """)
+                .param("membershipId", membership.id().value())
+                .param("correlationId", correlationId)
+                .update();
+    }
+
     private MembershipGrantOperation findOperation(String idempotencyKey) {
         return jdbcClient.sql("""
                         select o.operation_id, o.application_client_id,
                                o.idempotency_key, o.command_fingerprint,
                                o.correlation_id, o.accepted_at,
                                m.id, m.application_id, m.user_account_ref,
-                               m.state, m.requested_at
+                               m.state, m.requested_at, m.activated_at
                         from membership_grant_operation o
                         join membership m on m.id = o.membership_id
                         where o.idempotency_key = :idempotencyKey
@@ -145,7 +165,10 @@ public final class JdbcMembershipGrantRepository implements MembershipGrantRepos
                 new MembershipUserAccountRef(
                         resultSet.getObject("user_account_ref", java.util.UUID.class)),
                 MembershipState.valueOf(resultSet.getString("state")),
-                resultSet.getObject("requested_at", OffsetDateTime.class).toInstant());
+                resultSet.getObject("requested_at", OffsetDateTime.class).toInstant(),
+                resultSet.getObject("activated_at", OffsetDateTime.class) == null
+                        ? null
+                        : resultSet.getObject("activated_at", OffsetDateTime.class).toInstant());
     }
 
     private void ensureEquivalent(

@@ -60,6 +60,7 @@ class JdbcMembershipGrantRepositoryTest {
 
     @BeforeEach
     void resetDatabase() {
+        jdbcClient.sql("delete from membership_projection_outbox").update();
         jdbcClient.sql("delete from membership_grant_operation").update();
         jdbcClient.sql("delete from membership").update();
         jdbcClient.sql("delete from application_client_projection_outbox").update();
@@ -105,6 +106,7 @@ class JdbcMembershipGrantRepositoryTest {
         assertThat(replay.commandFingerprint()).isEqualTo(first.commandFingerprint());
         assertThat(count("membership")).isOne();
         assertThat(count("membership_grant_operation")).isOne();
+        assertThat(count("membership_projection_outbox")).isOne();
     }
 
     @Test
