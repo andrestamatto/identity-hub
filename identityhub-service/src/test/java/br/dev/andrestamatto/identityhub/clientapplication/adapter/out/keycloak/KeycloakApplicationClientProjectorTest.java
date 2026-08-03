@@ -74,7 +74,7 @@ class KeycloakApplicationClientProjectorTest {
         assertThat(creates).hasValue(1);
         assertThat(updates).hasValue(0);
         assertThat(storedClient.path("clientId").asString())
-                .isEqualTo("ih-api-ff7c4748-f053-4fb6-91be-d34cf0015834");
+                .isEqualTo("catalog-api");
         assertThat(storedClient.path("bearerOnly").asBoolean()).isTrue();
         assertThat(storedClient.path("standardFlowEnabled").asBoolean()).isFalse();
         assertThat(storedClient.path("directAccessGrantsEnabled").asBoolean()).isFalse();

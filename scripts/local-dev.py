@@ -176,33 +176,7 @@ def realm_representation(env: dict[str, str]) -> dict:
         "clients": [
             management_client_representation(env),
             identity_management_client_representation(env),
-            {
-                "clientId": ADMIN_CLIENT,
-                "name": "IdentityHub local administration",
-                "enabled": True,
-                "publicClient": True,
-                "standardFlowEnabled": True,
-                "directAccessGrantsEnabled": False,
-                "fullScopeAllowed": True,
-                "attributes": {"oauth2.device.authorization.grant.enabled": "true"},
-                "protocolMappers": [
-                    {
-                        "name": "identityhub-admin-audience",
-                        "protocol": "openid-connect",
-                        "protocolMapper": "oidc-audience-mapper",
-                        "config": {
-                            "included.custom.audience": ADMIN_AUDIENCE,
-                            "access.token.claim": "true",
-                        },
-                    },
-                    {
-                        "name": "authentication-method-reference",
-                        "protocol": "openid-connect",
-                        "protocolMapper": "oidc-amr-mapper",
-                        "config": {"access.token.claim": "true", "id.token.claim": "true"},
-                    },
-                ],
-            }
+            admin_client_representation()
         ],
         "users": [
             {
@@ -244,6 +218,36 @@ def realm_security_baseline() -> dict:
         "adminEventsDetailsEnabled": False,
         "eventsExpiration": 2592000,
         "enabledEventTypes": ["LOGIN", "LOGIN_ERROR"],
+    }
+
+
+def admin_client_representation() -> dict:
+    return {
+        "clientId": ADMIN_CLIENT,
+        "name": "IdentityHub local administration",
+        "enabled": True,
+        "publicClient": True,
+        "standardFlowEnabled": True,
+        "directAccessGrantsEnabled": False,
+        "fullScopeAllowed": False,
+        "attributes": {"oauth2.device.authorization.grant.enabled": "true"},
+        "protocolMappers": [
+            {
+                "name": "identityhub-admin-audience",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-audience-mapper",
+                "config": {
+                    "included.custom.audience": ADMIN_AUDIENCE,
+                    "access.token.claim": "true",
+                },
+            },
+            {
+                "name": "authentication-method-reference",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-amr-mapper",
+                "config": {"access.token.claim": "true", "id.token.claim": "true"},
+            },
+        ],
     }
 
 
@@ -310,6 +314,32 @@ def client_uuid(base: str, client_id: str, token: str) -> str | None:
     )
     assert isinstance(clients, list)
     return str(clients[0]["id"]) if clients else None
+
+
+def configure_admin_client(env: dict[str, str], token: str) -> None:
+    base = f"{keycloak_url(env)}/admin/realms/{REALM}"
+    admin_uuid = client_uuid(base, ADMIN_CLIENT, token)
+    if admin_uuid is None:
+        raise RuntimeError("O cliente administrativo do IdentityHub não foi encontrado.")
+    request_json(
+        f"{base}/clients/{admin_uuid}",
+        method="PUT",
+        token=token,
+        body=admin_client_representation(),
+        expected=(204,),
+    )
+    roles = []
+    for role_name in ADMIN_ROLES:
+        _, role = request_json(f"{base}/roles/{role_name}", token=token)
+        assert isinstance(role, dict)
+        roles.append(role)
+    request_json(
+        f"{base}/clients/{admin_uuid}/scope-mappings/realm",
+        method="POST",
+        token=token,
+        body=roles,
+        expected=(204,),
+    )
 
 
 def configure_management_client(env: dict[str, str], token: str) -> None:
@@ -528,6 +558,7 @@ def bootstrap(env: dict[str, str]) -> None:
     configure_realm_security(env, token)
     configure_user_profile(env, token)
     configure_generic_login_messages(env, token)
+    configure_admin_client(env, token)
     configure_management_client(env, token)
     configure_identity_management_client(env, token)
 

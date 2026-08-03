@@ -5,5 +5,6 @@ public enum MembershipProjectionFailureCode {
     KEYCLOAK_REJECTED,
     KEYCLOAK_INVALID_RESPONSE,
     MARKER_CONFLICT,
+    TOKEN_CONFIGURATION_CONFLICT,
     USER_NOT_FOUND
 }
