@@ -56,6 +56,7 @@ public class IdentityHubSecurityAutoConfiguration {
             @Qualifier("identityHubJwtValidationClock") Clock clock) {
         var timestampValidator = new JwtTimestampValidator(properties.clockSkew());
         timestampValidator.setAllowEmptyExpiryClaim(false);
+        timestampValidator.setClock(clock);
         return new DelegatingOAuth2TokenValidator<>(
                 new JwtIssuerValidator(properties.issuerUri().toString()),
                 timestampValidator,
