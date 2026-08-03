@@ -488,10 +488,18 @@ faz parte do path nem do payload: o plano de controle resolve a
 vínculo projetado. O formato do identificador operacional do cliente no Keycloak
 continua interno e não integra o contrato consumidor.
 
-O primeiro incremento da concessão persiste atomicamente uma `Membership`
-`PENDING` e a operação idempotente que a originou. A unicidade é definida por
-aplicação e usuário. Esse estado ainda não autoriza APIs de negócio; a projeção
-e a transição para `ACTIVE` pertencem ao incremento seguinte.
+A concessão persiste atomicamente uma `Membership` `PENDING`, a operação
+idempotente que a originou e um item de outbox. A unicidade é definida por
+aplicação e usuário. Um worker associa o usuário a um grupo técnico privado da
+aplicação no Keycloak e somente então confirma `Membership=ACTIVE` e
+`projection=APPLIED` na mesma transação local. O grupo é infraestrutura interna,
+não possui mapper público e não representa organização, tenant ou autorização
+de negócio.
+
+O cliente consulta a própria operação por `operationId`. Uma projeção
+`FAILED` mantém a Membership `PENDING` e pode ser explicitamente recolocada em
+processamento pelo mesmo cliente. Operações desconhecidas e pertencentes a
+outra aplicação produzem a mesma resposta, evitando enumeração.
 
 ### 13.3 API administrativa
 
