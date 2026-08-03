@@ -1213,6 +1213,7 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(claims.getClaimAsString("azp")).isEqualTo("ih-machine-" + clientId);
 
         assertRealMembershipGrant(machineAccessToken, applicationId, clientId);
+        assertSecondApplicationMembershipIsolation(accessToken, applicationId);
     }
 
     private void assertRealMembershipGrant(
@@ -1280,6 +1281,91 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(jdbcClient.sql("select count(*) from membership")
                 .query(Integer.class)
                 .single()).isOne();
+    }
+
+    private void assertSecondApplicationMembershipIsolation(
+            String adminAccessToken,
+            UUID firstApplicationId) throws Exception {
+        var integrationUri = URI.create(
+                "http://127.0.0.1:" + servicePort + "/api/v1/memberships");
+        var wrongAudience = HttpClient.newHttpClient().send(
+                authorizedPostJsonRequest(
+                        integrationUri,
+                        adminAccessToken,
+                        "wrong-audience-grant",
+                        "wrong-audience-grant",
+                        "{\"userAccountRef\":\"680ac2e4-bfb0-4375-a75e-453b6e7b600c\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(wrongAudience.statusCode()).isEqualTo(401);
+
+        var secondApplicationId =
+                UUID.fromString("d71e4f6f-c57a-4265-a742-cbb27f5f83c6");
+        var secondClientId =
+                UUID.fromString("256ffddb-90a8-4601-9b46-fb82ec84a7e2");
+        var applicationUri = URI.create("http://127.0.0.1:" + servicePort
+                + "/internal/admin/client-applications/" + secondApplicationId);
+        var registration = HttpClient.newHttpClient().send(
+                authorizedPutJsonRequest(
+                        applicationUri,
+                        adminAccessToken,
+                        "register-second-application",
+                        "{\"identifier\":\"second-saas\",\"displayName\":\"Second SaaS\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(registration.statusCode()).isEqualTo(201);
+
+        var clientUri = URI.create(applicationUri + "/clients/" + secondClientId);
+        var configuration = HttpClient.newHttpClient().send(
+                authorizedPutJsonRequest(
+                        clientUri,
+                        adminAccessToken,
+                        "configure-second-provisioner",
+                        """
+                                {
+                                  "type": "MACHINE",
+                                  "key": "second-membership-provisioner",
+                                  "scopes": ["membership:write"]
+                                }
+                                """),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(configuration.statusCode()).isEqualTo(201);
+        awaitAppliedProjection(secondClientId);
+
+        var secretResponse = HttpClient.newHttpClient().send(
+                authorizedPostRequest(
+                        URI.create(clientUri + "/credentials/client-secret"),
+                        adminAccessToken,
+                        "issue-second-machine-secret"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(secretResponse.statusCode()).isEqualTo(200);
+        var secondToken = requestServiceAccountToken(
+                "ih-machine-" + secondClientId,
+                JSON.readTree(secretResponse.body()).required("clientSecret").asString());
+
+        var userAccountRef = UUID.fromString("680ac2e4-bfb0-4375-a75e-453b6e7b600c");
+        var grant = HttpClient.newHttpClient().send(
+                authorizedPostJsonRequest(
+                        integrationUri,
+                        secondToken,
+                        "second-membership-grant-001",
+                        "second-membership-grant",
+                        "{\"userAccountRef\":\"" + userAccountRef + "\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(grant.statusCode()).isEqualTo(202);
+        assertThat(jdbcClient.sql("""
+                            select application_id, count(*)
+                            from membership
+                            where user_account_ref = :userAccountRef
+                            group by application_id
+                            order by application_id
+                            """)
+                .param("userAccountRef", userAccountRef)
+                .query((resultSet, rowNumber) -> Map.entry(
+                        resultSet.getObject("application_id", UUID.class),
+                        resultSet.getInt("count")))
+                .list())
+                .containsExactlyInAnyOrder(
+                        Map.entry(firstApplicationId, 1),
+                        Map.entry(secondApplicationId, 1));
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {
