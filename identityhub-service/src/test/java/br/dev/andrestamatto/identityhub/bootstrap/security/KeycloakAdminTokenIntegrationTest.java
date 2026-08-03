@@ -1211,6 +1211,75 @@ class KeycloakAdminTokenIntegrationTest {
         assertThat(claims.getAudience()).containsExactly("identityhub-integration-api");
         assertThat(claims.getClaimAsString("scope")).isEqualTo("membership:write");
         assertThat(claims.getClaimAsString("azp")).isEqualTo("ih-machine-" + clientId);
+
+        assertRealMembershipGrant(machineAccessToken, applicationId, clientId);
+    }
+
+    private void assertRealMembershipGrant(
+            String machineAccessToken,
+            UUID applicationId,
+            UUID applicationClientId) throws Exception {
+        var userAccountRef = UUID.fromString("680ac2e4-bfb0-4375-a75e-453b6e7b600c");
+        var membershipUri = URI.create(
+                "http://127.0.0.1:" + servicePort + "/api/v1/memberships");
+        var body = "{\"userAccountRef\":\"" + userAccountRef + "\"}";
+        var request = authorizedPostJsonRequest(
+                membershipUri,
+                machineAccessToken,
+                "membership-grant-001",
+                "real-membership-grant",
+                body);
+
+        var first = HttpClient.newHttpClient().send(
+                request, HttpResponse.BodyHandlers.ofString());
+        var replay = HttpClient.newHttpClient().send(
+                authorizedPostJsonRequest(
+                        membershipUri,
+                        machineAccessToken,
+                        "membership-grant-001",
+                        "real-membership-grant",
+                        body),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(first.statusCode()).isEqualTo(202);
+        assertThat(replay.statusCode()).isEqualTo(202);
+        assertThat(replay.body()).isEqualTo(first.body());
+        assertThat(first.body()).contains("\"state\":\"PENDING\"");
+        assertThat(first.body()).doesNotContain("applicationId", "userAccountRef");
+        assertThat(jdbcClient.sql("""
+                            select count(*)
+                            from membership
+                            where application_id = :applicationId
+                              and user_account_ref = :userAccountRef
+                              and state = 'PENDING'
+                            """)
+                .param("applicationId", applicationId)
+                .param("userAccountRef", userAccountRef)
+                .query(Integer.class)
+                .single()).isOne();
+        assertThat(jdbcClient.sql("""
+                            select count(*)
+                            from membership_grant_operation
+                            where application_client_id = :applicationClientId
+                              and correlation_id = 'real-membership-grant'
+                            """)
+                .param("applicationClientId", applicationClientId)
+                .query(Integer.class)
+                .single()).isOne();
+
+        var tampered = HttpClient.newHttpClient().send(
+                authorizedPostJsonRequest(
+                        membershipUri,
+                        machineAccessToken,
+                        "membership-grant-002",
+                        "tampered-membership-grant",
+                        "{\"userAccountRef\":\"" + userAccountRef
+                                + "\",\"applicationId\":\"" + UUID.randomUUID() + "\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(tampered.statusCode()).isEqualTo(400);
+        assertThat(jdbcClient.sql("select count(*) from membership")
+                .query(Integer.class)
+                .single()).isOne();
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {
@@ -1524,6 +1593,21 @@ class KeycloakAdminTokenIntegrationTest {
                 .header("Authorization", "Bearer " + bearerToken)
                 .header("X-Correlation-ID", correlationId)
                 .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+    }
+
+    private static HttpRequest authorizedPostJsonRequest(
+            URI uri,
+            String bearerToken,
+            String idempotencyKey,
+            String correlationId,
+            String body) {
+        return HttpRequest.newBuilder(uri)
+                .header("Authorization", "Bearer " + bearerToken)
+                .header("Idempotency-Key", idempotencyKey)
+                .header("X-Correlation-ID", correlationId)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
     }
 

@@ -81,6 +81,10 @@ class ClientApplicationAdminHttpTest {
     private br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryRepository
             emailDeliveryRepository;
 
+    @MockitoBean
+    private br.dev.andrestamatto.identityhub.access.application.MembershipGrantRepository
+            membershipGrantRepository;
+
     @Test
     void adminWithTotpRegistersDraftApplication() throws Exception {
         when(repository.findById(any())).thenReturn(Optional.empty());

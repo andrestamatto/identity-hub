@@ -73,6 +73,10 @@ class PublicIdentityHttpSecurityTest {
             emailDeliveryRepository;
 
     @MockitoBean
+    private br.dev.andrestamatto.identityhub.access.application.MembershipGrantRepository
+            membershipGrantRepository;
+
+    @MockitoBean
     private GetClientApplicationByIdentifier getApplication;
 
     @MockitoBean

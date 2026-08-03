@@ -69,6 +69,10 @@ class EmailDeliveryAdminHttpTest {
     @MockitoBean
     private EmailDeliveryRepository emailDeliveryRepository;
 
+    @MockitoBean
+    private br.dev.andrestamatto.identityhub.access.application.MembershipGrantRepository
+            membershipGrantRepository;
+
     @Test
     void auditorReadsSanitizedDeliveryDiagnostics() throws Exception {
         when(emailDeliveryRepository.find(any())).thenReturn(Optional.of(delivery()));
