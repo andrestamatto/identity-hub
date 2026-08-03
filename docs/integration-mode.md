@@ -589,7 +589,11 @@ Regras:
 
 - usa somente APIs públicas do IdentityHub;
 - obtém token por Client Credentials;
+- solicita a audience `identityhub-integration-api` e exige o scope
+  `membership:write` para mutações de acesso;
 - não representa usuário;
+- não envia identificador de aplicação: o IdentityHub deriva o escopo da
+  aplicação pelo `azp` validado do cliente de máquina;
 - nunca aceita do navegador um identificador humano como autoridade;
 - não recebe refresh token;
 - propaga `traceparent` e correlation ID;
@@ -602,6 +606,30 @@ Regras:
 
 Credenciais são fornecidas pelo ambiente ou secret manager. O manifesto contém
 somente a identidade lógica do cliente.
+
+### 14.1 Contrato HTTP inicial de concessão
+
+Enquanto o cliente tipado não for entregue, o contrato público inicial é:
+
+```http
+POST /api/v1/memberships
+Authorization: Bearer <client-credentials-access-token>
+Idempotency-Key: <opaque-key>
+Content-Type: application/json
+
+{
+  "userAccountRef": "680ac2e4-bfb0-4375-a75e-453b6e7b600c"
+}
+```
+
+Uma solicitação aceita retorna `202 Accepted` com `operationId`, `membershipId`,
+`state=PENDING` e `acceptedAt`. A resposta não devolve application id nem dados
+comerciais. O estado `PENDING` prova a intenção durável, mas ainda não concede
+acesso; a ativação depende da projeção prevista no incremento seguinte.
+
+A mesma chave com o mesmo comando devolve a mesma operação. A reutilização da
+chave com outro comando retorna conflito. Campos desconhecidos, inclusive
+qualquer application id informado pelo solicitante, são rejeitados.
 
 ## 15. Diagnóstico e observabilidade
 

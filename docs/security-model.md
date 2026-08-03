@@ -274,6 +274,14 @@ Controles adicionais ao perfil da seção 8:
 - o navegador não declara `sub`, aplicação ou aquisição como autoridade;
 - autenticação sem `Membership` não concede audience nem papéis de negócio;
 - provisionamento posterior usa Client Credentials e idempotency key;
+- a API de provisionamento exige audience `identityhub-integration-api` e scope
+  `membership:write`;
+- a `ClientApplication` alvo é derivada do `azp` validado e do vínculo interno do
+  cliente de máquina, nunca de path, query ou payload;
+- o resource server de integração é separado da cadeia administrativa, aceita
+  somente JWT `RS256` com issuer, tempo e audience válidos, e nega por padrão;
+- machine clients não conservam client scopes padrão herdados do realm: o
+  projetor mantém somente os scopes de máquina explicitamente configurados;
 - pagamento, plano e assinatura não são enviados ao IdentityHub.
 
 ## 10. Perfil de tokens

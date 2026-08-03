@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
   PR checks, explicit stop conditions and a versioned pending-decision ledger.
 
 ### Added
+- Authenticated membership-grant intent API with a stable integration audience,
+  explicit `membership:write` machine scope, target application derived from
+  validated `azp`, idempotent PostgreSQL persistence in `PENDING`, strict
+  payload isolation, and real Keycloak/PostgreSQL evidence.
 - Durable global-account disablement with recent TOTP administration,
   idempotency, fail-closed last-administrator protection based on effective
   Keycloak roles, session revocation, PostgreSQL evidence and safe retry.
