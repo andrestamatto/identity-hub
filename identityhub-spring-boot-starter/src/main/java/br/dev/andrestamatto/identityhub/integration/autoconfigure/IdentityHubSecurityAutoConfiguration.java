@@ -72,7 +72,7 @@ public class IdentityHubSecurityAutoConfiguration {
     }
 
     @Bean("identityHubJwtRestOperations")
-    @ConditionalOnMissingBean(name = "identityHubJwtRestOperations")
+    @ConditionalOnMissingBean(value = JwtDecoder.class, name = "identityHubJwtRestOperations")
     RestOperations identityHubJwtRestOperations() {
         var requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(JWT_METADATA_CONNECT_TIMEOUT);
