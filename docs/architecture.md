@@ -481,6 +481,18 @@ API versionada do IdentityHub para:
 
 Chamadas de aplicação utilizam OAuth Client Credentials e escopos limitados à própria `ClientApplication`.
 
+No provisionamento do MVP, a API exige a audience estável
+`identityhub-integration-api` e o scope `membership:write`. A aplicação alvo não
+faz parte do path nem do payload: o plano de controle resolve a
+`ClientApplication` a partir do `azp` assinado do cliente de máquina e de seu
+vínculo projetado. O formato do identificador operacional do cliente no Keycloak
+continua interno e não integra o contrato consumidor.
+
+O primeiro incremento da concessão persiste atomicamente uma `Membership`
+`PENDING` e a operação idempotente que a originou. A unicidade é definida por
+aplicação e usuário. Esse estado ainda não autoriza APIs de negócio; a projeção
+e a transição para `ACTIVE` pertencem ao incremento seguinte.
+
 ### 13.3 API administrativa
 
 API separada por audience e autorização para:

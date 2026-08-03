@@ -23,6 +23,11 @@ class FoundationArchitectureTest {
                 .should().resideInAnyPackage(
                         BASE_PACKAGE + ".bootstrap..",
                         BASE_PACKAGE + ".audit..",
+                        BASE_PACKAGE + ".access.domain..",
+                        BASE_PACKAGE + ".access.application..",
+                        BASE_PACKAGE + ".access.adapter.in.http..",
+                        BASE_PACKAGE + ".access.adapter.out.jdbc..",
+                        BASE_PACKAGE + ".access.adapter.out.clientapplication..",
                         BASE_PACKAGE + ".clientapplication.domain..",
                         BASE_PACKAGE + ".clientapplication.application..",
                         BASE_PACKAGE + ".clientapplication.adapter.in.http..",
@@ -88,6 +93,7 @@ class FoundationArchitectureTest {
                 .that().resideInAnyPackage(
                         "..clientapplication.application..",
                         "..communication.application..",
+                        "..access.application..",
                         "..identity.application..")
                 .should().dependOnClassesThat()
                 .resideInAnyPackage(

@@ -32,6 +32,9 @@ public final class KeycloakApplicationClientProjector
     static final String CLIENT_TYPE_ATTRIBUTE = "identityhub.application-client-type";
     static final String AUDIENCE_ATTRIBUTE = "identityhub.audience";
     static final String PKCE_METHOD_ATTRIBUTE = "pkce.code.challenge.method";
+    static final String MEMBERSHIP_WRITE_SCOPE = "membership:write";
+    static final String INTEGRATION_AUDIENCE = "identityhub-integration-api";
+    private static final String CLIENT_SCOPE_ATTRIBUTE = "identityhub.client-scope";
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -62,14 +65,33 @@ public final class KeycloakApplicationClientProjector
         Objects.requireNonNull(client);
         try {
             var accessToken = requestManagementToken();
+            JsonNode membershipScope = null;
+            if (client.type().equals("MACHINE")) {
+                membershipScope = findMembershipScope(accessToken);
+                if (client.scopes().contains(MEMBERSHIP_WRITE_SCOPE)) {
+                    membershipScope = ensureMembershipScope(membershipScope, accessToken);
+                }
+            }
             var existing = findClient(client, accessToken);
             if (existing == null) {
                 createClient(client, accessToken);
-                return;
+                existing = findClient(client, accessToken);
+                if (existing == null) {
+                    throw ApplicationClientProjectionException.retryable(
+                            ApplicationClientProjectionFailureCode.KEYCLOAK_INVALID_RESPONSE,
+                            null);
+                }
             }
             ensureOwnership(existing, client);
             if (!matches(existing, client)) {
                 updateClient(existing.required("id").asString(), client, accessToken);
+            }
+            if (client.type().equals("MACHINE")) {
+                reconcileMachineScopes(
+                        existing.required("id").asString(),
+                        membershipScope,
+                        client.scopes().contains(MEMBERSHIP_WRITE_SCOPE),
+                        accessToken);
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
@@ -203,6 +225,179 @@ public final class KeycloakApplicationClientProjector
                 ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
     }
 
+    private JsonNode findMembershipScope(String accessToken)
+            throws IOException, InterruptedException {
+        var response = sendAuthorized(
+                HttpRequest.newBuilder(clientScopeCollectionUri()).GET(),
+                accessToken);
+        ensureSuccess(
+                response.statusCode(),
+                ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
+        try {
+            var scopes = objectMapper.readValue(
+                    response.body(),
+                    new TypeReference<List<JsonNode>>() { }).stream()
+                    .filter(scope -> MEMBERSHIP_WRITE_SCOPE.equals(scope.path("name").asString()))
+                    .toList();
+            if (scopes.size() > 1) {
+                throw ApplicationClientProjectionException.permanent(
+                        ApplicationClientProjectionFailureCode.KEYCLOAK_CLIENT_CONFLICT, null);
+            }
+            if (scopes.isEmpty()) {
+                return null;
+            }
+            var scopeId = scopes.getFirst().required("id").asString();
+            var detail = sendAuthorized(
+                    HttpRequest.newBuilder(clientScopeUri(scopeId)).GET(),
+                    accessToken);
+            ensureSuccess(
+                    detail.statusCode(),
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
+            return objectMapper.readTree(detail.body());
+        } catch (ApplicationClientProjectionException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw ApplicationClientProjectionException.retryable(
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_INVALID_RESPONSE,
+                    exception);
+        }
+    }
+
+    private JsonNode ensureMembershipScope(JsonNode existing, String accessToken)
+            throws IOException, InterruptedException {
+        if (existing == null) {
+            var response = sendAuthorized(
+                    HttpRequest.newBuilder(clientScopeCollectionUri())
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString(
+                                    membershipScopeRepresentation(null))),
+                    accessToken);
+            if (response.statusCode() != 409) {
+                ensureSuccess(
+                        response.statusCode(),
+                        ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
+            }
+            existing = findMembershipScope(accessToken);
+            if (existing == null) {
+                throw ApplicationClientProjectionException.retryable(
+                        ApplicationClientProjectionFailureCode.KEYCLOAK_INVALID_RESPONSE,
+                        null);
+            }
+        }
+        ensureMembershipScopeOwnership(existing);
+        if (!membershipScopeMatches(existing)) {
+            var scopeId = existing.required("id").asString();
+            var response = sendAuthorized(
+                    HttpRequest.newBuilder(clientScopeUri(scopeId))
+                            .header("Content-Type", "application/json")
+                            .PUT(HttpRequest.BodyPublishers.ofString(
+                                    membershipScopeRepresentation(scopeId))),
+                    accessToken);
+            ensureSuccess(
+                    response.statusCode(),
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
+            return objectMapper.readTree(membershipScopeRepresentation(scopeId));
+        }
+        return existing;
+    }
+
+    private void reconcileMachineScopes(
+            String keycloakClientId,
+            JsonNode membershipScope,
+            boolean desired,
+            String accessToken) throws IOException, InterruptedException {
+        var response = sendAuthorized(
+                HttpRequest.newBuilder(defaultClientScopesUri(keycloakClientId)).GET(),
+                accessToken);
+        ensureSuccess(
+                response.statusCode(),
+                ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
+        var attachedScopes = objectMapper.readValue(
+                response.body(), new TypeReference<List<JsonNode>>() { });
+        var membershipScopeId = membershipScope == null
+                ? null
+                : membershipScope.required("id").asString();
+        var membershipAttached = false;
+        for (var attachedScope : attachedScopes) {
+            var attachedScopeId = attachedScope.required("id").asString();
+            if (desired && attachedScopeId.equals(membershipScopeId)) {
+                membershipAttached = true;
+                continue;
+            }
+            var removal = sendAuthorized(
+                    HttpRequest.newBuilder(
+                                    defaultClientScopeUri(keycloakClientId, attachedScopeId))
+                            .DELETE(),
+                    accessToken);
+            ensureSuccess(
+                    removal.statusCode(),
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
+        }
+        if (desired && !membershipAttached) {
+            var attachment = sendAuthorized(
+                    HttpRequest.newBuilder(
+                                    defaultClientScopeUri(keycloakClientId, membershipScopeId))
+                            .PUT(HttpRequest.BodyPublishers.noBody()),
+                    accessToken);
+            ensureSuccess(
+                    attachment.statusCode(),
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_MANAGEMENT_REJECTED);
+        }
+    }
+
+    private void ensureMembershipScopeOwnership(JsonNode scope) {
+        if (!"true".equals(scope.path("attributes").path(MANAGED_ATTRIBUTE).asString())
+                || !MEMBERSHIP_WRITE_SCOPE.equals(
+                        scope.path("attributes").path(CLIENT_SCOPE_ATTRIBUTE).asString())) {
+            throw ApplicationClientProjectionException.permanent(
+                    ApplicationClientProjectionFailureCode.KEYCLOAK_CLIENT_CONFLICT, null);
+        }
+    }
+
+    private boolean membershipScopeMatches(JsonNode scope) {
+        var attributes = scope.path("attributes");
+        var mapperMatches = false;
+        for (var mapper : scope.path("protocolMappers")) {
+            if ("oidc-audience-mapper".equals(mapper.path("protocolMapper").asString())
+                    && INTEGRATION_AUDIENCE.equals(mapper.path("config")
+                            .path("included.custom.audience").asString())
+                    && "true".equals(mapper.path("config")
+                            .path("access.token.claim").asString())) {
+                mapperMatches = true;
+            }
+        }
+        return MEMBERSHIP_WRITE_SCOPE.equals(scope.path("name").asString())
+                && "openid-connect".equals(scope.path("protocol").asString())
+                && "true".equals(attributes.path("include.in.token.scope").asString())
+                && mapperMatches;
+    }
+
+    private String membershipScopeRepresentation(String scopeId) {
+        var representation = new java.util.LinkedHashMap<String, Object>();
+        if (scopeId != null) {
+            representation.put("id", scopeId);
+        }
+        representation.put("name", MEMBERSHIP_WRITE_SCOPE);
+        representation.put("description", "IdentityHub membership provisioning permission");
+        representation.put("protocol", "openid-connect");
+        representation.put("attributes", Map.of(
+                MANAGED_ATTRIBUTE, "true",
+                CLIENT_SCOPE_ATTRIBUTE, MEMBERSHIP_WRITE_SCOPE,
+                "include.in.token.scope", "true",
+                "display.on.consent.screen", "false"));
+        representation.put("protocolMappers", List.of(Map.of(
+                "name", "identityhub-integration-audience",
+                "protocol", "openid-connect",
+                "protocolMapper", "oidc-audience-mapper",
+                "consentRequired", false,
+                "config", Map.of(
+                        "included.custom.audience", INTEGRATION_AUDIENCE,
+                        "access.token.claim", "true",
+                        "id.token.claim", "false",
+                        "introspection.token.claim", "true"))));
+        return objectMapper.writeValueAsString(representation);
+    }
+
     private HttpResponse<String> sendAuthorized(
             HttpRequest.Builder request,
             String accessToken) throws IOException, InterruptedException {
@@ -325,6 +520,23 @@ public final class KeycloakApplicationClientProjector
         return URI.create(clientCollectionUri().toString()
                 + "?clientId=" + encode(keycloakClientId(client))
                 + "&exact=true");
+    }
+
+    private URI clientScopeCollectionUri() {
+        return baseUri.resolve("/admin/realms/" + encode(realm) + "/client-scopes");
+    }
+
+    private URI clientScopeUri(String scopeId) {
+        return URI.create(clientScopeCollectionUri() + "/" + encode(scopeId));
+    }
+
+    private URI defaultClientScopesUri(String keycloakClientId) {
+        return clientCollectionUri().resolve(
+                encode(keycloakClientId) + "/default-client-scopes");
+    }
+
+    private URI defaultClientScopeUri(String keycloakClientId, String scopeId) {
+        return URI.create(defaultClientScopesUri(keycloakClientId) + "/" + encode(scopeId));
     }
 
     private String keycloakClientId(ApplicationClientSnapshot client) {

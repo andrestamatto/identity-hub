@@ -81,6 +81,10 @@ class ClientApplicationAdminHttpTest {
     private br.dev.andrestamatto.identityhub.communication.application.EmailDeliveryRepository
             emailDeliveryRepository;
 
+    @MockitoBean
+    private br.dev.andrestamatto.identityhub.access.application.MembershipGrantRepository
+            membershipGrantRepository;
+
     @Test
     void adminWithTotpRegistersDraftApplication() throws Exception {
         when(repository.findById(any())).thenReturn(Optional.empty());
@@ -376,7 +380,8 @@ class ClientApplicationAdminHttpTest {
                         .content("""
                                 {
                                   "type": "MACHINE",
-                                  "key": "auto-radar-membership-provisioner"
+                                  "key": "auto-radar-membership-provisioner",
+                                  "scopes": ["membership:write"]
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -384,6 +389,7 @@ class ClientApplicationAdminHttpTest {
                 .andExpect(jsonPath("$.audience").doesNotExist())
                 .andExpect(jsonPath("$.redirectUris").isEmpty())
                 .andExpect(jsonPath("$.webOrigins").isEmpty())
+                .andExpect(jsonPath("$.scopes[0]").value("membership:write"))
                 .andExpect(jsonPath("$.projectionState").value("PENDING"));
     }
 

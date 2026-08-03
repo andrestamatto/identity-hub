@@ -13,6 +13,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicati
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineClientScope;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -57,6 +58,7 @@ class ConfigureMachineClientTest {
         assertThat(result.client().audience()).isNull();
         assertThat(result.client().redirectUris()).isEmpty();
         assertThat(result.client().webOrigins()).isEmpty();
+        assertThat(result.client().scopes()).containsExactly("membership:write");
         assertThat(result.client().projectionState())
                 .isEqualTo(ApplicationClientProjectionState.PENDING);
         verify(clientRepository).add(any(ApplicationClientConfiguration.class));
@@ -69,6 +71,7 @@ class ConfigureMachineClientTest {
                 application().configureMachine(
                         clientId,
                         new ApplicationClientKey("social-catalog-membership-provisioner"),
+                        new MachineSettings(java.util.List.of(MachineClientScope.MEMBERSHIP_WRITE)),
                         Clock.fixed(NOW, ZoneOffset.UTC)),
                 ApplicationClientProjection.pending(
                         OPERATION_ID,
@@ -89,6 +92,7 @@ class ConfigureMachineClientTest {
                 APPLICATION_ID,
                 CLIENT_ID,
                 "social-catalog-membership-provisioner",
+                java.util.List.of("membership:write"),
                 "configure-machine");
     }
 

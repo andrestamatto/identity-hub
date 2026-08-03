@@ -2,6 +2,8 @@ package br.dev.andrestamatto.identityhub.bootstrap.config;
 
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc.JdbcApplicationClientConfigurationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.jdbc.JdbcClientApplicationRepository;
+import br.dev.andrestamatto.identityhub.clientapplication.adapter.out.keycloak
+        .KeycloakMembershipProvisioningClientResolver;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientConfigurationRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ApplicationClientProjectionRepository;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ClientApplicationRepository;
@@ -13,6 +15,8 @@ import br.dev.andrestamatto.identityhub.clientapplication.application.ConfigureS
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetApplicationClientConfiguration;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.GetClientApplicationByIdentifier;
+import br.dev.andrestamatto.identityhub.clientapplication.application
+        .MembershipProvisioningClientResolver;
 import br.dev.andrestamatto.identityhub.clientapplication.application.RegisterClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.application.ReconcileApplicationClientProjection;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTransportPolicy;
@@ -88,6 +92,12 @@ class ClientApplicationConfiguration {
                 clientRepository,
                 clock,
                 UUID::randomUUID);
+    }
+
+    @Bean
+    MembershipProvisioningClientResolver membershipProvisioningClientResolver(
+            ApplicationClientConfigurationRepository repository) {
+        return new KeycloakMembershipProvisioningClientResolver(repository);
     }
 
     @Bean

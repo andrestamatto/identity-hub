@@ -15,6 +15,8 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserTransportPolicy;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplication;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineClientScope;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.DisplayName;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.TokenAudience;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
@@ -237,6 +239,7 @@ class JdbcApplicationClientConfigurationRepositoryTest {
         var client = application().configureMachine(
                 new ApplicationClientId(CLIENT_ID),
                 new ApplicationClientKey("catalog-membership-provisioner"),
+                new MachineSettings(java.util.List.of(MachineClientScope.MEMBERSHIP_WRITE)),
                 Clock.fixed(NOW, ZoneOffset.UTC));
         var configuration = new ApplicationClientConfiguration(
                 client,
@@ -248,12 +251,21 @@ class JdbcApplicationClientConfigurationRepositoryTest {
 
         repository.add(configuration);
 
+        jdbcClient.sql("""
+                        insert into application_client_machine_scope (
+                            application_client_id, position, scope
+                        ) values (:clientId, 0, 'onboarding:write')
+                        """)
+                .param("clientId", CLIENT_ID)
+                .update();
+
         var stored = repository.findById(new ApplicationClientId(CLIENT_ID)).orElseThrow();
         var snapshot = ApplicationClientSnapshot.from(stored);
         assertThat(snapshot.type()).isEqualTo("MACHINE");
         assertThat(snapshot.audience()).isNull();
         assertThat(snapshot.redirectUris()).isEmpty();
         assertThat(snapshot.webOrigins()).isEmpty();
+        assertThat(snapshot.scopes()).containsExactly("membership:write");
         assertThat(numberOfOperations()).isOne();
     }
 

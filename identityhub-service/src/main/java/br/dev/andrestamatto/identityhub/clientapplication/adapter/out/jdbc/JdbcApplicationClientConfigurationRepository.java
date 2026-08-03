@@ -14,6 +14,7 @@ import br.dev.andrestamatto.identityhub.clientapplication.domain.ApplicationClie
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BffSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.BrowserRedirectUri;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ClientApplicationId;
+import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineClientScope;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.MachineSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.ProtectedApiSettings;
 import br.dev.andrestamatto.identityhub.clientapplication.domain.SpaSettings;
@@ -317,9 +318,26 @@ public final class JdbcApplicationClientConfigurationRepository
                 insertWebOrigins(client.id(), spa.webOrigins());
             }
             case BffSettings bff -> insertRedirectUris(client.id(), bff.redirectUris());
+            case MachineSettings machine -> insertMachineScopes(client.id(), machine.scopes());
             default -> {
-                // API and machine clients have no child settings.
+                // API clients have no child settings.
             }
+        }
+    }
+
+    private void insertMachineScopes(
+            ApplicationClientId clientId,
+            java.util.List<MachineClientScope> scopes) {
+        for (var position = 0; position < scopes.size(); position++) {
+            jdbcClient.sql("""
+                            insert into application_client_machine_permission (
+                                application_client_id, position, scope
+                            ) values (:clientId, :position, :scope)
+                            """)
+                    .param("clientId", clientId.value())
+                    .param("position", position)
+                    .param("scope", scopes.get(position).value())
+                    .update();
         }
     }
 
@@ -436,7 +454,19 @@ public final class JdbcApplicationClientConfigurationRepository
             return new ProtectedApiSettings(new TokenAudience(audience));
         }
         if (type == ApplicationClientType.MACHINE) {
-            return new MachineSettings();
+            var scopes = jdbcClient.sql("""
+                            select scope
+                            from application_client_machine_permission
+                            where application_client_id = :clientId
+                            order by position
+                            """)
+                    .param("clientId", clientId.value())
+                    .query(String.class)
+                    .list()
+                    .stream()
+                    .map(MachineClientScope::from)
+                    .toList();
+            return new MachineSettings(scopes);
         }
         var redirects = jdbcClient.sql("""
                         select redirect_uri
