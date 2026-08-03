@@ -57,7 +57,10 @@ class KeycloakResourceServerIntegrationTest {
         OAuth2TokenValidator<Jwt> validator = configuration.identityHubJwtValidator(
                 properties,
                 Clock.systemUTC());
-        JwtDecoder decoder = configuration.identityHubJwtDecoder(properties, validator);
+        JwtDecoder decoder = configuration.identityHubJwtDecoder(
+                properties,
+                validator,
+                configuration.identityHubJwtRestOperations());
 
         var jwt = decoder.decode(requestAccessToken());
         var authentication = new IdentityHubJwtAuthenticationConverter(properties.authorities()).convert(jwt);

@@ -36,7 +36,10 @@ class IdentityHubJwtDecoderIntegrationTest {
         OAuth2TokenValidator<Jwt> validator = configuration.identityHubJwtValidator(
                 properties,
                 Clock.fixed(NOW, java.time.ZoneOffset.UTC));
-        decoder = configuration.identityHubJwtDecoder(properties, validator);
+        decoder = configuration.identityHubJwtDecoder(
+                properties,
+                validator,
+                configuration.identityHubJwtRestOperations());
     }
 
     @AfterEach

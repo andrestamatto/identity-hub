@@ -37,6 +37,7 @@ class IdentityHubSecurityAutoConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasSingleBean(IdentityHubSecurityProperties.class);
                     assertThat(context).hasBean("identityHubJwtValidator");
+                    assertThat(context).hasBean("identityHubJwtRestOperations");
                     assertThat(context).hasBean("identityHubJwtAuthenticationConverter");
                     assertThat(context).hasBean("identityHubSecurityFilterChain");
                     assertThat(context).hasSingleBean(SecurityFilterChain.class);
