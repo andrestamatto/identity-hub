@@ -274,6 +274,7 @@ class KeycloakAdminTokenIntegrationTest {
                 "catalog-api",
                 List.of(),
                 List.of(),
+                List.of(),
                 true,
                 Instant.parse("2026-07-31T16:00:00Z"),
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
@@ -401,6 +402,7 @@ class KeycloakAdminTokenIntegrationTest {
                 null,
                 List.of(redirectUri),
                 List.of(webOrigin),
+                List.of(),
                 true,
                 Instant.parse("2026-08-01T12:00:00Z"),
                 UUID.fromString("4fef31b8-17db-40d8-af99-e2899b7db57c"),
@@ -737,6 +739,7 @@ class KeycloakAdminTokenIntegrationTest {
                 null,
                 List.of(LOCAL_LOGIN_REDIRECT_URI),
                 List.of("http://127.0.0.1:5173"),
+                List.of(),
                 true,
                 Instant.parse("2026-08-02T12:00:00Z"),
                 UUID.fromString("553738ed-8d46-46bc-ac3a-2af435a14ac4"),
@@ -1165,7 +1168,8 @@ class KeycloakAdminTokenIntegrationTest {
                         """
                                 {
                                   "type": "MACHINE",
-                                  "key": "real-membership-provisioner"
+                                  "key": "real-membership-provisioner",
+                                  "scopes": ["membership:write"]
                                 }
                                 """),
                 HttpResponse.BodyHandlers.ofString());
@@ -1196,8 +1200,17 @@ class KeycloakAdminTokenIntegrationTest {
                 HttpResponse.BodyHandlers.ofString());
         assertThat(secretResponse.statusCode()).isEqualTo(200);
         assertThat(secretResponse.headers().firstValue("Cache-Control")).contains("no-store");
-        assertThat(JSON.readTree(secretResponse.body()).required("clientSecret").asString())
-                .isNotBlank();
+        var clientSecret = JSON.readTree(secretResponse.body())
+                .required("clientSecret")
+                .asString();
+        assertThat(clientSecret).isNotBlank();
+
+        var machineAccessToken = requestServiceAccountToken(
+                "ih-machine-" + clientId, clientSecret);
+        var claims = oidcDecoder().decode(machineAccessToken);
+        assertThat(claims.getAudience()).containsExactly("identityhub-integration-api");
+        assertThat(claims.getClaimAsString("scope")).isEqualTo("membership:write");
+        assertThat(claims.getClaimAsString("azp")).isEqualTo("ih-machine-" + clientId);
     }
 
     private void awaitAppliedProjection(UUID clientId) throws InterruptedException {

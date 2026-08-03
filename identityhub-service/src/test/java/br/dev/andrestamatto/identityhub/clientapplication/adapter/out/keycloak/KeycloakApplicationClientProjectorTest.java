@@ -27,13 +27,20 @@ class KeycloakApplicationClientProjectorTest {
 
     private static final String REALM = "identityhub-test";
     private static final String KEYCLOAK_ID = "keycloak-client-uuid";
+    private static final String MEMBERSHIP_SCOPE_ID = "membership-scope-uuid";
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final AtomicInteger creates = new AtomicInteger();
     private final AtomicInteger updates = new AtomicInteger();
     private final AtomicInteger rotations = new AtomicInteger();
+    private final AtomicInteger clientScopeCreates = new AtomicInteger();
+    private final AtomicInteger defaultScopeAttachments = new AtomicInteger();
+    private final AtomicInteger defaultScopeRemovals = new AtomicInteger();
     private HttpServer server;
     private ObjectNode storedClient;
+    private ObjectNode storedClientScope;
+    private boolean membershipScopeAttached;
+    private boolean profileScopeAttached = true;
     private int managementStatus = 200;
     private boolean failAfterCreate;
 
@@ -46,6 +53,9 @@ class KeycloakApplicationClientProjectorTest {
         server.createContext(
                 "/admin/realms/" + REALM + "/clients/",
                 this::clients);
+        server.createContext(
+                "/admin/realms/" + REALM + "/client-scopes",
+                this::clientScopes);
         server.start();
     }
 
@@ -180,7 +190,10 @@ class KeycloakApplicationClientProjectorTest {
 
     @Test
     void createsConfidentialMachineWithOnlyServiceAccountsEnabled() {
-        projector().project(machineSnapshot());
+        var projector = projector();
+
+        projector.project(machineSnapshot());
+        projector.project(machineSnapshot());
 
         assertThat(storedClient.path("clientId").asString())
                 .isEqualTo("ih-machine-72c43df3-9f34-4dc6-85cc-5d323762f299");
@@ -199,6 +212,33 @@ class KeycloakApplicationClientProjectorTest {
         assertThat(storedClient.path("attributes")
                 .path("pkce.code.challenge.method").isMissingNode()).isTrue();
         assertThat(storedClient.path("secret").isMissingNode()).isTrue();
+        assertThat(clientScopeCreates).hasValue(1);
+        assertThat(defaultScopeAttachments).hasValue(1);
+        assertThat(defaultScopeRemovals).hasValue(1);
+        assertThat(storedClientScope.path("name").asString())
+                .isEqualTo("membership:write");
+        assertThat(storedClientScope.path("protocolMappers").get(0)
+                .path("config").path("included.custom.audience").asString())
+                .isEqualTo("identityhub-integration-api");
+    }
+
+    @Test
+    void refusesToOverwriteMembershipScopeNotOwnedByIdentityHub() {
+        storedClientScope = JSON.createObjectNode()
+                .put("id", MEMBERSHIP_SCOPE_ID)
+                .put("name", "membership:write")
+                .put("protocol", "openid-connect");
+        storedClientScope.putObject("attributes")
+                .put("identityhub.managed", "false");
+
+        assertThatThrownBy(() -> projector().project(machineSnapshot()))
+                .isInstanceOf(ApplicationClientProjectionException.class)
+                .satisfies(exception -> assertThat(
+                                ((ApplicationClientProjectionException) exception).retryable())
+                        .isFalse());
+        assertThat(clientScopeCreates).hasValue(0);
+        assertThat(defaultScopeAttachments).hasValue(0);
+        assertThat(storedClient).isNull();
     }
 
     @Test
@@ -233,6 +273,7 @@ class KeycloakApplicationClientProjectorTest {
                 "catalog-api",
                 java.util.List.of(),
                 java.util.List.of(),
+                java.util.List.of(),
                 true,
                 Instant.parse("2026-07-31T16:00:00Z"),
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
@@ -253,6 +294,7 @@ class KeycloakApplicationClientProjectorTest {
                 null,
                 java.util.List.of("https://app.example.com/auth/callback"),
                 java.util.List.of("https://app.example.com"),
+                java.util.List.of(),
                 true,
                 Instant.parse("2026-07-31T16:00:00Z"),
                 UUID.fromString("27f3aa0b-6a70-43bd-a087-d5bc0c1bc779"),
@@ -274,6 +316,7 @@ class KeycloakApplicationClientProjectorTest {
                 java.util.List.of(
                         "https://app.example.com/login/oauth2/code/identityhub"),
                 java.util.List.of(),
+                java.util.List.of(),
                 true,
                 Instant.parse("2026-08-01T14:00:00Z"),
                 UUID.fromString("92390c62-b1f7-48d4-887a-d004a47faf8b"),
@@ -294,6 +337,7 @@ class KeycloakApplicationClientProjectorTest {
                 null,
                 java.util.List.of(),
                 java.util.List.of(),
+                java.util.List.of("membership:write"),
                 true,
                 Instant.parse("2026-08-01T14:00:00Z"),
                 UUID.fromString("92390c62-b1f7-48d4-887a-d004a47faf8b"),
@@ -320,6 +364,10 @@ class KeycloakApplicationClientProjectorTest {
             respond(exchange, 200, "{\"value\":\"one-time-generated-secret\"}");
             return;
         }
+        if (exchange.getRequestURI().getPath().contains("/default-client-scopes")) {
+            defaultClientScopes(exchange);
+            return;
+        }
         if ("GET".equals(exchange.getRequestMethod())) {
             var response = storedClient == null ? "[]" : "[" + storedClient + "]";
             respond(exchange, 200, response);
@@ -335,6 +383,63 @@ class KeycloakApplicationClientProjectorTest {
         }
         if ("PUT".equals(exchange.getRequestMethod())) {
             updates.incrementAndGet();
+            respond(exchange, 204, "");
+            return;
+        }
+        respond(exchange, 405, "");
+    }
+
+    private void clientScopes(HttpExchange exchange) throws IOException {
+        var collection = exchange.getRequestURI().getPath().endsWith("/client-scopes");
+        if ("GET".equals(exchange.getRequestMethod())) {
+            var response = storedClientScope == null
+                    ? (collection ? "[]" : "{}")
+                    : (collection ? "[" + storedClientScope + "]" : storedClientScope.toString());
+            respond(exchange, 200, response);
+            return;
+        }
+        var received = (ObjectNode) JSON.readTree(exchange.getRequestBody());
+        received.put("id", MEMBERSHIP_SCOPE_ID);
+        storedClientScope = received;
+        if ("POST".equals(exchange.getRequestMethod())) {
+            clientScopeCreates.incrementAndGet();
+            respond(exchange, 201, "");
+            return;
+        }
+        if ("PUT".equals(exchange.getRequestMethod())) {
+            respond(exchange, 204, "");
+            return;
+        }
+        respond(exchange, 405, "");
+    }
+
+    private void defaultClientScopes(HttpExchange exchange) throws IOException {
+        if ("GET".equals(exchange.getRequestMethod())) {
+            var scopes = new java.util.ArrayList<String>();
+            if (profileScopeAttached) {
+                scopes.add("{\"id\":\"profile-scope-uuid\",\"name\":\"profile\"}");
+            }
+            if (membershipScopeAttached) {
+                scopes.add("{\"id\":\"" + MEMBERSHIP_SCOPE_ID
+                        + "\",\"name\":\"membership:write\"}");
+            }
+            var response = "[" + String.join(",", scopes) + "]";
+            respond(exchange, 200, response);
+            return;
+        }
+        if ("PUT".equals(exchange.getRequestMethod())) {
+            membershipScopeAttached = true;
+            defaultScopeAttachments.incrementAndGet();
+            respond(exchange, 204, "");
+            return;
+        }
+        if ("DELETE".equals(exchange.getRequestMethod())) {
+            if (exchange.getRequestURI().getPath().endsWith("profile-scope-uuid")) {
+                profileScopeAttached = false;
+            } else {
+                membershipScopeAttached = false;
+            }
+            defaultScopeRemovals.incrementAndGet();
             respond(exchange, 204, "");
             return;
         }
