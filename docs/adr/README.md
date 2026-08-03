@@ -40,6 +40,7 @@ feitas no documento original.
 | [ADR-0015](0015-keycloak-owned-platform-role-assignments.md) | Accepted | Keycloak como fonte das atribuições de papéis de plataforma no MVP |
 | [ADR-0016](0016-membership-provisioning-client-authorization.md) | Accepted | Autorização do cliente de provisionamento de Membership |
 | [ADR-0017](0017-keycloak-membership-projection-marker.md) | Accepted | Marcador operacional privado de Membership no Keycloak |
+| [ADR-0018](0018-keycloak-role-scoped-public-audience.md) | Accepted | Audience pública condicionada por role scope no Keycloak |
 
 ## Decisões pendentes
 
