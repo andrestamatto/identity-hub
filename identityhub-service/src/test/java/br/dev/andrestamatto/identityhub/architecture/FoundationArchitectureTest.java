@@ -3,19 +3,27 @@ package br.dev.andrestamatto.identityhub.architecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.tngtech.archunit.ArchConfiguration;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationContext;
 
 class FoundationArchitectureTest {
 
     private static final String BASE_PACKAGE = "br.dev.andrestamatto.identityhub";
 
-    private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages(BASE_PACKAGE);
+    private static final JavaClasses PRODUCTION_CLASSES = importProductionClasses();
+
+    private static JavaClasses importProductionClasses() {
+        ArchConfiguration.get().setResolveMissingDependenciesFromClassPath(false);
+        return new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages(BASE_PACKAGE);
+    }
 
     @Test
     void codeContainsOnlyApprovedCapabilities() {
@@ -122,5 +130,20 @@ class FoundationArchitectureTest {
                 .matching(BASE_PACKAGE + ".(*)..")
                 .should().beFreeOfCycles()
                 .check(PRODUCTION_CLASSES);
+    }
+
+    @Test
+    void directFrameworkDependencyRemainsVisibleWithoutClasspathResolution() {
+        JavaClasses fixtureClasses = new ClassFileImporter().importClasses(FrameworkDependentFixture.class);
+
+        assertThrows(AssertionError.class, () -> noClasses()
+                .that().resideInAPackage("..architecture..")
+                .should().dependOnClassesThat().resideInAPackage("org.springframework..")
+                .check(fixtureClasses));
+    }
+
+    private static final class FrameworkDependentFixture {
+
+        private ApplicationContext applicationContext;
     }
 }

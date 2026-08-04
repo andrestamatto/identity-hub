@@ -145,6 +145,21 @@ dependencies {
 O consumidor deve fixar a versão. Intervalos abertos e versões dinâmicas não são
 suportados.
 
+### 6.3 Checkpoint local com o primeiro SaaS
+
+Antes de existir um repositório de artefatos aprovado, o starter pode ser
+instalado no Maven Local do desenvolvedor para o checkpoint de desenvolvimento:
+
+```text
+br.dev.andrestamatto:identityhub-spring-boot-starter:0.4.0-SNAPSHOT
+```
+
+Essa publicação é somente um mecanismo local e explícito de validação entre
+repositórios. Ela não envia artefatos a serviço externo, não recebe credenciais e
+não constitui distribuição para CI ou produção. O consumidor deve usar uma versão
+fixa e manter `mavenLocal()` restrito ao ambiente de desenvolvimento até que uma
+estratégia de publicação verificável seja aprovada.
+
 ## 7. Dois tipos de configuração
 
 O Integration Mode separa deliberadamente:

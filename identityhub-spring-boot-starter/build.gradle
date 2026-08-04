@@ -1,8 +1,8 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
     id 'checkstyle'
     id 'jacoco'
-    id 'io.spring.dependency-management'
 }
 
 java {
@@ -15,16 +15,14 @@ repositories {
     mavenCentral()
 }
 
-dependencyManagement {
-    imports {
-        mavenBom 'org.springframework.boot:spring-boot-dependencies:4.1.0'
-    }
-}
+def springBootBom = 'org.springframework.boot:spring-boot-dependencies:4.1.0'
 
 dependencies {
+    api platform(springBootBom)
     api 'org.springframework.boot:spring-boot-autoconfigure'
     api 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 
+    annotationProcessor platform(springBootBom)
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.springframework.boot:spring-boot-autoconfigure-processor'
 
@@ -53,6 +51,15 @@ checkstyle {
 
 jacoco {
     toolVersion = '0.8.15'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'identityhub-spring-boot-starter'
+        }
+    }
 }
 
 tasks.named('jacocoTestReport') {
