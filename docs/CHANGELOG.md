@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Changed
+- The Integration Mode starter can now be installed explicitly in a developer's
+  Maven Local repository for the first-SaaS development checkpoint; this is not
+  a CI, production or external-package distribution path.
 - API resource-server projections now use their stable public audience as the
   Keycloak `client_id`, allowing native audience resolution without exposing a
   custom Keycloak claim contract.
@@ -281,6 +284,9 @@ All notable changes to this project will be documented in this file.
 - Phone-based registration now generates WhatsApp verification tokens for the current verification-code delivery flow.
 
 ### Fixed
+- Kept the service ArchUnit boundary rules intact while avoiding unnecessary
+  resolution of external classpath types; a negative fixture proves direct
+  framework dependencies remain detectable and makes the WSL gate viable.
 - Normalized `ClientApplication.registeredAt` to microsecond precision so the
   creation response and PostgreSQL round-trip expose the same timestamp.
 - Normalized password validation error message in `RawPassword`.
